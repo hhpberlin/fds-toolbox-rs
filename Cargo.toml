@@ -6,3 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+typetag = "0.2"
+rmp-serde = "1.1"
+tokio = { version = "1", features = ["full"] }
+# async-compression = { version = "*", features = ["all"] }
+quinn = "0.8.3"
+rustls = { version = "0.20.6", features = ["dangerous_configuration", "quic"] }
