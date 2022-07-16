@@ -1,17 +1,15 @@
-use std::{collections::HashMap, any::Any};
+use std::{collections::HashMap, future::Future, error::Error};
 
-// use serde::{Serialize, Deserialize, de::DeserializeOwned}; 
+use dashmap::DashMap;
 
-use rmp_serde::{Deserializer, Serializer};
-use tokio::net::{TcpListener, TcpStream};
+use super::remote::ReadOnlyRemote;
 
 // #[derive(Serialize, Deserialize)]
-enum Value<T>
-{
+enum Value<T> {
     Value(T),
     // CompressedRandomAccess()
-    // Compressed(Vec<u8>),
-    Processing(),
+    Compressed([u8]),
+    Processing(Future<Result<&[u8], Error>>),
     Uninitialized,
 }
 
@@ -20,27 +18,45 @@ pub trait Data {}
 
 // #[typetag::serde]
 
-pub struct Index<'a> {
-    stored: HashMap<&'a [u8], Value<Box<dyn Data>>>,
+pub struct Index<'a, Hash: std::hash::Hash + Eq> {
+    stored: DashMap<&'a Hash, Value<Box<dyn Data>>>,
 }
 
-impl<'a> Index<'a> {
+impl<'a, Hash: std::hash::Hash + Eq> Index<'a, Hash> {
     pub fn new() -> Self {
         Index {
-            stored: HashMap::new(),
+            stored: DashMap::new(),
         }
     }
 
-    pub fn get(&self, key: &[u8]) -> Option<&dyn Data> {
+    pub fn get(&self, key: &Hash) -> Option<&dyn Data> {
         let value = self.stored.get(key);
+        
         match value {
-            Some(Value::Value(value)) => Some(value.as_ref()),
-            // Some(Value::LocallyCached) =>
-            _ => None,
+            Some(value) => {
+                match value.value() {
+                    Value::Value(data) => Some(data.as_ref()),
+                    _ => None,
+                }
+            },
+            None => None,
         }
     }
 
-    async fn fetch(&self, key: &[u8]) {
-        // let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+    async fn fetch(&mut self, key: &Hash, remote: &impl ReadOnlyRemote) {
+        match self.stored.get_mut(key) {
+            Some(current) => {
+                match current.value() {
+                    Value::Uninitialized => {
+                        let mut val = current.value_mut();
+                        val = Value::Processing(remote.get_async(key));
+                    },
+                    _ => {},
+                }
+            },
+            None => {
+                self.stored.insert(key, Value::Processing(remote.get_async(key)));
+            },
+        }
     }
 }
