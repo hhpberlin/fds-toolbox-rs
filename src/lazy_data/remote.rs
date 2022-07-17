@@ -1,11 +1,13 @@
 pub mod quic_remote;
 
+use std::error::Error;
+
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait ReadOnlyRemote {
+pub trait Remote {
     // fn get_data(&self, key: &[u8]) -> Option<&dyn Data>;
-    fn get_async(&self, key: &[u8]) -> Result<&[u8], ()>;
+    async fn get_async(&self, key: &[u8; 32]) -> Result<&[u8], Box<dyn Error>>;
     // fn get_data_async_with_timeout(&self, key: &[u8], timeout: Duration) -> Option<Box<dyn Future<Output = Result<Box<dyn Data>, Error>>>>;
 }
 

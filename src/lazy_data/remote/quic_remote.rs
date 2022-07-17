@@ -3,7 +3,7 @@ use std::{error::Error, net::SocketAddr};
 use async_trait::async_trait;
 use quinn::{Connection, Endpoint, NewConnection};
 
-use super::ReadOnlyRemote;
+use super::Remote;
 
 pub struct ConnectionInfo<'a> {
     pub remote_addr: SocketAddr,
@@ -17,10 +17,11 @@ pub struct QuicRemote<'a> {
 }
 
 #[async_trait]
-impl ReadOnlyRemote for QuicRemote<'_> {
-    fn get_async(&self, key: &[u8]) -> Result<&[u8], Box<dyn Error>> {
+impl Remote for QuicRemote<'_> {
+    async fn get_async(&self, key: &[u8; 32]) -> Result<&[u8], Box<dyn Error>> {
         // self.connection.
-        Err("Mungus")
+        // Err("TODO")
+        unimplemented!()
     }
 }
 
@@ -29,7 +30,7 @@ impl QuicRemote<'_> {
         connection_info: ConnectionInfo<'_>,
     ) -> Result<QuicRemote<'_>, Box<dyn Error>> {
         // Bind this endpoint to a UDP socket on the given client address.
-        let mut endpoint = Endpoint::client(connection_info.local_addr).unwrap();
+        let endpoint = Endpoint::client(connection_info.local_addr).unwrap();
 
         // Connect to the server passing in the server name which is supposed to be in the server certificate.
         let new_connection = endpoint
