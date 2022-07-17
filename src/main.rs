@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 mod lazy_data;
 use lazy_data::remote::quic_remote::QuicRemote;
 
-use crate::lazy_data::remote::quic_remote::ConnectionInfo;
+use crate::lazy_data::remote::{quic_remote::ConnectionInfo};
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +14,11 @@ async fn main() {
         local_addr: SocketAddr::from(([127, 0, 0, 1], 5001)),
         server_name: "localhost",
     })
-    .await;
+    .await
+    .unwrap();
+
+    // let drem: &dyn Remote = &remote;
+    // let req = drem.get_async(&[1, 2, 3]);
     // remote.
 }
 
