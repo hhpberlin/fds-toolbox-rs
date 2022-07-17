@@ -4,6 +4,7 @@ use async_compression::tokio::bufread::{BrotliDecoder};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use dashmap::DashMap;
+use typetag::erased_serde::{Serializer, Deserializer, self};
 
 use super::remote::Remote;
 
@@ -26,15 +27,15 @@ pub trait Data {}
 
 // #[typetag::serde]
 
-pub struct Index<'a>
+pub struct MultiIndex<'a>
 {
     stored: DashMap<&'a Hash, VBox<Value<'a, Box<dyn Data>>>>,
 }
 
-impl<'a> Index<'a>
+impl<'a> MultiIndex<'a>
 {
     pub fn new() -> Self {
-        Index {
+        MultiIndex {
             stored: DashMap::new(),
         }
     }
@@ -83,5 +84,52 @@ impl<'a> Index<'a>
                 self.stored.insert(key, VBox(Value::Processing(remote.get_async(key.as_bytes()))));
             },
         }
+    }
+}
+
+pub trait Index<Key, Value> {
+    type Backing;
+
+    fn upcast(data: &Self::Backing) -> Result<Value, Box<dyn Error>>;
+    fn downcast(data: &Value) -> Result<Self::Backing, Box<dyn Error>>;
+    
+    fn get(&self, key: &Key) -> Option<&Self::Backing>;
+    
+    fn insert(&mut self, key: Key, value: Self::Backing);
+
+    fn remove(&mut self, key: &Key) -> Option<Self::Backing>;
+}
+
+pub struct IndexCompressed<'a, Key> {
+    stored: DashMap<&'a Key, Vec<u8>>,
+}
+
+impl<Key> Index<Key, Box<dyn Data>> for IndexCompressed<'_, Key> {
+    type Backing = Vec<u8>;
+
+    fn get(&self, key: &Key) -> Option<&Self::Backing> {
+        todo!()
+    }
+
+    fn insert(&mut self, key: Key, value: Self::Backing) {
+        todo!()
+    }
+
+    fn remove(&mut self, key: &Key) -> Option<Self::Backing> {
+        todo!()
+    }
+
+    // TODO: Cache Serializer and Deserializer?
+
+    fn upcast(data: &Self::Backing) -> Result<Box<dyn Data>, Box<dyn Error>> {
+        let mut ser = rmp_serde::Deserializer::new(&data[..]);
+        Ok(erased_serde::deserialize(&mut <dyn Deserializer>::erase(&mut ser))?)
+    }
+
+    fn downcast(data: &Box<dyn Data>) -> Result<Self::Backing, Box<dyn Error>> {
+        let mut buf = Vec::new();
+        let mut ser = rmp_serde::Serializer::new(&mut buf);
+        data.erased_serialize(&mut <dyn Serializer>::erase(&mut ser));
+        Ok(buf)
     }
 }
