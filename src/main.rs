@@ -17,9 +17,7 @@ async fn main() {
     .await
     .unwrap();
 
-    // let drem: &dyn Remote = &remote;
-    // let req = drem.get_async(&[1, 2, 3]);
-    // remote.
+    // let comp: dyn CompressionAlgorithm = BrotliCompression;
 }
 
 // pub struct FdsSimulation {
