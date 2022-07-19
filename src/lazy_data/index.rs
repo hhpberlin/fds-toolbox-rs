@@ -1,47 +1,67 @@
-use std::{sync::{RwLock, Arc}, future::Future, error::Error};
+use std::{sync::{RwLock, Arc}, future::Future, error::Error, pin::Pin};
 
 use dashmap::DashMap;
 
 use super::serialization::{Data, Serializer};
 
+type BoxFuture<T, E = Box<dyn Error>> = Box<dyn Future<Output = Result<T, E>> + Unpin>;
+
 pub enum CASValue {
-    Data(Arc<Box<dyn Data>>),
-    FutureData(Box<dyn Future<Output = Result<Box<dyn Data>, Box<dyn Error>>>>),
+    Data(Arc<dyn Data>),
+    FutureData(BoxFuture<Box<dyn Data>>),
     Compressed(Vec<u8>),
-    FutureCompressed(Box<dyn Future<Output = Result<Vec<u8>, Box<dyn Error>>>>),
+    FutureCompressed(BoxFuture<Vec<u8>>),
 }
 
-pub struct CASIndex {
-    stored: DashMap<Vec<u8>, RwLock<CASValue>>,
+pub struct CASIndex<'a> {
+    stored: DashMap<&'a [u8], CASValue>,
     serializer: Box<dyn Serializer>,
 }
 
 impl CASIndex {
-    pub fn new() -> Self {
+    pub fn new(serializer: Box<dyn Serializer>) -> Self {
         Self {
             stored: DashMap::new(),
+            serializer
         }
     }
 
-    pub async fn fetch(&self, key: &[u8]) -> Result<Arc<Box<dyn Data>>, Box<dyn Error>> {
-        match self.stored.get(key) {
-            Some(value) => {
-                let val = value.read()?;
-                match *val {
-                    CASValue::Data(data) => Ok(data.clone()),
-                    CASValue::FutureData(ref future) => {
-                        let data = (**future).await?;
-                        Ok(data)
+    pub async fn fetch<'a>(&'a self, key: &[u8]) -> Result<Arc<dyn Data + 'a>, Box<dyn Error + 'a>> {
+        let mut entry = self.stored.entry(key);
+        match entry {
+            dashmap::mapref::entry::Entry::Occupied(mut entryContent) => {
+                let val = entryContent.get()?;
+                match &*val {
+                    CASValue::Data(ref data) => Ok(data.clone()), // Only the Arc is cloned
+                    _ => {
+                        drop(val);
+                        // let a = entryContent.get_mut().get_mut()?;
+                        self.stored.alter(key, |x| CASValue::Data(self.to_data(x)));
                     }
-                    CASValue::Compressed(ref compressed) => {
-                        let data = compressed.clone();
-                        let data = (*self.serializer).deserialize(&data[..])?;
-                        Ok(Arc::new(data))
-                    }
-                    _ => Err(),
                 }
             },
-            None => Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Key not found"))),
+            dashmap::mapref::entry::Entry::Vacant(val) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Key not found"))),
+            // Some(value) => {
+            // },
+            // None => Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Key not found"))),
+        }
+    }
+
+    async fn to_data<'a>(&'a self, val: CASValue) -> Result<Arc<dyn Data + 'a>, Box<dyn Error + 'a>> {
+        match val {
+            CASValue::Data(data) => Ok(data),
+            CASValue::FutureData(future) => Ok(future.await?.into()),
+            CASValue::Compressed(compressed) => {
+                let data = compressed.clone();
+                let data = (*self.serializer).deserialize(&data[..])?;
+                Ok(data.into())
+            }
+            CASValue::FutureCompressed(future) => {
+                let compressed = future.await?;
+                let data = compressed.clone();
+                let data = (*self.serializer).deserialize(&data[..])?;
+                Ok(data.into())
+            }
         }
     }
 }
