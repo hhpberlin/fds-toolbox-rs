@@ -4,15 +4,13 @@ use dashmap::DashMap;
 
 use super::serialization::{Data, Serializer};
 
-// use tokio::prelude::*;
-
 type BoxFuture<'a, T, E = Box<dyn Error + 'a>> = Pin<Box<dyn Future<Output = Result<T, E>> + 'a>>;
 
 pub enum CASValue<'a> {
     Data(Arc<dyn Data>),
-    FutureData(BoxFuture<'a, Arc<dyn Data + 'a>>),
+    FutureData(Notify),
     Compressed(Vec<u8>),
-    FutureCompressed(BoxFuture<'a, Vec<u8>>),
+    FutureCompressed(Notify),
 }
 
 pub struct CASIndex<'a> {
