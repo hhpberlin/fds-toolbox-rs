@@ -1,7 +1,5 @@
 pub mod quic_remote;
 
-use std::error::Error;
-
 use async_trait::async_trait;
 use color_eyre::Report;
 

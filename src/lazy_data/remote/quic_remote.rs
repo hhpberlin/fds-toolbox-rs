@@ -1,6 +1,7 @@
-use std::{error::Error, net::SocketAddr};
+use std::{net::SocketAddr};
 
 use async_trait::async_trait;
+use color_eyre::Report;
 use quinn::{Connection, Endpoint, NewConnection};
 
 use super::Remote;
@@ -18,7 +19,7 @@ pub struct QuicRemote<'a> {
 
 #[async_trait]
 impl Remote for QuicRemote<'_> {
-    async fn get_async(&self, key: &[u8; 32]) -> Result<&[u8], Box<dyn Error>> {
+    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Report> {
         // self.connection.
         // Err("TODO")
         unimplemented!()
@@ -28,7 +29,7 @@ impl Remote for QuicRemote<'_> {
 impl QuicRemote<'_> {
     pub async fn connect(
         connection_info: ConnectionInfo<'_>,
-    ) -> Result<QuicRemote<'_>, Box<dyn Error>> {
+    ) -> Result<QuicRemote<'_>, Report> {
         // Bind this endpoint to a UDP socket on the given client address.
         let endpoint = Endpoint::client(connection_info.local_addr).unwrap();
 

@@ -1,11 +1,11 @@
-use std::{sync::{Arc}, time::Instant, future::Future};
+use std::{sync::Arc, fmt};
 
 use color_eyre::Report;
 use dashmap::DashMap;
 // use futures::{future::Shared, FutureExt};
-use tokio::sync::{RwLock};
+use tokio::{sync::{RwLock, RwLockWriteGuard}, time::Instant};
 
-use super::serialization::{Data, Serializer};
+use super::{serialization::{Data, Serializer}, remote::Remote};
 
 // type BoxFuture<'a, T, E = Report> = Shared<Pin<Box<impl Future<Output = Result<T, E>> + 'a>>>;
 
@@ -15,136 +15,147 @@ pub enum CASValue {
     Fetching,
 }
 
-pub struct CASNode(RwLock<CASValue>);
+// pub struct CASError;
+// pub impl
 
-impl CASValue {
-    async fn as_data(&self, serializer: &impl Serializer) -> Result<Arc<dyn Data + 'static>, Report> {
+#[derive(Debug)]
+pub enum CASNodeGetResult {
+    SerializationError(Report),
+    FetchingError,
+}
+
+impl fmt::Display for CASNodeGetResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CASValue::Data(data) => Ok(data.clone()),
-            CASValue::Compressed(compressed) => {
-                let data = serializer.deserialize(&compressed[..])?;
-                Ok(data.into())
-            }
-            
+            CASNodeGetResult::SerializationError(err) => err.fmt(f),
+            CASNodeGetResult::FetchingError => write!(f, "Error Fetching data"),
         }
     }
+}
+
+impl std::error::Error for CASNodeGetResult {}
+
+// impl std::error::Error for CASNodeGetResult {
+//     fn source(&self) -> Option<&(dyn Error + 'static)> {
+//         match self {
+//             CASNodeGetResult::SerializationError(e) => Some(e),
+//             CASNodeGetResult::FetchingError => None,
+//         }
+//     }
+// }
+
+pub struct CASNode { 
+    lock: RwLock<CASValue>, 
+    last_use: RwLock<Instant>, // TODO: Use more lightweight locking mechanism
 }
 
 impl CASNode {
-    pub async fn get_data(&self, serializer: &impl Serializer) -> Result<Arc<dyn Data + 'static>, Report> {
-        let read_lock = self.0.read().await;
+    pub fn new() -> Self {
+        Self { lock: RwLock::new(CASValue::Fetching), last_use: RwLock::new(Instant::now()) }
+    }
+
+    pub async fn get_data(&self, serializer: &impl Serializer) -> Result<Arc<dyn Data + 'static>, CASNodeGetResult> {
+        let read_lock = self.lock.read().await;
         match *read_lock {
             CASValue::Data(ref data) => Ok(data.clone()), // Only the Arc is cloned
-            CASValue::Compressed(ref compressed) => {
+            CASValue::Compressed(_) => { // Can't borrow here due to the borrow depending on read_lock, which gets dropped
                 drop(read_lock); // just to be sure
 
                 // Get a write lock for the duration of the conversion
-                let mut write_lock = self.0.write().await;
+                let write_lock = self.lock.write().await;
 
-                // Check again if the value has been set since we dropped the read lock
-                if let CASValue::Data(ref data) = &*write_lock {
-                    return Ok(data.clone());
-                }
-
-                // let converted = tokio::spawn(async move {
-                //     let data = serializer.deserialize(&compressed[..])?;
-                //     Ok(data.into())
-                // });
-                // let converted: Arc<dyn Data + 'static> = converted.await??;
-                let converted = serializer.deserialize(&compressed[..])?;
-                let converted: Arc<dyn Data + 'static> = converted.into();
-
-                *write_lock = CASValue::Data(converted.clone());
-                
-                Ok(converted)
+                Self::to_value(write_lock, serializer)
             }
             CASValue::Fetching => {
-
+                // CASValue::Fetching should always be behind a write-lock
+                // if it's set while unlocked, some error has occured
+                Err(CASNodeGetResult::FetchingError)
             }
         }
     }
-    
-    pub async fn fetch(&self, source: fn(&[u8]) -> Box<dyn Future<Output = Result<CASNode, Report>>>) -> Result<Arc<dyn Data + 'static>, Report> {
-        let read_lock = *self.0.read().await;
-        match read_lock {
-            CASValue::Data(ref data) => Ok(data.clone()), // Only the Arc is cloned
-            _ => {
-                drop(read_lock); // just to be sure
 
-                // Get a write lock for the duration of the conversion
-                let mut write = self.0.write().await;
-
-                // Check again if the value has been set since we dropped the read lock
-                if let CASValue::Data(ref data) = &*write {
-                    return Ok(data.clone());
-                }
-
-                let converted = self.to_data(&*write).await?;
-                *write = CASValue::Data(converted.clone());
-                
-                Ok(converted)
-            }
+    fn to_value(write_lock: RwLockWriteGuard<'_, CASValue>, serializer: &impl Serializer) -> Result<Arc<dyn Data + 'static>, CASNodeGetResult> {
+        // Check again if the value has been set since we dropped the read lock
+        let compressed;
+        match &*write_lock {
+            CASValue::Data(ref data) => return Ok(data.clone()),
+            CASValue::Compressed(ref compressed_vec) => compressed = compressed_vec,
+            CASValue::Fetching => return Err(CASNodeGetResult::FetchingError),
         }
+
+        // let converted = tokio::spawn(async move {
+        //     let data = serializer.deserialize(&compressed[..])?;
+        //     Ok(data.into())
+        // });
+        // let converted: Arc<dyn Data + 'static> = converted.await??;
+        let converted = serializer.deserialize(&compressed[..]);
+
+        let converted: Arc<dyn Data + 'static> = match converted {
+            Ok(data) => data.into(),
+            Err(err) => return Err(CASNodeGetResult::SerializationError(err)),
+        };
+
+        *write_lock = CASValue::Data(converted.clone());
+
+        Ok(converted)
     }
 }
 
-pub struct CASIndex<'a> {
-    stored: DashMap<&'a [u8], CASNode>,
-    last_uses: DashMap<&'a [u8], Instant>,
-    serializer: Box<dyn Serializer>,
+pub struct CASIndex<S: Serializer> {
+    stored: DashMap<Vec<u8>, CASNode>,
+    serializer: S,
 }
 
-impl<'a> CASIndex<'a> {
-    pub fn new(serializer: Box<dyn Serializer>) -> Self {
+impl<'a, S: Serializer> CASIndex<S> {
+    pub fn new(serializer: S) -> Self {
         Self {
             stored: DashMap::new(),
-            last_uses: DashMap::new(),
             serializer
         }
     }
 
-    // pub fn test<'a>(fut: dyn Future<Output = Result<Arc<dyn Data + 'a>, Box<dyn Error + 'a>>>) {
-    //     let etst = fut.shared();
-    //     let etst = Box::pin(etst);
-    //     let bf: BoxFuture<'a, Arc<dyn Data + 'a>> = etst;
-    // }
-
-    pub async fn fetch(&'a self, key: &[u8]) -> Result<Arc<dyn Data + 'a>, Report> {
+    pub async fn get(&'a self, key: &Vec<u8>, remote: &impl Remote) -> Result<Arc<dyn Data + 'static>, Report> {
         match self.stored.get(key) {
             Some(value) => {
                 let value = value.value();
-                match *value.0.read().await {
-                    CASValue::Data(ref data) => Ok(data.clone()), // Only the Arc is cloned
-                    _ => {
-                        drop(value);
-
-                        // Get a write lock for the duration of the conversion
-                        let mut write = value.0.write().await;
-
-                        // Check again if the value has been set since we dropped the read lock
-                        if let CASValue::Data(ref data) = &*write {
-                            return Ok(data.clone());
-                        }
-
-                        let converted = self.to_data(&*write).await?;
-                        *write = CASValue::Data(converted.clone());
-                        
-                        Ok(converted)
+                {
+                    *value.last_use.write().await = Instant::now();
+                }
+                let result = value.get_data(&self.serializer).await;
+                match result {
+                    Ok(data) => Ok(data),
+                    Err(CASNodeGetResult::SerializationError(err)) => Err(err),
+                    Err(CASNodeGetResult::FetchingError) => {
+                        let write_lock = value.lock.write().await;                        
+                        self.fetch(key, remote, write_lock).await
+                    },
+                }
+            },
+            None => {
+                let node = CASNode::new();
+                let write_lock = node.lock.write().await;
+                // Insert after locking the RwLock
+                let node = self.stored.insert(key.to_vec(), node);
+                match node {
+                    Some(_) => {
+                        self.fetch(key, remote, write_lock).await
+                    }
+                    None => {
                     }
                 }
             },
-            None => Err(Report::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Key not found"))),
         }
     }
 
-    async fn to_data(&'a self, val: &CASValue) -> Result<Arc<dyn Data + 'a>, Report> {
-        match val {
-            CASValue::Data(data) => Ok(data.clone()),
-            CASValue::Compressed(compressed) => {
-                let data = compressed.clone();
-                let data = (*self.serializer).deserialize(&data[..])?;
-                Ok(data.into())
-            }
-        }
+    async fn fetch(&'a self, key: &Vec<u8>, remote: &impl Remote, mut write_lock: RwLockWriteGuard<'_, CASValue>) -> Result<Arc<dyn Data + 'static>, Report> {
+        self.prefetch(key, remote, &mut write_lock).await?;
+        Ok(CASNode::to_value(write_lock, &self.serializer)?)
+    }
+
+    async fn prefetch(&'a self, key: &Vec<u8>, remote: &impl Remote, write_lock: &mut RwLockWriteGuard<'_, CASValue>) -> Result<(), Report> {
+        let result = remote.get_async(key).await?;
+
+        **write_lock = CASValue::Compressed(result);
+        Ok(())
     }
 }
