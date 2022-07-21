@@ -1,7 +1,7 @@
 use std::{sync::Arc, fmt};
 
 use color_eyre::Report;
-use dashmap::DashMap;
+use dashmap::{DashMap, mapref::entry::{OccupiedEntry, VacantEntry, Entry}};
 // use futures::{future::Shared, FutureExt};
 use tokio::{sync::{RwLock, RwLockWriteGuard}, time::Instant};
 
@@ -115,9 +115,11 @@ impl<'a, S: Serializer> CASIndex<S> {
     }
 
     pub async fn get(&'a self, key: &Vec<u8>, remote: &impl Remote) -> Result<Arc<dyn Data + 'static>, Report> {
-        match self.stored.get(key) {
-            Some(value) => {
-                let value = value.value();
+        let entry = self.stored.entry(key.to_vec());
+        match entry {
+            Entry::Occupied(mut entry_value) => {
+                let mut value = entry_value.into_ref().pair(); // This feels very wrong
+                drop(entry);
                 {
                     *value.last_use.write().await = Instant::now();
                 }
@@ -131,11 +133,10 @@ impl<'a, S: Serializer> CASIndex<S> {
                     },
                 }
             },
-            None => {
-                let node = CASNode::new();
-                let write_lock = node.lock.write().await;
-                // Insert after locking the RwLock
-                let node = self.stored.insert(key.to_vec(), node);
+            Entry::Vacant(entry) => {
+                let entry = self.stored.entry(key.to_vec()).or_insert(CASNode::new());
+                let write_lock = entry.lock.write().await;
+                entry.lock.write();
                 match node {
                     Some(_) => {
                         self.fetch(key, remote, write_lock).await
