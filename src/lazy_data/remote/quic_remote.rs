@@ -19,7 +19,9 @@ pub struct QuicRemote<'a> {
 
 #[async_trait]
 impl Remote for QuicRemote<'_> {
-    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Report> {
+    type Error = std::io::Error;
+
+    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
         // self.connection.
         // Err("TODO")
         unimplemented!()

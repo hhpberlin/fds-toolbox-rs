@@ -1,12 +1,14 @@
 pub mod quic_remote;
 
+use std::error::Error;
+
 use async_trait::async_trait;
-use color_eyre::Report;
 
 #[async_trait]
 pub trait Remote {
+    type Error: Error + Send + Sync + 'static;
     // fn get_data(&self, key: &[u8]) -> Option<&dyn Data>;
-    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Report>;
+    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
     // fn get_data_async_with_timeout(&self, key: &[u8], timeout: Duration) -> Option<Box<dyn Future<Output = Result<Box<dyn Data>, Error>>>>;
 }
 

@@ -1,7 +1,9 @@
+use std::{error::Error, fmt};
+
 use async_compression::tokio::{bufread::{BrotliDecoder, ZstdDecoder}, write::{BrotliEncoder, ZstdEncoder}};
 
 use async_trait::async_trait;
-use color_eyre::Report;
+// use color_eyre::Report;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use typetag::erased_serde;
 
@@ -9,14 +11,16 @@ use typetag::erased_serde;
 pub trait Data {}
 
 pub trait Serializer {
-    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Report>;
-    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Report>;
+    type Error: Error + Send + Sync + 'static;
+    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error>;
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error>;
 }
 
 #[async_trait]
 pub trait Compressor {
-    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Report>;
-    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Report>;
+    type Error: Error + Send + Sync + 'static;
+    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
+    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
 pub struct CompressedSerialization<S: Serializer, C: Compressor> {
@@ -24,31 +28,56 @@ pub struct CompressedSerialization<S: Serializer, C: Compressor> {
     compression_algorithm: C,
 }
 
+#[derive(Debug)]
+pub enum CompressedSerializationError<S: Error, C: Error> {
+    SerializationError(S),
+    CompressionError(C),
+}
+
+impl<S: Error, C: Error> fmt::Display for CompressedSerializationError<S, C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CompressedSerializationError::SerializationError(err) => std::fmt::Display::fmt(&err, f),
+            CompressedSerializationError::CompressionError(err) => std::fmt::Display::fmt(&err, f),
+        }
+    }
+}
+
+impl<S: Error, C: Error> Error for CompressedSerializationError<S, C> {}
+
 impl<S: Serializer, C: Compressor> Serializer for CompressedSerialization<S, C> {
-    #[tokio::main] // tokio::main just turns a async function to a sync function
-    async fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Report> {
-        let serialized = self.serialization_algorithm.serialize(data)?;
-        let compression = self.compression_algorithm.compress(&serialized[..]).await?;
+    type Error = CompressedSerializationError<S::Error, C::Error>;
+    
+    #[tokio::main]
+    async fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error> {
+        let serialized = self.serialization_algorithm.serialize(data)
+            .map_err(|x| CompressedSerializationError::SerializationError(x))?;
+        let compression = self.compression_algorithm.compress(&serialized[..]).await
+            .map_err(|x| CompressedSerializationError::CompressionError(x))?;
         Ok(compression)
     }
 
     #[tokio::main]
-    async fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Report> {
-        let decompressed = self.compression_algorithm.decompress(data).await?;
-        let deserialized = self.serialization_algorithm.deserialize(&decompressed[..])?;
+    async fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error> {
+        let decompressed = self.compression_algorithm.decompress(data).await
+            .map_err(|x| CompressedSerializationError::CompressionError(x))?;
+        let deserialized = self.serialization_algorithm.deserialize(&decompressed[..])
+            .map_err(|x| CompressedSerializationError::SerializationError(x))?;
         Ok(deserialized)
     }
 }
 
-pub struct MessagePackSerializor;
+pub struct MessagePackSerializer;
 
-impl Serializer for MessagePackSerializor {
-    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Report> {
+impl Serializer for MessagePackSerializer {
+    type Error = erased_serde::Error;
+
+    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error> {
         let mut ser = rmp_serde::Deserializer::new(data);
         Ok(erased_serde::deserialize(&mut <dyn erased_serde::Deserializer>::erase(&mut ser))?)
     }
 
-    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Report> {
+    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error> {
         let mut buf = Vec::new();
         let mut ser = rmp_serde::Serializer::new(&mut buf);
         data.erased_serialize(&mut <dyn erased_serde::Serializer>::erase(&mut ser))?;
@@ -61,14 +90,16 @@ macro_rules! async_compression_impl {
         pub struct $n;
         #[async_trait]
         impl Compressor for $n {
+            type Error = std::io::Error;
+
         //     #[tokio::main] // tokio::main just turns a async function to a sync function
-            async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Report> {
+            async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
                 let mut encoder = $c::new(Vec::new());
                 encoder.write_all(data).await?;
                 encoder.shutdown().await?;
                 Ok(encoder.into_inner())
             }
-            async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Report> {
+            async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
                 let mut buf = Vec::new();
                 let mut decoder = $d::new(data);
                 decoder.read_to_end(&mut buf).await?;
@@ -82,13 +113,25 @@ async_compression_impl!(BrotliCompressor, BrotliEncoder, BrotliDecoder);
 async_compression_impl!(ZstdCompressor, ZstdEncoder, ZstdDecoder);
 
 pub struct NoneCompressor;
+#[derive(Debug)]
+pub struct NoneCompressorError;
+
+impl fmt::Display for NoneCompressorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        panic!("This type is only for generic use, it should not be used directly. Something has gone horribly wrong.");
+    }
+}
+
+impl Error for NoneCompressorError {}
 
 #[async_trait]
 impl Compressor for NoneCompressor {
-    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Report> {
+    type Error = NoneCompressorError;
+
+    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         Ok(data.to_vec())
     }
-    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Report> {
+    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         Ok(data.to_vec())
     }
 }
