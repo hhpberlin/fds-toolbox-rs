@@ -1,4 +1,4 @@
-use std::{net::SocketAddr};
+use std::{net::SocketAddr, hash::Hash};
 
 use async_trait::async_trait;
 use color_eyre::Report;
@@ -18,10 +18,10 @@ pub struct QuicRemote<'a> {
 }
 
 #[async_trait]
-impl Remote for QuicRemote<'_> {
+impl<Key: Eq + Hash + Clone + Sync> Remote<Key> for QuicRemote<'_> {
     type Error = std::io::Error;
 
-    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn get_async(&self, key: &Key) -> Result<Vec<u8>, Self::Error> {
         // self.connection.
         // Err("TODO")
         unimplemented!()

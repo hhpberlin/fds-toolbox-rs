@@ -1,14 +1,14 @@
 pub mod quic_remote;
 
-use std::error::Error;
+use std::{error::Error, hash::Hash};
 
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait Remote {
+pub trait Remote<Key: Eq + Hash + Clone> {
     type Error: Error + Send + Sync + 'static;
     // fn get_data(&self, key: &[u8]) -> Option<&dyn Data>;
-    async fn get_async(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
+    async fn get_async(&self, key: &Key) -> Result<Vec<u8>, Self::Error>;
     // fn get_data_async_with_timeout(&self, key: &[u8], timeout: Duration) -> Option<Box<dyn Future<Output = Result<Box<dyn Data>, Error>>>>;
 }
 

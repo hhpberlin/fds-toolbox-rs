@@ -21,3 +21,4 @@ dashmap = { version = "5.3", features = ["serde"] }
 color-eyre = "0.6"
 eyre = "0.6"
 crossbeam = "0.8"
+thiserror = "1.0"
