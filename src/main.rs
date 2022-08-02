@@ -10,7 +10,7 @@ use crate::lazy_data::remote::quic_remote::ConnectionInfo;
 async fn main() {
     println!("Hello, world!");
 
-    let remote = QuicRemote::connect(ConnectionInfo {
+    let _remote = QuicRemote::connect(ConnectionInfo {
         remote_addr: SocketAddr::from(([127, 0, 0, 1], 5000)),
         local_addr: SocketAddr::from(([127, 0, 0, 1], 5001)),
         server_name: "localhost",

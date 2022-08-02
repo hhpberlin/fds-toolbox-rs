@@ -1,21 +1,19 @@
 #[cfg(test)]
 mod tests {
-    use std::{any::Any, fmt::Debug};
+    
 
-    use tokio::time::{self, Instant};
+    
 
     use crate::{
         lazy_data::{
             index::Store,
             remote::{
-                test_remote::{self, TestRemote},
-                Remote,
+                test_remote::{TestRemote},
             },
             serialization::{
                 CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor,
             },
         },
-        sync::Arc,
     };
 
     type Data = String;

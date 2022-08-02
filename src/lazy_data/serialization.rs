@@ -66,12 +66,12 @@ impl<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync 
             .serialization_algorithm
             .serialize(data)
             .await
-            .map_err(|x| CompressedSerializationError::SerializationError(x))?;
+            .map_err(CompressedSerializationError::SerializationError)?;
         let compression = self
             .compression_algorithm
             .compress(&serialized[..])
             .await
-            .map_err(|x| CompressedSerializationError::CompressionError(x))?;
+            .map_err(CompressedSerializationError::CompressionError)?;
         Ok(compression)
     }
 
@@ -80,12 +80,12 @@ impl<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync 
             .compression_algorithm
             .decompress(data)
             .await
-            .map_err(|x| CompressedSerializationError::CompressionError(x))?;
+            .map_err(CompressedSerializationError::CompressionError)?;
         let deserialized = self
             .serialization_algorithm
             .deserialize(&decompressed[..])
             .await
-            .map_err(|x| CompressedSerializationError::SerializationError(x))?;
+            .map_err(CompressedSerializationError::SerializationError)?;
         Ok(deserialized)
     }
 }

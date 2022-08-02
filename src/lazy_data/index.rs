@@ -1,4 +1,4 @@
-use crate::sync::{Arc, AtomicU64, RwLock, RwLockWriteGuard};
+use crate::sync::{Arc, RwLock, RwLockWriteGuard};
 use std::{hash::Hash};
 
 use crossbeam::atomic::AtomicCell;
@@ -58,7 +58,7 @@ impl<Data: serde::de::DeserializeOwned + serde::Serialize> StoreValue<Data> {
         remote: &R,
         key: &Key,
     ) -> Result<StoreValue<Data>, R::Error> {
-        let data = remote.get_async(&key).await?;
+        let data = remote.get_async(key).await?;
         Ok(StoreValue::Serialized(data))
     }
 }
@@ -122,7 +122,7 @@ impl<Data: serde::de::DeserializeOwned + serde::Serialize> StoreNode<Data> {
         let materialized = self
             .get(serializer)
             .await
-            .map_err(|x| StoreError::SerializationError(x))?;
+            .map_err(StoreError::SerializationError)?;
         if let Some(value) = materialized {
             return Ok(value);
         }
@@ -132,18 +132,18 @@ impl<Data: serde::de::DeserializeOwned + serde::Serialize> StoreNode<Data> {
         // Recheck after acquiring write lock
         let materialized = Self::get_from_write_guard(&mut write, serializer)
             .await
-            .map_err(|x| StoreError::SerializationError(x))?;
+            .map_err(StoreError::SerializationError)?;
         if let Some(value) = materialized {
             return Ok(value);
         }
 
         let value = StoreValue::fetch(remote, key)
             .await
-            .map_err(|x| StoreError::RemoteError(x))?;
+            .map_err(StoreError::RemoteError)?;
         let value = value
             .materialize(serializer)
             .await
-            .map_err(|x| StoreError::SerializationError(x))?;
+            .map_err(StoreError::SerializationError)?;
 
         *write = Some(StoreValue::Value(value.clone()));
 
