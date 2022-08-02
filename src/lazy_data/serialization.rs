@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    fmt::{self, Debug}, any::Any,
+    fmt::{self, Debug},
 };
 
 use async_compression::tokio::{
@@ -10,26 +10,21 @@ use async_compression::tokio::{
 
 use async_trait::async_trait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use typetag::erased_serde;
 
-#[typetag::serde(tag = "type")]
-pub trait Data: Debug + 'static {
-    fn as_any(&self) -> &dyn Any;
-}
-
-// impl<T> Data for T:
-
-pub trait Serializer {
-    type Error: Error + Send + Sync + 'static;
-    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error>;
-    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error>;
+#[async_trait]
+pub trait Serializer<Data> {
+    type SerError: Error + Send + Sync + 'static;
+    type DeError: Error + Send + Sync + 'static;
+    async fn serialize(&self, data: &Data) -> Result<Vec<u8>, Self::Error>;
+    async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::Error>;
 }
 
 #[async_trait]
 pub trait Compressor {
-    type Error: Error + Send + Sync + 'static;
-    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
-    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
+    type CompError: Error + Send + Sync + 'static;
+    type DeError: Error + Send + Sync + 'static;
+    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::CompError>;
+    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::DeError>;
 }
 
 pub struct CompressedSerializer<S: Serializer, C: Compressor> {
@@ -54,14 +49,16 @@ pub enum CompressedSerializationError<S: Error, C: Error> {
     CompressionError(C),
 }
 
-impl<S: Serializer, C: Compressor> Serializer for CompressedSerializer<S, C> {
-    type Error = CompressedSerializationError<S::Error, C::Error>;
+#[async_trait]
+impl<S: Serializer<Data>, C: Compressor, Data> Serializer<Data> for CompressedSerializer<S, C> {
+    type SerError = CompressedSerializationError<S::SerError, C::CompError>;
+    type DeError = CompressedSerializationError<S::DeError, C::DeError>;
 
-    #[tokio::main]
-    async fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error> {
+    async fn serialize(&self, data: &Data) -> Result<Vec<u8>, Self::SerError> {
         let serialized = self
             .serialization_algorithm
             .serialize(data)
+            .await
             .map_err(|x| CompressedSerializationError::SerializationError(x))?;
         let compression = self
             .compression_algorithm
@@ -71,8 +68,7 @@ impl<S: Serializer, C: Compressor> Serializer for CompressedSerializer<S, C> {
         Ok(compression)
     }
 
-    #[tokio::main]
-    async fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error> {
+    async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::DeError> {
         let decompressed = self
             .compression_algorithm
             .decompress(data)
@@ -81,6 +77,7 @@ impl<S: Serializer, C: Compressor> Serializer for CompressedSerializer<S, C> {
         let deserialized = self
             .serialization_algorithm
             .deserialize(&decompressed[..])
+            .await
             .map_err(|x| CompressedSerializationError::SerializationError(x))?;
         Ok(deserialized)
     }
@@ -89,21 +86,17 @@ impl<S: Serializer, C: Compressor> Serializer for CompressedSerializer<S, C> {
 #[derive(Default)]
 pub struct MessagePackSerializer;
 
-impl Serializer for MessagePackSerializer {
-    type Error = erased_serde::Error;
+#[async_trait]
+impl<Data: serde::Deserialize + serde::Serialize> Serializer<Data> for MessagePackSerializer {
+    type SerError = rmp_serde::decode::Error;
+    type DeError = rmp_serde::encode::Error;
 
-    fn deserialize(&self, data: &[u8]) -> Result<Box<dyn Data>, Self::Error> {
-        let mut ser = rmp_serde::Deserializer::new(data);
-        Ok(erased_serde::deserialize(
-            &mut <dyn erased_serde::Deserializer>::erase(&mut ser),
-        )?)
+    async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::DeError> {
+        rmp_serde::from_slice(data)
     }
 
-    fn serialize(&self, data: &Box<dyn Data>) -> Result<Vec<u8>, Self::Error> {
-        let mut buf = Vec::new();
-        let mut ser = rmp_serde::Serializer::new(&mut buf);
-        data.erased_serialize(&mut <dyn erased_serde::Serializer>::erase(&mut ser))?;
-        Ok(buf)
+    async fn serialize(&self, data: &Data) -> Result<Vec<u8>, Self::SerError> {
+        rmp_serde::to_vec(data)
     }
 }
 
@@ -113,16 +106,17 @@ macro_rules! async_compression_impl {
         pub struct $n;
         #[async_trait]
         impl Compressor for $n {
-            type Error = std::io::Error;
+            type CompError = std::io::Error;
+            type DeError = std::io::Error;
 
             //     #[tokio::main] // tokio::main just turns a async function to a sync function
-            async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+            async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::CompError> {
                 let mut encoder = $c::new(Vec::new());
                 encoder.write_all(data).await?;
                 encoder.shutdown().await?;
                 Ok(encoder.into_inner())
             }
-            async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+            async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::DeError> {
                 let mut buf = Vec::new();
                 let mut decoder = $d::new(data);
                 decoder.read_to_end(&mut buf).await?;
@@ -151,12 +145,13 @@ impl Error for NoneCompressorError {}
 
 #[async_trait]
 impl Compressor for NoneCompressor {
-    type Error = NoneCompressorError;
+    type CompError = NoneCompressorError;
+    type DeError = NoneCompressorError;
 
-    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn compress(&self, data: &[u8]) -> Result<Vec<u8>, Self::CompError> {
         Ok(data.to_vec())
     }
-    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::DeError> {
         Ok(data.to_vec())
     }
 }
