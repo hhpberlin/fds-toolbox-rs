@@ -1,6 +1,4 @@
-pub mod serialization;
-pub mod remote;
 pub mod index;
-mod cas_value;
-
-// pub mod lazy_data::remote;
+pub mod remote;
+pub mod serialization;
+mod index_test;

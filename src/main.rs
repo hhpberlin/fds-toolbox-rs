@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
 mod lazy_data;
+pub(crate) mod sync;
 use lazy_data::remote::quic_remote::QuicRemote;
 
-use crate::lazy_data::remote::{quic_remote::ConnectionInfo};
+use crate::lazy_data::remote::quic_remote::ConnectionInfo;
 
 #[tokio::main]
 async fn main() {

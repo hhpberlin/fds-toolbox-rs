@@ -1,4 +1,6 @@
 pub mod quic_remote;
+#[cfg(test)]
+pub(crate) mod test_remote;
 
 use std::{error::Error, hash::Hash};
 

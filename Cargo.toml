@@ -22,3 +22,6 @@ color-eyre = "0.6"
 eyre = "0.6"
 crossbeam = "0.8"
 thiserror = "1.0"
+
+# [target.'cfg(loom)'.dependencies]
+loom = "0.5"

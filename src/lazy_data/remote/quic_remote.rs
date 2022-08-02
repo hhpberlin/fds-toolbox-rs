@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, hash::Hash};
+use std::{hash::Hash, net::SocketAddr};
 
 use async_trait::async_trait;
 use color_eyre::Report;
@@ -18,10 +18,10 @@ pub struct QuicRemote<'a> {
 }
 
 #[async_trait]
-impl<Key: Eq + Hash + Clone + Sync> Remote<Key> for QuicRemote<'_> {
+impl<Key: Eq + Hash + Clone + Send + Sync> Remote<Key> for QuicRemote<'_> {
     type Error = std::io::Error;
 
-    async fn get_async(&self, key: &Key) -> Result<Vec<u8>, Self::Error> {
+    async fn get_async(&self, _key: &Key) -> Result<Vec<u8>, Self::Error> {
         // self.connection.
         // Err("TODO")
         unimplemented!()
@@ -29,9 +29,7 @@ impl<Key: Eq + Hash + Clone + Sync> Remote<Key> for QuicRemote<'_> {
 }
 
 impl QuicRemote<'_> {
-    pub async fn connect(
-        connection_info: ConnectionInfo<'_>,
-    ) -> Result<QuicRemote<'_>, Report> {
+    pub async fn connect(connection_info: ConnectionInfo<'_>) -> Result<QuicRemote<'_>, Report> {
         // Bind this endpoint to a UDP socket on the given client address.
         let endpoint = Endpoint::client(connection_info.local_addr).unwrap();
 

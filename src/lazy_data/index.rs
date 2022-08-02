@@ -1,12 +1,14 @@
-use std::{sync::Arc, error::Error, hash::Hash};
+use crate::sync::{Arc, AtomicU64};
+use std::hash::Hash;
 
 use crossbeam::atomic::AtomicCell;
-use dashmap::{DashMap, mapref::entry::Entry};
-use tokio::{time::Instant, sync::RwLock};
+use dashmap::{mapref::entry::Entry, DashMap};
+use tokio::{sync::RwLock, time::Instant};
 
-use super::{serialization::{Data, Serializer}, remote::Remote};
-
-type BoxError = Box<dyn Error + Send + Sync + 'static>;
+use super::{
+    remote::Remote,
+    serialization::{Data, Serializer},
+};
 
 enum CASValue {
     Value(Arc<dyn Data + 'static>),
@@ -18,8 +20,8 @@ struct CASNode {
     last_use: AtomicCell<Instant>,
 }
 
-#[derive(thiserror::Error, Debug)]
-enum CASError<SE, RE> {
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum CASError<SE, RE> {
     #[error("Serialization error: {0}")]
     SerializationError(SE),
     #[error("Remote error: {0}")]
@@ -27,19 +29,24 @@ enum CASError<SE, RE> {
 }
 
 impl CASValue {
-    fn materialize<S: Serializer>(&self, serializer: &S) -> Result<Arc<dyn Data + 'static>, S::Error> {
+    fn materialize<S: Serializer>(
+        &self,
+        serializer: &S,
+    ) -> Result<Arc<dyn Data + 'static>, S::Error> {
         match self {
             CASValue::Value(value) => Ok(value.clone()),
             CASValue::Serialized(compressed) => {
-                let data = serializer
-                    .deserialize(compressed.as_slice())?;
+                let data = serializer.deserialize(compressed.as_slice())?;
 
                 Ok(data.into())
             }
         }
     }
 
-    async fn fetch<R: Remote<Key>, Key: Eq + Hash + Clone>(remote: &R, key: &Key) -> Result<CASValue, R::Error> {
+    async fn fetch<R: Remote<Key>, Key: Eq + Hash + Clone>(
+        remote: &R,
+        key: &Key,
+    ) -> Result<CASValue, R::Error> {
         let data = remote.get_async(&key).await?;
         Ok(CASValue::Serialized(data))
     }
@@ -49,7 +56,7 @@ impl CASNode {
     fn new(value: Option<CASValue>) -> Self {
         Self {
             value: RwLock::new(value),
-            // Although exact synchronization is not strictly required, it would still be UB to not sync, so lets not do that. 
+            // Although exact synchronization is not strictly required, it would still be UB to not sync, so lets not do that.
             last_use: AtomicCell::new(Instant::now()),
         }
     }
@@ -58,7 +65,10 @@ impl CASNode {
         self.last_use.store(Instant::now());
     }
 
-    async fn get<S: Serializer>(&self, serializer: &S) -> Result<Option<Arc<dyn Data + 'static>>, S::Error> {
+    async fn get<S: Serializer>(
+        &self,
+        serializer: &S,
+    ) -> Result<Option<Arc<dyn Data + 'static>>, S::Error> {
         let read = self.value.read().await;
         match &*read {
             Some(CASValue::Value(value)) => return Ok(Some(value.clone())),
@@ -67,7 +77,7 @@ impl CASNode {
             _ => (),
         }
         drop(read);
-        
+
         let mut write = self.value.write().await;
         match &*write {
             Some(ref value) => {
@@ -85,22 +95,37 @@ impl CASNode {
             None => Ok(None),
         }
     }
-    
-    async fn get_or_fetch<S: Serializer, R: Remote<Key>, Key: Eq + Hash + Clone>(&self, serializer: &S, remote: &R, key: &Key) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
-        let materialized = self.get(serializer).await
+
+    async fn get_or_fetch<S: Serializer, R: Remote<Key>, Key: Eq + Hash + Clone>(
+        &self,
+        serializer: &S,
+        remote: &R,
+        key: &Key,
+    ) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
+        let materialized = self
+            .get(serializer)
+            .await
             .map_err(|x| CASError::SerializationError(x))?;
-        if let Some(value) = materialized { return Ok(value); }
-        
+        if let Some(value) = materialized {
+            return Ok(value);
+        }
+
         let mut write = self.value.write().await;
 
         // Recheck after acquiring write lock
-        let materialized = self.get(serializer).await
+        let materialized = self
+            .get(serializer)
+            .await
             .map_err(|x| CASError::SerializationError(x))?;
-        if let Some(value) = materialized { return Ok(value); }
+        if let Some(value) = materialized {
+            return Ok(value);
+        }
 
-        let value = CASValue::fetch(remote, key).await
+        let value = CASValue::fetch(remote, key)
+            .await
             .map_err(|x| CASError::RemoteError(x))?;
-        let value = value.materialize(serializer)
+        let value = value
+            .materialize(serializer)
             .map_err(|x| CASError::SerializationError(x))?;
 
         *write = Some(CASValue::Value(value.clone()));
@@ -109,8 +134,8 @@ impl CASNode {
     }
 }
 
-struct CAS<Key: Eq + Hash + Clone> {
-    nodes: DashMap<Key, CASNode>
+pub struct CAS<Key: Eq + Hash + Clone> {
+    nodes: DashMap<Key, CASNode>,
 }
 
 impl<Key: Eq + Hash + Clone> CAS<Key> {
@@ -119,8 +144,12 @@ impl<Key: Eq + Hash + Clone> CAS<Key> {
             nodes: DashMap::new(),
         }
     }
-    
-    pub async fn get<S: Serializer, R: Remote<Key>>(&mut self, key: Key, serializer: &S) -> Result<Option<Arc<dyn Data + 'static>>, S::Error> {
+
+    pub async fn get<S: Serializer>(
+        &self,
+        key: Key,
+        serializer: &S,
+    ) -> Result<Option<Arc<dyn Data + 'static>>, S::Error> {
         match self.nodes.entry(key) {
             Entry::Occupied(ref node) => {
                 let node = node.get();
@@ -130,8 +159,13 @@ impl<Key: Eq + Hash + Clone> CAS<Key> {
             Entry::Vacant(_) => Ok(None),
         }
     }
-    
-    pub async fn get_or_fetch<S: Serializer, R: Remote<Key>>(&mut self, key: Key, remote: &R, serializer: &S) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
+
+    pub async fn get_or_fetch<S: Serializer, R: Remote<Key>>(
+        &self,
+        key: Key,
+        serializer: &S,
+        remote: &R,
+    ) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
         let node = self.nodes.entry(key).or_insert_with(|| CASNode::new(None));
         node.set_last_use();
         node.get_or_fetch(serializer, remote, node.key()).await
