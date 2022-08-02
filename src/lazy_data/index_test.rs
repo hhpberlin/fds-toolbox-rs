@@ -1,19 +1,27 @@
 #[cfg(test)]
 mod tests {
-    use std::{fmt::Debug, any::Any};
+    use std::{any::Any, fmt::Debug};
 
-    use crate::{sync::Arc, lazy_data::{
-        index::Store,
-        remote::{
-            test_remote::{self, TestRemote},
-            Remote,
+    use crate::{
+        lazy_data::{
+            index::Store,
+            remote::{
+                test_remote::{self, TestRemote},
+                Remote,
+            },
+            serialization::{
+                CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor,
+            },
         },
-        serialization::{CompressedSerializer, MessagePackSerializer, ZstdCompressor, Serializer, Data},
-    }};
+        sync::Arc,
+    };
 
-    type S = CompressedSerializer<MessagePackSerializer, ZstdCompressor>;
+    type Data = String;
+    type S = CompressedSerializer<MessagePackSerializer, ZstdCompressor, Data>;
 
-    fn serializer() -> S { <_>::default() }
+    fn serializer() -> S {
+        <_>::default()
+    }
 
     #[tokio::test]
     async fn empty_should_not_return_value() {
@@ -25,26 +33,18 @@ mod tests {
         panic!("Expected empty value, got: {:?}", val);
     }
 
-    #[typetag::serde(name = "thing")]
-    impl Data for [i32; 6] {
-        fn as_any(&self) -> &dyn Any { self }
-    }
-
     #[tokio::test]
     async fn basic_retrieval() {
-        static DATA: [i32; 6] = [1, 2, 3, 3, 2, 1];
-        let serialized_data =
-            serializer().serialize(&(Box::new(DATA) as Box<dyn Data + 'static>)).expect("Failed to serialize");
+        let data = "hello world".to_string();
 
-        let remote = TestRemote::new([
-            ("key", serialized_data),
-        ]);
+        let serialized_data = serializer().serialize(&data).await.expect("Failed to serialize");
+
+        let remote = TestRemote::new([("key", serialized_data)]);
 
         let index = Store::new();
         let val = index.get_or_fetch("key", &serializer(), &remote).await;
         if let Ok(val) = val {
-            let val: &[i32; 6] = val.as_any().downcast_ref::<[i32; 6]>().unwrap();
-            assert_eq!(*val, DATA);
+            assert_eq!(*val, data);
             return;
         }
         panic!("Expected value, got: {:?}", val);

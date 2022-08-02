@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     fmt::{self, Debug},
+    marker::PhantomData,
 };
 
 use async_compression::tokio::{
@@ -15,8 +16,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub trait Serializer<Data> {
     type SerError: Error + Send + Sync + 'static;
     type DeError: Error + Send + Sync + 'static;
-    async fn serialize(&self, data: &Data) -> Result<Vec<u8>, Self::Error>;
-    async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::Error>;
+    async fn serialize(&self, data: &Data) -> Result<Vec<u8>, Self::SerError>;
+    async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::DeError>;
 }
 
 #[async_trait]
@@ -27,16 +28,20 @@ pub trait Compressor {
     async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::DeError>;
 }
 
-pub struct CompressedSerializer<S: Serializer, C: Compressor> {
+pub struct CompressedSerializer<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync + Send> {
     serialization_algorithm: S,
     compression_algorithm: C,
+    _data: PhantomData<Data>,
 }
 
-impl<S: Serializer + Default, C: Compressor + Default> Default for CompressedSerializer<S, C> {
+impl<S: Serializer<Data> + Sync + Send + Default, C: Compressor + Sync + Send + Default, Data: Sync + Send> Default
+    for CompressedSerializer<S, C, Data>
+{
     fn default() -> Self {
         Self {
             serialization_algorithm: S::default(),
             compression_algorithm: C::default(),
+            _data: PhantomData,
         }
     }
 }
@@ -50,7 +55,9 @@ pub enum CompressedSerializationError<S: Error, C: Error> {
 }
 
 #[async_trait]
-impl<S: Serializer<Data>, C: Compressor, Data> Serializer<Data> for CompressedSerializer<S, C> {
+impl<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync + Send> Serializer<Data>
+    for CompressedSerializer<S, C, Data>
+{
     type SerError = CompressedSerializationError<S::SerError, C::CompError>;
     type DeError = CompressedSerializationError<S::DeError, C::DeError>;
 
@@ -87,9 +94,11 @@ impl<S: Serializer<Data>, C: Compressor, Data> Serializer<Data> for CompressedSe
 pub struct MessagePackSerializer;
 
 #[async_trait]
-impl<Data: serde::Deserialize + serde::Serialize> Serializer<Data> for MessagePackSerializer {
-    type SerError = rmp_serde::decode::Error;
-    type DeError = rmp_serde::encode::Error;
+impl<Data: serde::de::DeserializeOwned + serde::Serialize + Sync> Serializer<Data>
+    for MessagePackSerializer
+{
+    type SerError = rmp_serde::encode::Error;
+    type DeError = rmp_serde::decode::Error;
 
     async fn deserialize(&self, data: &[u8]) -> Result<Data, Self::DeError> {
         rmp_serde::from_slice(data)

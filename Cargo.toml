@@ -25,3 +25,4 @@ thiserror = "1.0"
 
 # [target.'cfg(loom)'.dependencies]
 loom = "0.5"
+tracing = "0.1"

@@ -35,7 +35,10 @@ async fn basic_retrieval() {
 #[tokio::test]
 async fn not_found() {
     let remote = simple_remote();
-    assert_eq!(remote.get_async(&"not_a_real_key").await, Err(RemoteNotFoundError));
+    assert_eq!(
+        remote.get_async(&"not_a_real_key").await,
+        Err(RemoteNotFoundError)
+    );
 }
 
 #[async_trait]
