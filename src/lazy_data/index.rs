@@ -10,32 +10,32 @@ use super::{
     serialization::{Data, Serializer},
 };
 
-enum CASValue {
+enum StoreValue {
     Value(Arc<dyn Data + 'static>),
     Serialized(Vec<u8>),
 }
 
-struct CASNode {
-    value: RwLock<Option<CASValue>>,
+struct StoreNode {
+    value: RwLock<Option<StoreValue>>,
     last_use: AtomicCell<Instant>,
 }
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
-pub enum CASError<SE, RE> {
+pub enum StoreError<SE, RE> {
     #[error("Serialization error: {0}")]
     SerializationError(SE),
     #[error("Remote error: {0}")]
     RemoteError(RE),
 }
 
-impl CASValue {
+impl StoreValue {
     fn materialize<S: Serializer>(
         &self,
         serializer: &S,
     ) -> Result<Arc<dyn Data + 'static>, S::Error> {
         match self {
-            CASValue::Value(value) => Ok(value.clone()),
-            CASValue::Serialized(compressed) => {
+            StoreValue::Value(value) => Ok(value.clone()),
+            StoreValue::Serialized(compressed) => {
                 let data = serializer.deserialize(compressed.as_slice())?;
 
                 Ok(data.into())
@@ -46,14 +46,14 @@ impl CASValue {
     async fn fetch<R: Remote<Key>, Key: Eq + Hash + Clone>(
         remote: &R,
         key: &Key,
-    ) -> Result<CASValue, R::Error> {
+    ) -> Result<StoreValue, R::Error> {
         let data = remote.get_async(&key).await?;
-        Ok(CASValue::Serialized(data))
+        Ok(StoreValue::Serialized(data))
     }
 }
 
-impl CASNode {
-    fn new(value: Option<CASValue>) -> Self {
+impl StoreNode {
+    fn new(value: Option<StoreValue>) -> Self {
         Self {
             value: RwLock::new(value),
             // Although exact synchronization is not strictly required, it would still be UB to not sync, so lets not do that.
@@ -71,7 +71,7 @@ impl CASNode {
     ) -> Result<Option<Arc<dyn Data + 'static>>, S::Error> {
         let read = self.value.read().await;
         match &*read {
-            Some(CASValue::Value(value)) => return Ok(Some(value.clone())),
+            Some(StoreValue::Value(value)) => return Ok(Some(value.clone())),
             // Won´t be able to materialize the value here if no value is cached
             None => return Ok(None),
             _ => (),
@@ -84,10 +84,10 @@ impl CASNode {
                 match value {
                     // Value may have materialized while waiting for write lock
                     // => avoid rewriting the same value unnecessarily
-                    CASValue::Value(value) => Ok(Some(value.clone())),
+                    StoreValue::Value(value) => Ok(Some(value.clone())),
                     _ => {
                         let value = value.materialize(serializer)?;
-                        *write = Some(CASValue::Value(value.clone()));
+                        *write = Some(StoreValue::Value(value.clone()));
                         Ok(Some(value))
                     }
                 }
@@ -101,11 +101,11 @@ impl CASNode {
         serializer: &S,
         remote: &R,
         key: &Key,
-    ) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
+    ) -> Result<Arc<dyn Data + 'static>, StoreError<S::Error, R::Error>> {
         let materialized = self
             .get(serializer)
             .await
-            .map_err(|x| CASError::SerializationError(x))?;
+            .map_err(|x| StoreError::SerializationError(x))?;
         if let Some(value) = materialized {
             return Ok(value);
         }
@@ -116,29 +116,29 @@ impl CASNode {
         let materialized = self
             .get(serializer)
             .await
-            .map_err(|x| CASError::SerializationError(x))?;
+            .map_err(|x| StoreError::SerializationError(x))?;
         if let Some(value) = materialized {
             return Ok(value);
         }
 
-        let value = CASValue::fetch(remote, key)
+        let value = StoreValue::fetch(remote, key)
             .await
-            .map_err(|x| CASError::RemoteError(x))?;
+            .map_err(|x| StoreError::RemoteError(x))?;
         let value = value
             .materialize(serializer)
-            .map_err(|x| CASError::SerializationError(x))?;
+            .map_err(|x| StoreError::SerializationError(x))?;
 
-        *write = Some(CASValue::Value(value.clone()));
+        *write = Some(StoreValue::Value(value.clone()));
 
         Ok(value)
     }
 }
 
-pub struct CAS<Key: Eq + Hash + Clone> {
-    nodes: DashMap<Key, CASNode>,
+pub struct Store<Key: Eq + Hash + Clone> {
+    nodes: DashMap<Key, StoreNode>,
 }
 
-impl<Key: Eq + Hash + Clone> CAS<Key> {
+impl<Key: Eq + Hash + Clone> Store<Key> {
     pub fn new() -> Self {
         Self {
             nodes: DashMap::new(),
@@ -165,8 +165,8 @@ impl<Key: Eq + Hash + Clone> CAS<Key> {
         key: Key,
         serializer: &S,
         remote: &R,
-    ) -> Result<Arc<dyn Data + 'static>, CASError<S::Error, R::Error>> {
-        let node = self.nodes.entry(key).or_insert_with(|| CASNode::new(None));
+    ) -> Result<Arc<dyn Data + 'static>, StoreError<S::Error, R::Error>> {
+        let node = self.nodes.entry(key).or_insert_with(|| StoreNode::new(None));
         node.set_last_use();
         node.get_or_fetch(serializer, remote, node.key()).await
     }

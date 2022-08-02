@@ -3,7 +3,7 @@ mod tests {
     use std::{fmt::Debug, any::Any};
 
     use crate::{sync::Arc, lazy_data::{
-        index::CAS,
+        index::Store,
         remote::{
             test_remote::{self, TestRemote},
             Remote,
@@ -17,7 +17,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_should_not_return_value() {
-        let index = CAS::new();
+        let index = Store::new();
         let val = index.get("not_a_real_key", &serializer()).await;
         if let Ok(None) = val {
             return;
@@ -40,7 +40,7 @@ mod tests {
             ("key", serialized_data),
         ]);
 
-        let index = CAS::new();
+        let index = Store::new();
         let val = index.get_or_fetch("key", &serializer(), &remote).await;
         if let Ok(val) = val {
             let val: &[i32; 6] = val.as_any().downcast_ref::<[i32; 6]>().unwrap();
