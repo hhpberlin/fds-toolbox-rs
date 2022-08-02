@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-mod lazy_data;
+pub(crate) mod lazy_data;
 pub(crate) mod sync;
 use lazy_data::remote::quic_remote::QuicRemote;
 
