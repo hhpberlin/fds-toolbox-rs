@@ -1,4 +1,5 @@
 use std::{collections::HashMap, hash::Hash};
+use crate::sync::RwLock;
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -7,6 +8,7 @@ use crate::lazy_data::remote::Remote;
 
 pub struct TestRemote<Key: Eq + Hash + Clone + Send> {
     data: HashMap<Key, Vec<u8>>,
+    request_count: RwLock<u32>,
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -17,7 +19,12 @@ impl<Key: Eq + Hash + Clone + Send> TestRemote<Key> {
     pub fn new<const N: usize>(map: [(Key, Vec<u8>); N]) -> Self {
         Self {
             data: HashMap::from(map),
+            request_count: RwLock::new(0),
         }
+    }
+
+    pub async fn get_request_count(&self) -> u32 {
+        *(self.request_count.read().await)
     }
 }
 
@@ -46,6 +53,8 @@ impl<Key: Eq + Hash + Clone + Send + Sync> Remote<Key> for TestRemote<Key> {
     type Error = RemoteNotFoundError;
 
     async fn get_async(&self, key: &Key) -> Result<Vec<u8>, Self::Error> {
+        let mut write = self.request_count.write().await;
+        *write += 1;
         match self.data.get(key) {
             Some(val) => Ok(val.clone()),
             None => Err(RemoteNotFoundError),

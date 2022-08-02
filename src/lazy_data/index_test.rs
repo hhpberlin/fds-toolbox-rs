@@ -2,6 +2,8 @@
 mod tests {
     use std::{any::Any, fmt::Debug};
 
+    use tokio::time::{self, Instant};
+
     use crate::{
         lazy_data::{
             index::Store,
@@ -33,13 +35,19 @@ mod tests {
         panic!("Expected empty value, got: {:?}", val);
     }
 
-    #[tokio::test]
-    async fn basic_retrieval() {
+    async fn remote() -> (String, TestRemote<&'static str>) {
         let data = "hello world".to_string();
 
         let serialized_data = serializer().serialize(&data).await.expect("Failed to serialize");
 
         let remote = TestRemote::new([("key", serialized_data)]);
+
+        (data, remote)
+    }
+
+    #[tokio::test]
+    async fn basic_retrieval() {
+        let (data, remote) = remote().await;
 
         let index = Store::new();
         let val = index.get_or_fetch("key", &serializer(), &remote).await;
@@ -50,10 +58,30 @@ mod tests {
         panic!("Expected value, got: {:?}", val);
     }
 
+    #[tokio::test]
+    async fn persistance() {
+        let (_, remote) = remote().await;
+
+        let index = Store::new();
+        _ = index.get_or_fetch("key", &serializer(), &remote).await
+            .expect("Basic Retrieval failed");
+        _ = index.get_or_fetch("key", &serializer(), &remote).await
+            .expect("Failed retrieving value on the second request");
+        
+        assert_eq!(remote.get_request_count().await, 1);
+    }
+
     // #[tokio::test]
-    // async fn basic_retrieval() {
-    //     let remote = test_remote::simple_remote();
-    //     let index = CAS::new();
-    //     index.get_or_fetch(&remote)
+    // async fn last_use() {
+    //     tokio::time::
+    //     let time = Instant::now();
+    //     let (data, remote) = remote().await;
+
+    //     let index = Store::new();
+    //     Instant::delay_for(1);
+    //     let val = index.get_or_fetch("key", &serializer(), &remote).await.expect("basic retrieval error");
+
+
+    //     panic!("Expected value, got: {:?}", val);
     // }
 }
