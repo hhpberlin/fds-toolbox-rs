@@ -28,8 +28,8 @@ pub struct FdsOut {
 pub struct Step {
     number: u32,
     time_calculated: DateTime<Utc>,
-    sim_step_size: Duration,
-    sim_elapsed_time: Duration,
+    sim_step_size: Time,
+    sim_elapsed_time: Time,
     pressure_iterations: u32,
     max_velocity_error_mesh_number: u32,
     max_velocity_error: PositionedValue<f32>,
