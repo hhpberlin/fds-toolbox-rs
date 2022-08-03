@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use uom::si::f32::{Power, MassRate};
+use uom::si::f32::{Power, MassRate, Time};
 
 use crate::geom::geom::Point3;
 
@@ -14,8 +14,8 @@ pub struct FdsOut {
     mpi_process_count: u32,
     open_mp_threads: u32,
     start_date: DateTime<Utc>,
-    sim_start_time: Duration,
-    sim_end_time: Duration,
+    sim_start_time: Time,
+    sim_end_time: Time,
     is_completed: bool,
     wallclock_total_elapsed_time: Duration,
     wallclock_time_stepping_time: Duration,
@@ -47,7 +47,7 @@ pub struct MeshStep {
 }
 
 pub struct Devices {
-    times: Vec<Duration>,
+    times: Vec<Time>,
     devices: Vec<DeviceReadings>,
 }
 
@@ -59,24 +59,24 @@ pub struct DeviceReadings {
 
 pub struct CpuData {
     mpi_rank: u32,
-    main_time: Duration,
-    divg_time: Duration,
-    mass_time: Duration,
-    velo_time: Duration,
-    pres_time: Duration,
-    wall_time: Duration,
-    dump_time: Duration,
-    part_time: Duration,
-    radi_time: Duration,
-    fire_time: Duration,
-    evac_time: Duration,
-    hvac_time: Duration,
-    comm_time: Duration,
-    total_time: Duration,
+    main_time: Time,
+    divg_time: Time,
+    mass_time: Time,
+    velo_time: Time,
+    pres_time: Time,
+    wall_time: Time,
+    dump_time: Time,
+    part_time: Time,
+    radi_time: Time,
+    fire_time: Time,
+    evac_time: Time,
+    hvac_time: Time,
+    comm_time: Time,
+    total_time: Time,
 }
 
 pub struct HRRStep {
-    time: Duration,
+    time: Time,
     heat_release_rate: Power,
     q_radi: Power,
     q_conv: Power,
