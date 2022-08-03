@@ -23,6 +23,9 @@ eyre = "0.6"
 crossbeam = "0.8"
 thiserror = "1.0"
 tracing = "0.1"
+nom = "7.1"
+chrono = "0.4"
+derive_more = "*"
 
 [target.'cfg(loom)'.dependencies]
 loom = "0.5"

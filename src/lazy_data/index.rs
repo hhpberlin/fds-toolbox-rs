@@ -1,9 +1,9 @@
 use crate::sync::{Arc, RwLock, RwLockWriteGuard};
-use std::{hash::Hash};
+use std::hash::Hash;
 
 use crossbeam::atomic::AtomicCell;
 use dashmap::{mapref::entry::Entry, DashMap};
-use tokio::{time::Instant};
+use tokio::time::Instant;
 
 use super::{remote::Remote, serialization::Serializer};
 
@@ -94,7 +94,8 @@ impl<Data: serde::de::DeserializeOwned + serde::Serialize> StoreNode<Data> {
     }
 
     async fn get_from_write_guard<S: Serializer<Data>>(
-        guard: &mut RwLockWriteGuard<'_, Option<StoreValue<Data>>>, serializer: &S
+        guard: &mut RwLockWriteGuard<'_, Option<StoreValue<Data>>>,
+        serializer: &S,
     ) -> Result<Option<Arc<Data>>, S::DeError> {
         match &**guard {
             Some(ref value) => {
@@ -126,7 +127,7 @@ impl<Data: serde::de::DeserializeOwned + serde::Serialize> StoreNode<Data> {
         if let Some(value) = materialized {
             return Ok(value);
         }
-        
+
         let mut write = self.value.write().await;
 
         // Recheck after acquiring write lock

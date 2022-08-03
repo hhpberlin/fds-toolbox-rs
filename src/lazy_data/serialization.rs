@@ -28,14 +28,21 @@ pub trait Compressor {
     async fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, Self::DeError>;
 }
 
-pub struct CompressedSerializer<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync + Send> {
+pub struct CompressedSerializer<
+    S: Serializer<Data> + Sync + Send,
+    C: Compressor + Sync + Send,
+    Data: Sync + Send,
+> {
     serialization_algorithm: S,
     compression_algorithm: C,
     _data: PhantomData<Data>,
 }
 
-impl<S: Serializer<Data> + Sync + Send + Default, C: Compressor + Sync + Send + Default, Data: Sync + Send> Default
-    for CompressedSerializer<S, C, Data>
+impl<
+        S: Serializer<Data> + Sync + Send + Default,
+        C: Compressor + Sync + Send + Default,
+        Data: Sync + Send,
+    > Default for CompressedSerializer<S, C, Data>
 {
     fn default() -> Self {
         Self {
@@ -55,8 +62,8 @@ pub enum CompressedSerializationError<S: Error, C: Error> {
 }
 
 #[async_trait]
-impl<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync + Send> Serializer<Data>
-    for CompressedSerializer<S, C, Data>
+impl<S: Serializer<Data> + Sync + Send, C: Compressor + Sync + Send, Data: Sync + Send>
+    Serializer<Data> for CompressedSerializer<S, C, Data>
 {
     type SerError = CompressedSerializationError<S::SerError, C::CompError>;
     type DeError = CompressedSerializationError<S::DeError, C::DeError>;

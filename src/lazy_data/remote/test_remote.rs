@@ -1,5 +1,5 @@
-use std::{collections::HashMap, hash::Hash};
 use crate::sync::RwLock;
+use std::{collections::HashMap, hash::Hash};
 
 use async_trait::async_trait;
 use thiserror::Error;

@@ -1,19 +1,10 @@
 #[cfg(test)]
 mod tests {
-    
 
-    
-
-    use crate::{
-        lazy_data::{
-            index::Store,
-            remote::{
-                test_remote::{TestRemote},
-            },
-            serialization::{
-                CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor,
-            },
-        },
+    use crate::lazy_data::{
+        index::Store,
+        remote::test_remote::TestRemote,
+        serialization::{CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor},
     };
 
     type Data = String;
@@ -36,7 +27,10 @@ mod tests {
     async fn remote() -> (String, TestRemote<&'static str>) {
         let data = "hello world".to_string();
 
-        let serialized_data = serializer().serialize(&data).await.expect("Failed to serialize");
+        let serialized_data = serializer()
+            .serialize(&data)
+            .await
+            .expect("Failed to serialize");
 
         let remote = TestRemote::new([("key", serialized_data)]);
 
@@ -61,11 +55,15 @@ mod tests {
         let (_, remote) = remote().await;
 
         let index = Store::new();
-        _ = index.get_or_fetch("key", &serializer(), &remote).await
+        _ = index
+            .get_or_fetch("key", &serializer(), &remote)
+            .await
             .expect("Basic Retrieval failed");
-        _ = index.get_or_fetch("key", &serializer(), &remote).await
+        _ = index
+            .get_or_fetch("key", &serializer(), &remote)
+            .await
             .expect("Failed retrieving value on the second request");
-        
+
         assert_eq!(remote.get_request_count().await, 1);
     }
 
@@ -78,7 +76,6 @@ mod tests {
     //     let index = Store::new();
     //     Instant::delay_for(1);
     //     let val = index.get_or_fetch("key", &serializer(), &remote).await.expect("basic retrieval error");
-
 
     //     panic!("Expected value, got: {:?}", val);
     // }
