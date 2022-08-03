@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
 pub(crate) mod formats;
+pub(crate) mod geom;
 pub(crate) mod lazy_data;
 pub(crate) mod sync;
-pub(crate) mod geom;
 use lazy_data::remote::quic_remote::QuicRemote;
 
 use crate::lazy_data::remote::quic_remote::ConnectionInfo;
