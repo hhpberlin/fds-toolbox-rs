@@ -29,7 +29,7 @@ pub struct HRRStep {
 }
 
 #[derive(Error, Debug)]
-pub enum HRRStepError {
+pub enum HRRStepsParseError {
     #[error("Missing units header (first line)")]
     MissingUnitsLine,
     #[error("Missing names header (second line)")]
@@ -40,8 +40,8 @@ pub enum HRRStepError {
     #[error("Parsing error in names header CSV (second line)")]
     ParsingErrorNamesCsv(csv::Error),
 
-    #[error("Parsing error in units header (first line, column {0}: {1})")]
-    ParsingErrorUnits(usize, ParseQuantityError),
+    #[error("Parsing error in units header (first line, column {0}: {1} '{2}')")]
+    ParsingErrorUnits(usize, ParseQuantityError, String),
     #[error("Parsing error in names header (second line, column {0}: {1} not known)")]
     ParsingErrorNames(usize, String),
 
@@ -52,6 +52,9 @@ pub enum HRRStepError {
         "Number of units and names don't match ({units_len} units, {names_len} names, expected 13)"
     )]
     InvalidUnitsAndNamesCount { units_len: usize, names_len: usize },
+
+    #[error("Wrong number of values (line {0}: {1} columns, expected 13)")]
+    WrongValueCount(usize, usize),
 
     #[error("CSV parsing error (line {0}: {1})")]
     ParsingErrorCsv(usize, csv::Error),
@@ -70,26 +73,31 @@ macro_rules! force_unit {
 }
 
 impl HRRStep {
-    pub fn parse(rdr: impl Read) -> Result<Vec<HRRStep>, HRRStepError> {
+    pub fn from_reader(rdr: impl Read) -> Result<Vec<HRRStep>, HRRStepsParseError> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
+            .trim(csv::Trim::All)
+            // To allow an empty line at the end of the file
+            // Currently skips any empty line (except in the 2 header lines)
+            // Empty records are also skipped
+            .flexible(true)
             .from_reader(rdr);
 
         let mut rdr = rdr.into_records();
 
         let units = match rdr.next() {
-            Some(val) => val.map_err(HRRStepError::ParsingErrorUnitsCsv)?,
-            None => return Err(HRRStepError::MissingUnitsLine),
+            Some(val) => val.map_err(HRRStepsParseError::ParsingErrorUnitsCsv)?,
+            None => return Err(HRRStepsParseError::MissingUnitsLine),
         };
         let names = match rdr.next() {
-            Some(val) => val.map_err(HRRStepError::ParsingErrorNamesCsv)?,
-            None => return Err(HRRStepError::MissingNamesLine),
+            Some(val) => val.map_err(HRRStepsParseError::ParsingErrorNamesCsv)?,
+            None => return Err(HRRStepsParseError::MissingNamesLine),
         };
 
         let units_len = units.len();
         let names_len = names.len();
         if units_len != names_len || units_len != 13 {
-            return Err(HRRStepError::InvalidUnitsAndNamesCount {
+            return Err(HRRStepsParseError::InvalidUnitsAndNamesCount {
                 units_len,
                 names_len,
             });
@@ -102,15 +110,16 @@ impl HRRStep {
         fn get_fac<T: FromStr<Err = ParseQuantityError>>(
             txt: &str,
             i: usize,
-        ) -> Result<T, HRRStepError> {
-            T::from_str(txt).map_err(|e| HRRStepError::ParsingErrorUnits(i, e))
+        ) -> Result<T, HRRStepsParseError> {
+            T::from_str(txt)
+                .map_err(|e| HRRStepsParseError::ParsingErrorUnits(i, e, txt.to_string()))
         }
 
         for (i, (unit, name)) in units.iter().zip(names.iter()).enumerate() {
             // TODO: Is this really the best way to do this?
             // The get_fac::<> invocations are *not* type-checked due to producing a simple f32, so be careful here
-            buf.push_str("1 ");
             buf.clear();
+            buf.push_str("1 ");
             buf.push_str(unit);
             let factor = match name {
                 "Time" => (0, get_fac::<Time>(&buf, i)?.value),
@@ -126,28 +135,42 @@ impl HRRStep {
                 "Q_TOTAL" => (10, get_fac::<Power>(&buf, i)?.value),
                 "MLR_FUEL" => (11, get_fac::<MassRate>(&buf, i)?.value),
                 "MLR_TOTAL" => (12, get_fac::<MassRate>(&buf, i)?.value),
-                _ => return Err(HRRStepError::ParsingErrorNames(i, name.to_string())),
+                _ => return Err(HRRStepsParseError::ParsingErrorNames(i, name.to_string())),
             };
             factors[factor.0] = (i, factor.1);
             visited[factor.0] = true;
         }
 
         if !visited.iter().all(|x| *x) {
-            return Err(HRRStepError::MissingNames);
+            return Err(HRRStepsParseError::MissingNames);
         }
 
         // HRRStep::deserialize(deserializer);
-        let mut buf = [0 as f32; 13];
+        let mut buf = [0f32; 13];
 
         let mut steps = Vec::new();
 
         for (i, x) in rdr.enumerate() {
-            let x = x.map_err(|x| HRRStepError::ParsingErrorCsv(i, x))?;
+            // TODO: Read directly into fields instead of using buf,
+            //       reverse usage of factors basically, target idx instead of source
 
-            for (j, x) in x.iter().enumerate() {
-                buf[i] = x
-                    .parse::<f32>()
-                    .map_err(|x| HRRStepError::ParsingError(i, j, x))?;
+            let x = x.map_err(|x| HRRStepsParseError::ParsingErrorCsv(i+2, x))?;
+
+            let mut j = 0;
+            for x in x.iter() {
+                if x.is_empty() {
+                    continue;
+                }
+                if j < buf.len() {
+                    buf[j] = x
+                        .parse::<f32>()
+                        .map_err(|x| HRRStepsParseError::ParsingError(i+2, j, x))?;
+                }
+                j+=1;
+            }
+            if j != buf.len() {
+                if j == 0 { continue; }
+                return Err(HRRStepsParseError::WrongValueCount(i+2, j));
             }
 
             steps.push(HRRStep {
@@ -168,5 +191,21 @@ impl HRRStep {
         }
 
         Ok(steps)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uom::si::time::{second, hour};
+
+    use super::*;
+
+    #[test]
+    fn basic_parsing() {
+        let hrrs = HRRStep::from_reader(r#"s,kW,kW,kW,kW,kW,kW,kW,kW,kW,kW,kg/s,kg/s
+        Time,HRR,Q_RADI,Q_CONV,Q_COND,Q_DIFF,Q_PRES,Q_PART,Q_GEOM,Q_ENTH,Q_TOTAL,MLR_FUEL,MLR_TOTAL
+         0.0000000E+000, 0.0000000E+000,-8.0996608E-001,-4.3266538E-006, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000,-8.0997040E-001, 0.0000000E+000, 0.0000000E+000
+         1.0206207E+000, 1.3223356E-001,-4.4154689E-002, 3.3198851E-004,-1.1500706E-004,-1.6679039E-005, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 2.2088911E-002, 8.8279171E-002, 6.8489026E-006, 6.8489026E-006
+        "#.as_bytes()).unwrap();
     }
 }

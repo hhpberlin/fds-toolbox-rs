@@ -1,12 +1,11 @@
-
-
 use serde::{Deserialize, Serialize};
 
 use uom::si::f32::{Time};
 
-use self::hrr::HRRStep;
+use self::{hrr::HRRStep, devc::Devices};
 
 pub mod hrr;
+pub mod devc;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CsvData {
@@ -15,18 +14,6 @@ pub struct CsvData {
     device_lists: Vec<Devices>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Devices {
-    times: Vec<Time>,
-    devices: Vec<DeviceReadings>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeviceReadings {
-    unit: String,
-    name: String,
-    values: Vec<f32>,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CpuData {

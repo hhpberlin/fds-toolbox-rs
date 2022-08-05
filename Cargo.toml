@@ -27,6 +27,7 @@ chrono = "0.4"
 derive_more = "*"
 uom = { version = "*", features = ["use_serde"] }
 csv = "1.1"
+ndarray = "0.15"
 
 [target.'cfg(loom)'.dependencies]
 loom = "0.5"
