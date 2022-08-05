@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use uom::si::f32::{MassRate, Power, Time};
+use uom::si::f32::{Power, Time};
 
 use crate::geom::geom::Point3;
 
