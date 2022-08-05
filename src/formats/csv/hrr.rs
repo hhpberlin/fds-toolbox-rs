@@ -1,9 +1,11 @@
-use std::{io::Read, str::FromStr, num::ParseFloatError};
+use std::{io::Read, num::ParseFloatError, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use uom::{si::f32::{MassRate, Power, Time}, str::ParseQuantityError};
-
+use uom::{
+    si::f32::{MassRate, Power, Time},
+    str::ParseQuantityError,
+};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub struct HRRStep {
@@ -46,7 +48,9 @@ pub enum HRRStepError {
     #[error("Missing names (second line)")]
     MissingNames,
 
-    #[error("Number of units and names don't match ({units_len} units, {names_len} names, expected 13)")]
+    #[error(
+        "Number of units and names don't match ({units_len} units, {names_len} names, expected 13)"
+    )]
     InvalidUnitsAndNamesCount { units_len: usize, names_len: usize },
 
     #[error("CSV parsing error (line {0}: {1})")]
@@ -57,7 +61,11 @@ pub enum HRRStepError {
 
 macro_rules! force_unit {
     ($type:ident, $buf:ident, $factors:ident, $idx:expr) => {
-        $type { value: $factors[$idx].1 * $buf[$factors[$idx].0], units: std::marker::PhantomData, dimension: std::marker::PhantomData }
+        $type {
+            value: $factors[$idx].1 * $buf[$factors[$idx].0],
+            units: std::marker::PhantomData,
+            dimension: std::marker::PhantomData,
+        }
     };
 }
 
@@ -89,27 +97,35 @@ impl HRRStep {
 
         let mut factors = [(0, 0 as f32); 13];
         let mut visited = [false; 13];
-        let mut buf: String = String::with_capacity(8); 
-        
+        let mut buf: String = String::with_capacity(8);
+
+        fn get_fac<T: FromStr<Err = ParseQuantityError>>(
+            txt: &str,
+            i: usize,
+        ) -> Result<T, HRRStepError> {
+            T::from_str(txt).map_err(|e| HRRStepError::ParsingErrorUnits(i, e))
+        }
+
         for (i, (unit, name)) in units.iter().zip(names.iter()).enumerate() {
             // TODO: Is this really the best way to do this?
+            // The get_fac::<> invocations are *not* type-checked due to producing a simple f32, so be careful here
             buf.push_str("1 ");
             buf.clear();
             buf.push_str(unit);
             let factor = match name {
-                "Time" => (0, Time::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "HRR" => (1, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_RADI" => (2, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_CONV" => (3, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_COND" => (4, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_DIFF" => (5, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_PRES" => (6, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_PART" => (7, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_GEOM" => (8, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_ENTH" => (9, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "Q_TOTAL" => (10, Power::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "MLR_FUEL" => (11, MassRate::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
-                "MLR_TOTAL" => (12, MassRate::from_str(&buf).map_err(|x| HRRStepError::ParsingErrorUnits(i, x))?.value),
+                "Time" => (0, get_fac::<Time>(&buf, i)?.value),
+                "HRR" => (1, get_fac::<Power>(&buf, i)?.value),
+                "Q_RADI" => (2, get_fac::<Power>(&buf, i)?.value),
+                "Q_CONV" => (3, get_fac::<Power>(&buf, i)?.value),
+                "Q_COND" => (4, get_fac::<Power>(&buf, i)?.value),
+                "Q_DIFF" => (5, get_fac::<Power>(&buf, i)?.value),
+                "Q_PRES" => (6, get_fac::<Power>(&buf, i)?.value),
+                "Q_PART" => (7, get_fac::<Power>(&buf, i)?.value),
+                "Q_GEOM" => (8, get_fac::<Power>(&buf, i)?.value),
+                "Q_ENTH" => (9, get_fac::<Power>(&buf, i)?.value),
+                "Q_TOTAL" => (10, get_fac::<Power>(&buf, i)?.value),
+                "MLR_FUEL" => (11, get_fac::<MassRate>(&buf, i)?.value),
+                "MLR_TOTAL" => (12, get_fac::<MassRate>(&buf, i)?.value),
                 _ => return Err(HRRStepError::ParsingErrorNames(i, name.to_string())),
             };
             factors[factor.0] = (i, factor.1);
@@ -119,7 +135,7 @@ impl HRRStep {
         if !visited.iter().all(|x| *x) {
             return Err(HRRStepError::MissingNames);
         }
-        
+
         // HRRStep::deserialize(deserializer);
         let mut buf = [0 as f32; 13];
 
@@ -129,7 +145,9 @@ impl HRRStep {
             let x = x.map_err(|x| HRRStepError::ParsingErrorCsv(i, x))?;
 
             for (j, x) in x.iter().enumerate() {
-                buf[i] = x.parse::<f32>().map_err(|x| HRRStepError::ParsingError(i, j, x))?;
+                buf[i] = x
+                    .parse::<f32>()
+                    .map_err(|x| HRRStepError::ParsingError(i, j, x))?;
             }
 
             steps.push(HRRStep {
