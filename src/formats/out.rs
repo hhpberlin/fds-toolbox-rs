@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use uom::si::f32::{Power, MassRate, Time};
+use uom::si::f32::{MassRate, Power, Time};
 
 use crate::geom::geom::Point3;
 
@@ -20,9 +20,6 @@ pub struct FdsOut {
     wallclock_total_elapsed_time: Duration,
     wallclock_time_stepping_time: Duration,
     steps: Vec<Step>,
-    cpu_entries: Vec<CpuData>,
-    heat_release_rate_entries: Vec<HRRStep>,
-    device_lists: Vec<Devices>,
 }
 
 pub struct Step {
@@ -44,51 +41,6 @@ pub struct MeshStep {
     max_divergence: PositionedValue<f32>,
     max_cfl_number: PositionedValue<f32>,
     max_vn_number: PositionedValue<f32>,
-}
-
-pub struct Devices {
-    times: Vec<Time>,
-    devices: Vec<DeviceReadings>,
-}
-
-pub struct DeviceReadings {
-    unit: String,
-    name: String,
-    values: Vec<f32>,
-}
-
-pub struct CpuData {
-    mpi_rank: u32,
-    main_time: Time,
-    divg_time: Time,
-    mass_time: Time,
-    velo_time: Time,
-    pres_time: Time,
-    wall_time: Time,
-    dump_time: Time,
-    part_time: Time,
-    radi_time: Time,
-    fire_time: Time,
-    evac_time: Time,
-    hvac_time: Time,
-    comm_time: Time,
-    total_time: Time,
-}
-
-pub struct HRRStep {
-    time: Time,
-    heat_release_rate: Power,
-    q_radi: Power,
-    q_conv: Power,
-    q_cond: Power,
-    q_diff: Power,
-    q_pres: Power,
-    q_part: Power,
-    q_geom: Power,
-    q_enth: Power,
-    q_total: Power,
-    mass_flow_rate_fuel: MassRate,
-    mass_flow_rate_total: MassRate,
 }
 
 pub struct PositionedValue<T> {

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-pub(crate) mod formats;
+pub mod formats;
 pub(crate) mod geom;
 pub(crate) mod lazy_data;
 pub(crate) mod sync;

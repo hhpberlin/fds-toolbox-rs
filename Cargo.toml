@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-typetag = "0.2"
 rmp-serde = "1.1"
 tokio = { version = "1", features = ["full"] }
 async-compression = { version = "*", features = ["brotli", "zstd", "tokio"] }
@@ -26,7 +25,8 @@ tracing = "0.1"
 nom = "7.1"
 chrono = "0.4"
 derive_more = "*"
-uom = { version = "*", features = ["serde"] }
+uom = { version = "*", features = ["use_serde"] }
+csv = "1.1"
 
 [target.'cfg(loom)'.dependencies]
 loom = "0.5"
