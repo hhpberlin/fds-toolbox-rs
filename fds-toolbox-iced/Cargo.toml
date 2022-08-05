@@ -1,0 +1,10 @@
+[package]
+name = "fds-toolbox-iced"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = "0.4"
+iced_lazy = "0.1"
+iced_native = "0.5"
+fds-toolbox-core = { path = "../fds-toolbox-core" }
