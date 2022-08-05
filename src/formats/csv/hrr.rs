@@ -198,7 +198,11 @@ impl HRRStep {
 
 #[cfg(test)]
 mod tests {
-    use uom::si::time::{hour, second};
+    use uom::si::{
+        mass_rate::kilogram_per_second,
+        power::kilowatt,
+        time::{hour, second},
+    };
 
     use super::*;
 
@@ -209,5 +213,50 @@ mod tests {
          0.0000000E+000, 0.0000000E+000,-8.0996608E-001,-4.3266538E-006, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000,-8.0997040E-001, 0.0000000E+000, 0.0000000E+000
          1.0206207E+000, 1.3223356E-001,-4.4154689E-002, 3.3198851E-004,-1.1500706E-004,-1.6679039E-005, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 2.2088911E-002, 8.8279171E-002, 6.8489026E-006, 6.8489026E-006
         "#.as_bytes()).unwrap();
+
+        assert_eq!(hrrs.len(), 2);
+
+        assert_eq!(hrrs[0].time, Time::new::<second>(0.0));
+        assert_eq!(hrrs[0].heat_release_rate, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_radi, Power::new::<kilowatt>(-8.0996608E-001));
+        assert_eq!(hrrs[0].q_conv, Power::new::<kilowatt>(-4.3266538E-006));
+        assert_eq!(hrrs[0].q_cond, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_diff, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_pres, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_part, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_geom, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_enth, Power::new::<kilowatt>(0.0));
+        assert_eq!(hrrs[0].q_total, Power::new::<kilowatt>(-8.0997040E-001));
+        assert_eq!(
+            hrrs[0].mass_flow_rate_fuel,
+            MassRate::new::<kilogram_per_second>(0.0)
+        );
+        assert_eq!(
+            hrrs[0].mass_flow_rate_total,
+            MassRate::new::<kilogram_per_second>(0.0)
+        );
+
+        assert_eq!(hrrs[1].time, Time::new::<second>(1.0206207E+000));
+        assert_eq!(
+            hrrs[1].heat_release_rate,
+            Power::new::<kilowatt>(1.3223356E-001)
+        );
+        assert_eq!(hrrs[1].q_radi, Power::new::<kilowatt>(-4.4154689E-002));
+        assert_eq!(hrrs[1].q_conv, Power::new::<kilowatt>(3.3198851E-004));
+        assert_eq!(hrrs[1].q_cond, Power::new::<kilowatt>(-1.1500706E-004));
+        assert_eq!(hrrs[1].q_diff, Power::new::<kilowatt>(-1.6679039E-005));
+        assert_eq!(hrrs[1].q_pres, Power::new::<kilowatt>(0.0000000E+000));
+        assert_eq!(hrrs[1].q_part, Power::new::<kilowatt>(0.0000000E+000));
+        assert_eq!(hrrs[1].q_geom, Power::new::<kilowatt>(0.0000000E+000));
+        assert_eq!(hrrs[1].q_enth, Power::new::<kilowatt>(2.2088911E-002));
+        assert_eq!(hrrs[1].q_total, Power::new::<kilowatt>(8.8279171E-002));
+        assert_eq!(
+            hrrs[1].mass_flow_rate_fuel,
+            MassRate::new::<kilogram_per_second>(6.8489026E-006)
+        );
+        assert_eq!(
+            hrrs[1].mass_flow_rate_total,
+            MassRate::new::<kilogram_per_second>(6.8489026E-006)
+        );
     }
 }
