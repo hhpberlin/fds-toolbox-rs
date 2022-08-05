@@ -73,7 +73,7 @@ macro_rules! force_unit {
 }
 
 impl HRRStep {
-    pub fn from_reader(rdr: impl Read) -> Result<Vec<HRRStep>, HRRStepsParseError> {
+    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, HRRStepsParseError> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .trim(csv::Trim::All)
