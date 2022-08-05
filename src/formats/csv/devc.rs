@@ -1,6 +1,6 @@
 use std::{io::Read, num::ParseFloatError, str::FromStr};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
@@ -36,9 +36,7 @@ pub enum DevicesParsingError {
     #[error("Parsing error in names header CSV (second line)")]
     ParsingErrorNamesCsv(csv::Error),
 
-    #[error(
-        "Number of units and names don't match ({units_len} units, {names_len} names)"
-    )]
+    #[error("Number of units and names don't match ({units_len} units, {names_len} names)")]
     InvalidUnitsAndNamesCount { units_len: usize, names_len: usize },
 
     #[error("Wrong number of values (line {0}: {1} columns, expected {2})")]
@@ -88,32 +86,34 @@ impl Devices {
                 s.push_str(val);
                 Time::from_str(&s)
                     .map_err(|x| DevicesParsingError::InvalidTimeUnit(x, val.to_string()))?
-            },
+            }
             None => return Err(DevicesParsingError::MissingTimeUnit),
         };
-        
+
         let mut times = Vec::new();
         let mut devices = units_iter
             .zip(names.iter().skip(1))
-            .map(|(unit, name)| {
-                DeviceReadings {
-                    unit: unit.to_string(),
-                    name: name.to_string(),
-                    values: Vec::new(),
-                }
-            }).collect::<Vec<_>>();
+            .map(|(unit, name)| DeviceReadings {
+                unit: unit.to_string(),
+                name: name.to_string(),
+                values: Vec::new(),
+            })
+            .collect::<Vec<_>>();
 
         let len = devices.len();
 
         for (i, x) in rdr.enumerate() {
-            let x = x.map_err(|x| DevicesParsingError::ParsingErrorCsv(i+2, x))?;
+            let x = x.map_err(|x| DevicesParsingError::ParsingErrorCsv(i + 2, x))?;
             let mut x = x.iter();
             let time: f32 = match x.next() {
                 Some(val) => {
-                    if val.is_empty() { continue; }
-                    val.parse().map_err(|x| DevicesParsingError::ParsingError(i+2, 0, x))?
-                },
-                None => return Err(DevicesParsingError::WrongValueCount(i+2, 0, len)),
+                    if val.is_empty() {
+                        continue;
+                    }
+                    val.parse()
+                        .map_err(|x| DevicesParsingError::ParsingError(i + 2, 0, x))?
+                }
+                None => return Err(DevicesParsingError::WrongValueCount(i + 2, 0, len)),
             };
             times.push(time_fac * time);
 
@@ -125,38 +125,48 @@ impl Devices {
                 if j < len {
                     let val = x
                         .parse::<f32>()
-                        .map_err(|x| DevicesParsingError::ParsingError(i+2, j+1, x))?;
+                        .map_err(|x| DevicesParsingError::ParsingError(i + 2, j + 1, x))?;
                     devices[j].values.push(val);
                 }
-                j+=1;
+                j += 1;
             }
             if j != len {
-                if j == 0 { continue; }
-                return Err(DevicesParsingError::WrongValueCount(i+2, j, len));
+                if j == 0 {
+                    continue;
+                }
+                return Err(DevicesParsingError::WrongValueCount(i + 2, j, len));
             }
         }
 
-        Ok(Devices {
-            times,
-            devices,
-        })
+        Ok(Devices { times, devices })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use uom::si::time::{second, hour};
+    use uom::si::time::{hour, second};
 
     use super::*;
 
     #[test]
     fn basic_parsing() {
-        let devices = Devices::from_reader(r#"s, m3/s, C, 1/m
+        let devices = Devices::from_reader(
+            r#"s, m3/s, C, 1/m
         Time,   Zuluft_1,   Abluft_1,   T_B01
         0.0E+0, 1.2E+3,     -2.3E-2,    4.1E-12
-        "#.as_bytes()).unwrap();
+        "#
+            .as_bytes(),
+        )
+        .unwrap();
 
-        assert_eq!(devices.times.iter().map(|x| x.get::<second>()).collect::<Vec<_>>(), [0.0e0]);
+        assert_eq!(
+            devices
+                .times
+                .iter()
+                .map(|x| x.get::<second>())
+                .collect::<Vec<_>>(),
+            [0.0e0]
+        );
         assert_eq!(devices.devices.len(), 3);
 
         assert_eq!(devices.devices[0].unit, "m3/s");
@@ -174,18 +184,26 @@ mod tests {
 
     #[test]
     fn time_unit() {
-        let devices = Devices::from_reader(r#"h
+        let devices = Devices::from_reader(
+            r#"h
         Time
-        1"#.as_bytes()).unwrap();
+        1"#
+            .as_bytes(),
+        )
+        .unwrap();
         assert_eq!(devices.times[0].get::<hour>(), 1.0);
     }
 
     #[test]
     #[should_panic]
     fn time_unit_error() {
-        Devices::from_reader(r#"one of the time-units of all time
+        Devices::from_reader(
+            r#"one of the time-units of all time
         Time
-        1"#.as_bytes()).unwrap();
+        1"#
+            .as_bytes(),
+        )
+        .unwrap();
     }
 
     #[test]
@@ -197,8 +215,12 @@ mod tests {
     #[test]
     #[should_panic]
     fn invalid_number() {
-        Devices::from_reader(r#"s
+        Devices::from_reader(
+            r#"s
         Time
-        a 'number'"#.as_bytes()).unwrap();
+        a 'number'"#
+                .as_bytes(),
+        )
+        .unwrap();
     }
 }

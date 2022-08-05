@@ -154,7 +154,7 @@ impl HRRStep {
             // TODO: Read directly into fields instead of using buf,
             //       reverse usage of factors basically, target idx instead of source
 
-            let x = x.map_err(|x| HRRStepsParseError::ParsingErrorCsv(i+2, x))?;
+            let x = x.map_err(|x| HRRStepsParseError::ParsingErrorCsv(i + 2, x))?;
 
             let mut j = 0;
             for x in x.iter() {
@@ -164,13 +164,15 @@ impl HRRStep {
                 if j < buf.len() {
                     buf[j] = x
                         .parse::<f32>()
-                        .map_err(|x| HRRStepsParseError::ParsingError(i+2, j, x))?;
+                        .map_err(|x| HRRStepsParseError::ParsingError(i + 2, j, x))?;
                 }
-                j+=1;
+                j += 1;
             }
             if j != buf.len() {
-                if j == 0 { continue; }
-                return Err(HRRStepsParseError::WrongValueCount(i+2, j));
+                if j == 0 {
+                    continue;
+                }
+                return Err(HRRStepsParseError::WrongValueCount(i + 2, j));
             }
 
             steps.push(HRRStep {
@@ -196,7 +198,7 @@ impl HRRStep {
 
 #[cfg(test)]
 mod tests {
-    use uom::si::time::{second, hour};
+    use uom::si::time::{hour, second};
 
     use super::*;
 
