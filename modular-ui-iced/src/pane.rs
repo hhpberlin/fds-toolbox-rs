@@ -7,14 +7,14 @@ use iced::keyboard;
 use iced::pane_grid::{self, PaneGrid};
 use iced::scrollable::{self, Scrollable};
 use iced::{
-    Application, Color, Column, Command, Container, Element, Length, Row, Settings, Size,
+    Application, Column, Command, Container, Element, Length, Row, Settings, Size,
     Subscription, Text,
 };
 use iced_lazy::responsive::{self, Responsive};
 use iced_native::{event, subscription, Event};
 
 use crate::theme::THEME;
-use crate::{style, theme};
+use crate::{style};
 
 pub fn main() -> iced::Result {
     Example::run(Settings::default())
@@ -174,11 +174,11 @@ impl Application for Example {
                     })
                     .into(),
             ])
-            .spacing(5);
+            .spacing(THEME.title_bar_size);
 
             let title_bar = pane_grid::TitleBar::new(title)
                 .controls(pane.controls.view(id, total_panes, *is_pinned))
-                .padding(10)
+                .padding(5)
                 .style(if is_focused {
                     style::TitleBar::Focused
                 } else {
@@ -197,15 +197,15 @@ impl Application for Example {
         })
         .width(Length::Fill)
         .height(Length::Fill)
-        .spacing(10)
+        .spacing(THEME.pane_padding)
         .on_click(Message::Clicked)
         .on_drag(Message::Dragged)
-        .on_resize(10, Message::Resized);
+        .on_resize(THEME.pane_padding_grabbable, Message::Resized);
 
         Container::new(pane_grid)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(10)
+            .padding(THEME.window_padding)
             .into()
     }
 }
