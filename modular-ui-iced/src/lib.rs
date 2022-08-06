@@ -1,6 +1,8 @@
 use iced::{Sandbox, Settings};
 
 pub mod pane;
+mod style;
+mod theme;
 
 pub fn main() -> iced::Result {
     // MainWindow::run(Settings::default())
@@ -25,7 +27,7 @@ pub fn main() -> iced::Result {
 //     type Message = ();
 
 //     fn update(&mut self, message: Self::Message) {
-    
+
 //     }
 
 //     fn view(&mut self) -> iced::Element<'_, Self::Message> {

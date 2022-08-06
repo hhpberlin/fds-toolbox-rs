@@ -7,11 +7,14 @@ use iced::keyboard;
 use iced::pane_grid::{self, PaneGrid};
 use iced::scrollable::{self, Scrollable};
 use iced::{
-    Application, Color, Column, Command, Container, Element, Length, Row,
-    Settings, Size, Subscription, Text,
+    Application, Color, Column, Command, Container, Element, Length, Row, Settings, Size,
+    Subscription, Text,
 };
 use iced_lazy::responsive::{self, Responsive};
 use iced_native::{event, subscription, Event};
+
+use crate::theme::THEME;
+use crate::{theme, style};
 
 pub fn main() -> iced::Result {
     Example::run(Settings::default())
@@ -61,11 +64,7 @@ impl Application for Example {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Split(axis, pane) => {
-                let result = self.panes.split(
-                    axis,
-                    &pane,
-                    Pane::new(self.panes_created),
-                );
+                let result = self.panes.split(axis, &pane, Pane::new(self.panes_created));
 
                 if let Some((pane, _)) = result {
                     self.focus = Some(pane);
@@ -75,11 +74,7 @@ impl Application for Example {
             }
             Message::SplitFocused(axis) => {
                 if let Some(pane) = self.focus {
-                    let result = self.panes.split(
-                        axis,
-                        &pane,
-                        Pane::new(self.panes_created),
-                    );
+                    let result = self.panes.split(axis, &pane, Pane::new(self.panes_created));
 
                     if let Some((pane, _)) = result {
                         self.focus = Some(pane);
@@ -90,9 +85,7 @@ impl Application for Example {
             }
             Message::FocusAdjacent(direction) => {
                 if let Some(pane) = self.focus {
-                    if let Some(adjacent) =
-                        self.panes.adjacent(&pane, direction)
-                    {
+                    if let Some(adjacent) = self.panes.adjacent(&pane, direction) {
                         self.focus = Some(adjacent);
                     }
                 }
@@ -103,16 +96,12 @@ impl Application for Example {
             Message::Resized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(&split, ratio);
             }
-            Message::Dragged(pane_grid::DragEvent::Dropped {
-                pane,
-                target,
-            }) => {
+            Message::Dragged(pane_grid::DragEvent::Dropped { pane, target }) => {
                 self.panes.swap(&pane, &target);
             }
             Message::Dragged(_) => {}
             Message::TogglePin(pane) => {
-                if let Some(Pane { is_pinned, .. }) = self.panes.get_mut(&pane)
-                {
+                if let Some(Pane { is_pinned, .. }) = self.panes.get_mut(&pane) {
                     *is_pinned = !*is_pinned;
                 }
             }
@@ -123,11 +112,9 @@ impl Application for Example {
             }
             Message::CloseFocused => {
                 if let Some(pane) = self.focus {
-                    if let Some(Pane { is_pinned, .. }) = self.panes.get(&pane)
-                    {
+                    if let Some(Pane { is_pinned, .. }) = self.panes.get(&pane) {
                         if !is_pinned {
-                            if let Some((_, sibling)) = self.panes.close(&pane)
-                            {
+                            if let Some((_, sibling)) = self.panes.close(&pane) {
                                 self.focus = Some(sibling);
                             }
                         }
@@ -181,9 +168,9 @@ impl Application for Example {
                 Text::new("Pane").into(),
                 Text::new(content.id.to_string())
                     .color(if is_focused {
-                        PANE_ID_COLOR_FOCUSED
+                        THEME.pane_id_color_focused
                     } else {
-                        PANE_ID_COLOR_UNFOCUSED
+                        THEME.pane_id_color_unfocused
                     })
                     .into(),
             ])
@@ -222,17 +209,6 @@ impl Application for Example {
             .into()
     }
 }
-
-const PANE_ID_COLOR_UNFOCUSED: Color = Color::from_rgb(
-    0xFF as f32 / 255.0,
-    0xC7 as f32 / 255.0,
-    0xC7 as f32 / 255.0,
-);
-const PANE_ID_COLOR_FOCUSED: Color = Color::from_rgb(
-    0xFF as f32 / 255.0,
-    0x47 as f32 / 255.0,
-    0x47 as f32 / 255.0,
-);
 
 fn handle_hotkey(key_code: keyboard::KeyCode) -> Option<Message> {
     use keyboard::KeyCode;
@@ -379,123 +355,12 @@ impl Controls {
         total_panes: usize,
         is_pinned: bool,
     ) -> Element<Message> {
-        let mut button =
-            Button::new(&mut self.close, Text::new("Close").size(14))
-                .style(style::Button::Control)
-                .padding(3);
+        let mut button = Button::new(&mut self.close, Text::new("Close").size(14))
+            .style(style::Button::Control)
+            .padding(3);
         if total_panes > 1 && !is_pinned {
             button = button.on_press(Message::Close(pane));
         }
         button.into()
-    }
-}
-
-mod style {
-    use super::PANE_ID_COLOR_FOCUSED;
-    use iced::{button, container, Background, Color, Vector};
-
-    const SURFACE: Color = Color::from_rgb(
-        0xF2 as f32 / 255.0,
-        0xF3 as f32 / 255.0,
-        0xF5 as f32 / 255.0,
-    );
-
-    const ACTIVE: Color = Color::from_rgb(
-        0x72 as f32 / 255.0,
-        0x89 as f32 / 255.0,
-        0xDA as f32 / 255.0,
-    );
-
-    const HOVERED: Color = Color::from_rgb(
-        0x67 as f32 / 255.0,
-        0x7B as f32 / 255.0,
-        0xC4 as f32 / 255.0,
-    );
-
-    pub enum TitleBar {
-        Active,
-        Focused,
-    }
-
-    impl container::StyleSheet for TitleBar {
-        fn style(&self) -> container::Style {
-            let pane = match self {
-                Self::Active => Pane::Active,
-                Self::Focused => Pane::Focused,
-            }
-            .style();
-
-            container::Style {
-                text_color: Some(Color::WHITE),
-                background: Some(pane.border_color.into()),
-                ..Default::default()
-            }
-        }
-    }
-
-    pub enum Pane {
-        Active,
-        Focused,
-    }
-
-    impl container::StyleSheet for Pane {
-        fn style(&self) -> container::Style {
-            container::Style {
-                background: Some(Background::Color(SURFACE)),
-                border_width: 2.0,
-                border_color: match self {
-                    Self::Active => Color::from_rgb(0.7, 0.7, 0.7),
-                    Self::Focused => Color::BLACK,
-                },
-                ..Default::default()
-            }
-        }
-    }
-
-    pub enum Button {
-        Primary,
-        Destructive,
-        Control,
-        Pin,
-    }
-
-    impl button::StyleSheet for Button {
-        fn active(&self) -> button::Style {
-            let (background, text_color) = match self {
-                Button::Primary => (Some(ACTIVE), Color::WHITE),
-                Button::Destructive => {
-                    (None, Color::from_rgb8(0xFF, 0x47, 0x47))
-                }
-                Button::Control => (Some(PANE_ID_COLOR_FOCUSED), Color::WHITE),
-                Button::Pin => (Some(ACTIVE), Color::WHITE),
-            };
-
-            button::Style {
-                text_color,
-                background: background.map(Background::Color),
-                border_radius: 3.0,
-                shadow_offset: Vector::new(0.0, 0.0),
-                ..button::Style::default()
-            }
-        }
-
-        fn hovered(&self) -> button::Style {
-            let active = self.active();
-
-            let background = match self {
-                Button::Primary => Some(HOVERED),
-                Button::Destructive => Some(Color {
-                    a: 0.2,
-                    ..active.text_color
-                }),
-                Button::Control => Some(PANE_ID_COLOR_FOCUSED),
-                Button::Pin => Some(HOVERED),
-            };
-
-            button::Style {
-                background: background.map(Background::Color),
-                ..active
-            }
-        }
     }
 }
