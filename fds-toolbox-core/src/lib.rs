@@ -8,20 +8,20 @@ use lazy_data::remote::quic_remote::QuicRemote;
 
 use crate::lazy_data::remote::quic_remote::ConnectionInfo;
 
-#[tokio::main]
-async fn main() {
-    println!("Hello, world!");
+// #[tokio::main]
+// async fn main() {
+//     println!("Hello, world!");
 
-    let _remote = QuicRemote::connect(ConnectionInfo {
-        remote_addr: SocketAddr::from(([127, 0, 0, 1], 5000)),
-        local_addr: SocketAddr::from(([127, 0, 0, 1], 5001)),
-        server_name: "localhost",
-    })
-    .await
-    .unwrap();
+//     let _remote = QuicRemote::connect(ConnectionInfo {
+//         remote_addr: SocketAddr::from(([127, 0, 0, 1], 5000)),
+//         local_addr: SocketAddr::from(([127, 0, 0, 1], 5001)),
+//         server_name: "localhost",
+//     })
+//     .await
+//     .unwrap();
 
-    // let comp: dyn CompressionAlgorithm = BrotliCompression;
-}
+//     // let comp: dyn CompressionAlgorithm = BrotliCompression;
+// }
 
 // pub struct FdsSimulation {
 //     pub chid: String,

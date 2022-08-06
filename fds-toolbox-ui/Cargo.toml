@@ -1,0 +1,15 @@
+[package]
+name = "fds-toolbox-ui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = { version = "0.4", features = ["canvas", "tokio"] }
+plotters="0.3"
+plotters-iced = "0.3"
+
+modular-ui-iced = { path = "../modular-ui-iced" }
+fds-toolbox-core = { path = "../fds-toolbox-core" }
+
+[profile.release]
+lto = true

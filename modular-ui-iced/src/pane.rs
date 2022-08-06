@@ -473,7 +473,7 @@ mod style {
             button::Style {
                 text_color,
                 background: background.map(Background::Color),
-                border_radius: 5.0,
+                border_radius: 3.0,
                 shadow_offset: Vector::new(0.0, 0.0),
                 ..button::Style::default()
             }

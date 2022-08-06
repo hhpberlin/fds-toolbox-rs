@@ -1,6 +1,6 @@
 use iced::{Sandbox, Settings};
 
-mod pane;
+pub mod pane;
 
 pub fn main() -> iced::Result {
     // MainWindow::run(Settings::default())
