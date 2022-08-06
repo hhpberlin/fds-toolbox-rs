@@ -15,7 +15,7 @@ impl container::StyleSheet for TitleBar {
         .style();
 
         container::Style {
-            text_color: Some(Color::WHITE),
+            text_color: Some(THEME.text_color_inv),
             background: Some(pane.border_color.into()),
             ..Default::default()
         }
@@ -31,10 +31,10 @@ impl container::StyleSheet for Pane {
     fn style(&self) -> container::Style {
         container::Style {
             background: Some(Background::Color(THEME.surface)),
-            border_width: 2.0,
+            border_width: THEME.border_width,
             border_color: match self {
-                Self::Active => Color::from_rgb(0.7, 0.7, 0.7),
-                Self::Focused => Color::BLACK,
+                Self::Active => THEME.pane_active,
+                Self::Focused => THEME.pane_focused,
             },
             ..Default::default()
         }
@@ -51,16 +51,16 @@ pub enum Button {
 impl button::StyleSheet for Button {
     fn active(&self) -> button::Style {
         let (background, text_color) = match self {
-            Button::Primary => (Some(THEME.active), Color::WHITE),
-            Button::Destructive => (None, Color::from_rgb8(0xFF, 0x47, 0x47)),
-            Button::Control => (Some(THEME.pane_id_color_focused), Color::WHITE),
-            Button::Pin => (Some(THEME.active), Color::WHITE),
+            Button::Primary => (Some(THEME.active), THEME.text_color_inv),
+            Button::Destructive => (None, THEME.text_color_inv_disabled),
+            Button::Control => (Some(THEME.pane_id_color_focused), THEME.text_color_inv),
+            Button::Pin => (Some(THEME.active), THEME.text_color_inv),
         };
 
         button::Style {
             text_color,
             background: background.map(Background::Color),
-            border_radius: 3.0,
+            border_radius: THEME.border_radius,
             shadow_offset: Vector::new(0.0, 0.0),
             ..button::Style::default()
         }
