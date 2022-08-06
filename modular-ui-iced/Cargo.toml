@@ -11,6 +11,3 @@ plotters-iced = "0.3"
 
 iced_lazy = "0.1"
 iced_native = "0.5"
-
-[profile.release]
-lto = true

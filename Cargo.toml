@@ -3,5 +3,9 @@ resolver = "2"
 members = [
     "fds-toolbox-core",
     "modular-ui-iced",
+    "modular-ui-druid",
     "fds-toolbox-ui",
 ]
+
+[profile.release]
+lto = true

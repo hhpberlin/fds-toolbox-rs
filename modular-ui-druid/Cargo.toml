@@ -1,0 +1,9 @@
+[package]
+name = "modular-ui-druid"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+druid = "0.7"
+plotters = "0.3"
+plotters-druid = "0.2"
