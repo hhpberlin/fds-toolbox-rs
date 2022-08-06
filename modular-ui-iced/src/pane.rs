@@ -14,7 +14,7 @@ use iced_lazy::responsive::{self, Responsive};
 use iced_native::{event, subscription, Event};
 
 use crate::theme::THEME;
-use crate::{theme, style};
+use crate::{style, theme};
 
 pub fn main() -> iced::Result {
     Example::run(Settings::default())

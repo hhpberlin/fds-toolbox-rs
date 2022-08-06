@@ -1,5 +1,5 @@
-use iced::{button, container, Background, Color, Vector};
 use crate::theme::THEME;
+use iced::{button, container, Background, Color, Vector};
 
 pub enum TitleBar {
     Active,
