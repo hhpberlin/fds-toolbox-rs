@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 druid = "0.7"
 
-modular-ui-druid = { path = "../modular-ui-druid" }
+modular-ui-dioxus = { path = "../modular-ui-dioxus" }
 fds-toolbox-core = { path = "../fds-toolbox-core" }

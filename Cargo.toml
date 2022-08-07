@@ -4,6 +4,7 @@ members = [
     "fds-toolbox-core",
     "modular-ui-iced",
     "modular-ui-druid",
+    "modular-ui-dioxus",
     "fds-toolbox-ui",
 ]
 
