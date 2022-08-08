@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = "0.4"
+# iced = "0.4"
+druid = "0.7"
+plotters-druid = "0.2"
 
-modular-ui-iced = { path = "../modular-ui-iced" }
+modular-ui-druid = { path = "../modular-ui-druid" }
 fds-toolbox-core = { path = "../fds-toolbox-core" }

@@ -1827,9 +1827,10 @@ dependencies = [
 name = "fds-toolbox-ui"
 version = "0.1.0"
 dependencies = [
+ "druid",
  "fds-toolbox-core",
- "iced",
- "modular-ui-iced",
+ "modular-ui-druid",
+ "plotters-druid",
 ]
 
 [[package]]

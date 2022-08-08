@@ -1,5 +1,5 @@
 mod panes;
 
-pub fn main() -> iced::Result {
-    modular_ui_iced::main()
+pub fn main() {
+    modular_ui_druid::main().unwrap();
 }
