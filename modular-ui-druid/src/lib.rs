@@ -1,3 +1,5 @@
+mod pane;
+
 use druid::{Widget, Env, WidgetExt, Lens, Data, PlatformError, WindowDesc, AppLauncher, MenuDesc, platform_menus, LocalizedString};
 use druid::widget::{Label, TextBox, Flex, Align, Split, Tabs};
 
@@ -36,7 +38,6 @@ pub fn build_ui() -> impl Widget<HelloState> {
         Tabs::new()
         .with_tab("Text", textbox)
         .with_tab("Label", Label::new("Mogus"))
-        
         ).draggable(true);
 
     // center the two widgets in the available space
