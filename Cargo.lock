@@ -1827,9 +1827,9 @@ dependencies = [
 name = "fds-toolbox-ui"
 version = "0.1.0"
 dependencies = [
- "druid",
  "fds-toolbox-core",
- "modular-ui-slint",
+ "iced",
+ "modular-ui-iced",
 ]
 
 [[package]]
