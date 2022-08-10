@@ -502,6 +502,12 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad807f2fc2bf185eeb98ff3a901bd46dc5ad58163d0fa4577ba0d25674d71708"
+
+[[package]]
+name = "bumpalo"
 version = "3.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
@@ -1448,7 +1454,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50fd75cb8f4752b122e3935eaa65b4c8c5c61dac2a305cb3d4c3422a01e0aee2"
 dependencies = [
  "backtrace",
- "bumpalo",
+ "bumpalo 3.10.0",
  "futures-channel",
  "futures-util",
  "fxhash",
@@ -1592,6 +1598,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68df3f2b690c1b86e65ef7830956aededf3cb0a16f898f79b9a6f421a7b6211b"
 dependencies = [
  "rand",
+]
+
+[[package]]
+name = "dodrio"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7593dfc68e57dc1d058ada0f151ba07f4b05183c4da4c4df8ff651a81ef0fab"
+dependencies = [
+ "bumpalo 2.6.0",
+ "cfg-if 0.1.10",
+ "fxhash",
+ "js-sys",
+ "longest-increasing-subsequence",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -1829,8 +1851,11 @@ version = "0.1.0"
 dependencies = [
  "druid",
  "fds-toolbox-core",
+ "iced",
  "modular-ui-druid",
+ "modular-ui-iced",
  "plotters-druid",
+ "plotters-iced 0.2.0",
 ]
 
 [[package]]
@@ -2896,6 +2921,9 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash 0.7.6",
+]
 
 [[package]]
 name = "heck"
@@ -2970,7 +2998,7 @@ dependencies = [
  "image 0.24.3",
  "imgref",
  "libc",
- "lyon_path",
+ "lyon_path 0.17.7",
  "once_cell",
  "pin-weak",
  "resvg",
@@ -3001,7 +3029,7 @@ dependencies = [
  "i-slint-common",
  "i-slint-core",
  "i-slint-core-macros",
- "lyon_path",
+ "lyon_path 0.17.7",
  "once_cell",
  "pin-project",
  "pin-weak",
@@ -3046,7 +3074,7 @@ dependencies = [
  "itertools 0.10.3",
  "libc",
  "linked_hash_set",
- "lyon_path",
+ "lyon_path 0.17.7",
  "lyon_svg",
  "num_enum",
  "once_cell",
@@ -3077,9 +3105,9 @@ dependencies = [
  "i-slint-common",
  "i-slint-core-macros",
  "instant",
- "lyon_algorithms",
- "lyon_geom",
- "lyon_path",
+ "lyon_algorithms 0.17.7",
+ "lyon_geom 0.17.7",
+ "lyon_path 0.17.7",
  "lyon_svg",
  "num-traits",
  "once_cell",
@@ -3114,14 +3142,20 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6025abe6b1056c9b5adad79c484c5fd8b7012e5230f3b0439a1294ade7ded7bf"
 dependencies = [
- "iced_core",
- "iced_futures",
- "iced_graphics",
- "iced_native",
+ "iced_core 0.5.0",
+ "iced_futures 0.4.1",
+ "iced_graphics 0.3.1",
+ "iced_native 0.5.1",
  "iced_wgpu",
  "iced_winit",
  "thiserror",
 ]
+
+[[package]]
+name = "iced_core"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fafe4a5eeee85876f3bad347338456e0f3e7fcdc2381a5ce6c3ba2a60dd769bf"
 
 [[package]]
 name = "iced_core"
@@ -3131,6 +3165,17 @@ checksum = "ccf9133ceb345ec640047d5597fb8aa88e9cf74ce2d0277a9a62e2d6ed4a8148"
 dependencies = [
  "bitflags",
  "wasm-timer",
+]
+
+[[package]]
+name = "iced_futures"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89fdde2cb9c5807d23f40230297122e480428c660ad7d0373e625cd0725afa1"
+dependencies = [
+ "futures",
+ "log",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -3148,15 +3193,30 @@ dependencies = [
 
 [[package]]
 name = "iced_graphics"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7e977de2685d4c0671e6d4b6cab5edab432295507552a746cdb759c0a8dc1f5"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "iced_native 0.4.0",
+ "iced_style 0.3.0",
+ "lyon 0.16.2",
+ "raw-window-handle 0.3.4",
+ "thiserror",
+]
+
+[[package]]
+name = "iced_graphics"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2adcf703fc326e0985ea99c75f1b73e718560a7b220d57ec6478417ccb2f463f"
 dependencies = [
  "bytemuck",
  "glam",
- "iced_native",
- "iced_style",
- "lyon",
+ "iced_native 0.5.1",
+ "iced_style 0.4.0",
+ "lyon 0.17.10",
  "raw-window-handle 0.4.3",
  "thiserror",
 ]
@@ -3167,8 +3227,21 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "333979d705964832864ee7676516ab3c3df4ab0b65efb603c86a256d4adbec6f"
 dependencies = [
- "iced_native",
+ "iced_native 0.5.1",
  "ouroboros 0.13.0",
+]
+
+[[package]]
+name = "iced_native"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35030736d160e88b79edddee7ab664a2f3ac6b4046608e298b4c853030e3cc06"
+dependencies = [
+ "iced_core 0.4.0",
+ "iced_futures 0.3.0",
+ "num-traits",
+ "twox-hash",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -3177,12 +3250,21 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ca174d4693a5daa2ffcae38d5c28cf0dbd54bd8fc19848f28392cd52624751a"
 dependencies = [
- "iced_core",
- "iced_futures",
- "iced_style",
+ "iced_core 0.5.0",
+ "iced_futures 0.4.1",
+ "iced_style 0.4.0",
  "num-traits",
  "twox-hash",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "iced_style"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca93066a80759bfb31f2900d45ca4cf7500b88611607da5e380143badfcd7837"
+dependencies = [
+ "iced_core 0.4.0",
 ]
 
 [[package]]
@@ -3191,7 +3273,24 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a90028c94ab62c13cd3b6fb1499a593a51510d4729c5b4e8e60705b2b28c6bc2"
 dependencies = [
- "iced_core",
+ "iced_core 0.5.0",
+]
+
+[[package]]
+name = "iced_web"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c57300b109735abcee7aed27101eb1b29016ba07ec50b6944530982231397ad"
+dependencies = [
+ "dodrio",
+ "iced_core 0.4.0",
+ "iced_futures 0.3.0",
+ "iced_style 0.3.0",
+ "num-traits",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -3205,8 +3304,8 @@ dependencies = [
  "futures",
  "glyph_brush",
  "guillotiere",
- "iced_graphics",
- "iced_native",
+ "iced_graphics 0.3.1",
+ "iced_native 0.5.1",
  "kamadak-exif",
  "log",
  "raw-window-handle 0.4.3",
@@ -3220,9 +3319,9 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72011b895e439e2ebad8f545720e3e97c7368ecfc47a23cbfeaa9508a98af90c"
 dependencies = [
- "iced_futures",
- "iced_graphics",
- "iced_native",
+ "iced_futures 0.4.1",
+ "iced_graphics 0.3.1",
+ "iced_native 0.5.1",
  "log",
  "thiserror",
  "web-sys",
@@ -3589,6 +3688,19 @@ name = "lru"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e999beba7b6e8345721bd280141ed958096a2e4abdf74f67ff4ce49b4b54e47a"
+dependencies = [
+ "hashbrown 0.12.3",
+]
+
+[[package]]
+name = "lyon"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28d083e12e9e22298eec27751ec4a0975abac5873a3b0dcdbbecc608d333f0e9"
+dependencies = [
+ "lyon_algorithms 0.16.0",
+ "lyon_tessellation 0.16.2",
+]
 
 [[package]]
 name = "lyon"
@@ -3596,8 +3708,18 @@ version = "0.17.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf0510ed5e3e2fb80f3db2061ef5ca92d87bfda1a624bb1eacf3bd50226e4cbb"
 dependencies = [
- "lyon_algorithms",
- "lyon_tessellation",
+ "lyon_algorithms 0.17.7",
+ "lyon_tessellation 0.17.10",
+]
+
+[[package]]
+name = "lyon_algorithms"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11033936a5e9d7bf35b7ba71a19f8b6bc838f3206304175dc5b3524ca16672a8"
+dependencies = [
+ "lyon_path 0.16.2",
+ "sid",
 ]
 
 [[package]]
@@ -3606,8 +3728,19 @@ version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8037f716541ba0d84d3de05c0069f8068baf73990d55980558b84d944c8a244a"
 dependencies = [
- "lyon_path",
+ "lyon_path 0.17.7",
  "sid",
+]
+
+[[package]]
+name = "lyon_geom"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ce4e12203c428a58200b8cf1c0a3aad1cda907008ea11310bb3729593e5f933"
+dependencies = [
+ "arrayvec 0.5.2",
+ "euclid",
+ "num-traits",
 ]
 
 [[package]]
@@ -3623,11 +3756,20 @@ dependencies = [
 
 [[package]]
 name = "lyon_path"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "243c71fff16677ecde2d38794a0253a8f0417cebaacc6390677c30733831d8cb"
+dependencies = [
+ "lyon_geom 0.16.2",
+]
+
+[[package]]
+name = "lyon_path"
 version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b0a59fdf767ca0d887aa61d1b48d4bbf6a124c1a45503593f7d38ab945bfbc0"
 dependencies = [
- "lyon_geom",
+ "lyon_geom 0.17.7",
 ]
 
 [[package]]
@@ -3636,8 +3778,19 @@ version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d48d6de2455c678fc9f41c14d05555b0585ee4a12aca0447ce73fbe1334363a"
 dependencies = [
- "lyon_path",
+ "lyon_path 0.17.7",
  "svgtypes 0.5.0",
+]
+
+[[package]]
+name = "lyon_tessellation"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ecf3d769bec66396957d7c5cb91f998c4182e53fdc96cc435b6ebcd46a63cd9"
+dependencies = [
+ "arrayvec 0.5.2",
+ "lyon_path 0.16.2",
+ "sid",
 ]
 
 [[package]]
@@ -3647,7 +3800,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7230e08dd0638048e46f387f255dbe7a7344a3e6705beab53242b5af25635760"
 dependencies = [
  "float_next_after",
- "lyon_path",
+ "lyon_path 0.17.7",
 ]
 
 [[package]]
@@ -3795,9 +3948,9 @@ version = "0.1.0"
 dependencies = [
  "iced",
  "iced_lazy",
- "iced_native",
+ "iced_native 0.5.1",
  "plotters",
- "plotters-iced",
+ "plotters-iced 0.3.1",
 ]
 
 [[package]]
@@ -4628,13 +4781,34 @@ dependencies = [
 
 [[package]]
 name = "plotters-iced"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9738d4ef6b131ba478b1211e059f6dcbf457a2ea7841f936b14a2020f84f2859"
+dependencies = [
+ "cc",
+ "dodrio",
+ "iced_graphics 0.2.0",
+ "iced_native 0.4.0",
+ "iced_web",
+ "js-sys",
+ "libc",
+ "lru",
+ "num-traits",
+ "plotters",
+ "plotters-backend",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-iced"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a824740fd75e62a6c64e92fab3343e09615d20db25371299aecdf99ba7c391cf"
 dependencies = [
  "cc",
- "iced_graphics",
- "iced_native",
+ "iced_graphics 0.3.1",
+ "iced_native 0.5.1",
  "libc",
  "num-traits",
  "plotters",
@@ -6641,7 +6815,7 @@ version = "0.2.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "662cd44805586bd52971b9586b1df85cdbbd9112e4ef4d8f41559c334dc6ac3f"
 dependencies = [
- "bumpalo",
+ "bumpalo 3.10.0",
  "log",
  "once_cell",
  "proc-macro2",
