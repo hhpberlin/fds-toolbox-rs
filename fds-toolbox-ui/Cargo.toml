@@ -8,7 +8,7 @@ druid = "0.7"
 plotters-druid = "0.2"
 
 iced = "0.4"
-plotters-iced = "0.2"
+plotters-iced = "0.3"
 
 # tectonic = "0.9"
 
