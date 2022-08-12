@@ -2,10 +2,6 @@
 resolver = "2"
 members = [
     "fds-toolbox-core",
-    "modular-ui-iced",
-    "modular-ui-druid",
-    "modular-ui-dioxus",
-    "modular-ui-slint",
     "fds-toolbox-ui",
 ]
 

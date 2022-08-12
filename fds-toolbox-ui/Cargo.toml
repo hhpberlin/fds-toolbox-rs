@@ -4,14 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-druid = "0.7"
-plotters-druid = "0.2"
+iced = { version = "0.4", features = ["canvas", "tokio"] }
+iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_bar"] }
 
-iced = "0.4"
+plotters = "0.3"
 plotters-iced = "0.3"
 
-# tectonic = "0.9"
+enum_dispatch = "0.3"
 
-modular-ui-druid = { path = "../modular-ui-druid" }
-modular-ui-iced = { path = "../modular-ui-iced" }
 fds-toolbox-core = { path = "../fds-toolbox-core" }
