@@ -1,36 +1,40 @@
-use std::any::Any;
-
-use iced::{Application, Settings, executor, Command, Element, Alignment, Length};
 use iced::widget::{Column, Text};
+use iced::{
+    container, executor, Alignment, Application, Command, Container, Element, Length, Settings,
+};
 use iced_aw::{TabBar, TabLabel};
-use tab::{Tab, FdsToolboxTab};
+use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 mod panes;
-mod tab;
+mod tabs;
 
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
 }
 
+#[derive(Debug)]
 struct FdsToolbox {
-    active_tab: Option<usize>,
+    active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
+    data: FdsToolboxData,
+}
+
+#[derive(Debug)]
+struct FdsToolboxData {
+    // simulations: Vec<Simulation>,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
     TabSelected(usize),
     TabClosed(usize),
+    TabMessage(FdsToolboxTabMessage),
 }
 
 impl FdsToolbox {
-    // fn get(&self, index: usize) -> Option<&dyn Tab<FdsToolbox, Message = Box<dyn Any>>> {
-    //     if index == 0 {
-    //         Some(&self.overview_tab)
-    //     } else {
-    //         self.tabs.get(index - 1)
-    //     }
-    // }
+    pub fn active_tab(&mut self) -> Option<&mut FdsToolboxTab> {
+        self.tabs.get_mut(self.active_tab)
+    }
 }
 
 impl Application for FdsToolbox {
@@ -41,10 +45,11 @@ impl Application for FdsToolbox {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         (
             FdsToolbox {
-                active_tab: None,
+                active_tab: 0,
                 tabs: Vec::new(),
+                data: FdsToolboxData {},
             },
-            Command::none()
+            Command::none(),
         )
     }
 
@@ -57,19 +62,15 @@ impl Application for FdsToolbox {
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
-        // Column::new()
-        //     .push(Text::new("FDS Toolbox").size(50))
-        //     .padding(20)
-        //     .align_items(Alignment::Center)
-        //     .into()
-
-        let tab_bar = self.active_tab.map(|tab| (
-            self.tabs
+        let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
+            0 => Column::new().into(),
+            _ => self
+                .tabs
                 .iter()
                 .fold(
-                    TabBar::new(tab, Message::TabSelected),
+                    TabBar::new(self.active_tab, Message::TabSelected),
                     |tab_bar, tab| {
-                        let tab_label = <FdsToolboxTab as Tab<FdsToolbox>>::title(tab);
+                        let tab_label = <FdsToolboxTab as Tab<FdsToolboxData>>::title(tab);
                         tab_bar.push(TabLabel::Text(tab_label))
                     },
                 )
@@ -77,17 +78,22 @@ impl Application for FdsToolbox {
                 .tab_width(Length::Shrink)
                 .spacing(5)
                 .padding(5)
-                .text_size(32),
-            self.tabs.get(tab).map(|tab| tab.view(&mut self)),
-        ));
+                .text_size(32)
+                .into(),
+        };
 
-        let content = 
+        let content = match self.tabs.get_mut(self.active_tab) {
+            Some(tab) => tab.view(&mut self.data),
+            None => Text::new("No tabs open").into(),
+        };
 
         Column::new()
+            .push(tab_bar)
             .push(
-                self.tabs.get(self.active_tab)
-                .into())
-            .push(child)
+                Container::new(content.map(Message::TabMessage))
+                    .width(Length::Fill)
+                    .height(Length::Fill),
+            )
             .into()
     }
 }
