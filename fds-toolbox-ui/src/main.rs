@@ -1,12 +1,14 @@
 use iced::widget::{Column, Text};
 use iced::{
-    container, executor, Alignment, Application, Command, Container, Element, Length, Settings,
+    container, executor, Alignment, Application, Command, Container, Element, Length, Row, Settings,
 };
 use iced_aw::{TabBar, TabLabel};
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 mod panes;
+mod sidebar;
 mod tabs;
+mod treeview;
 
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
@@ -62,6 +64,8 @@ impl Application for FdsToolbox {
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
+        let sidebar = Column::new();
+
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
             _ => self
@@ -87,12 +91,14 @@ impl Application for FdsToolbox {
             None => Text::new("No tabs open").into(),
         };
 
-        Column::new()
-            .push(tab_bar)
+        Row::new()
+            .push(sidebar)
             .push(
-                Container::new(content.map(Message::TabMessage))
-                    .width(Length::Fill)
-                    .height(Length::Fill),
+                Column::new().push(tab_bar).push(
+                    Container::new(content.map(Message::TabMessage))
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                ),
             )
             .into()
     }
