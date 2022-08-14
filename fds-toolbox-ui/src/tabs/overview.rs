@@ -1,6 +1,6 @@
 use iced::{Command, Element, Text};
 
-use crate::{FdsToolbox, FdsToolboxData};
+use crate::{FdsToolboxData};
 
 use super::Tab;
 
@@ -16,13 +16,13 @@ impl Tab<FdsToolboxData> for OverviewTab {
 
     fn update(
         &mut self,
-        model: &mut FdsToolboxData,
-        message: Self::Message,
+        _model: &mut FdsToolboxData,
+        _message: Self::Message,
     ) -> Command<Self::Message> {
         Command::none()
     }
 
-    fn view(&mut self, model: &mut FdsToolboxData) -> Element<'_, Self::Message> {
+    fn view(&mut self, _model: &mut FdsToolboxData) -> Element<'_, Self::Message> {
         Text::new("Overview").size(20).into()
     }
 }

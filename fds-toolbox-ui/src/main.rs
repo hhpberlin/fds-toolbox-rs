@@ -1,6 +1,6 @@
 use iced::widget::{Column, Text};
 use iced::{
-    container, executor, Alignment, Application, Command, Container, Element, Length, Row, Settings,
+    executor, Application, Command, Container, Element, Length, Row, Settings,
 };
 use iced_aw::{TabBar, TabLabel};
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
@@ -59,7 +59,7 @@ impl Application for FdsToolbox {
         "FDS Toolbox".to_string()
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, _message: Self::Message) -> Command<Self::Message> {
         Command::none()
     }
 

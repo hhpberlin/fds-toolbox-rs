@@ -2,7 +2,7 @@ use std::io::Read;
 
 use csv::ErrorKind;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
+
 use uom::si::{f32::Time, time::second};
 
 #[derive(Debug, Serialize, Deserialize)]

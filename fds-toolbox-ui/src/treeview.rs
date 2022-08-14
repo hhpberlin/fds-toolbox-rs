@@ -66,7 +66,7 @@ impl<'t, Key: Eq + Copy> TreeView<'t, Key> {
             TreeMessage::Select(ref id) => self.select(id),
             TreeMessage::SelectShift(ref id) => self.select_shift(id),
             TreeMessage::SelectAlt(ref id) => self.select_alt(id),
-            TreeMessage::DoubleClick(ref id) => {}
+            TreeMessage::DoubleClick(ref _id) => {}
         }
         Command::none()
     }
@@ -75,7 +75,7 @@ impl<'t, Key: Eq + Copy> TreeView<'t, Key> {
         // Deselect everything
         self.tree.set_selected_rec(false);
 
-        if let Some(tree) = self.tree.get_mut(&id) {
+        if let Some(tree) = self.tree.get_mut(id) {
             self.selection_root = Some(*id);
             tree.set_selected(true, self.config.selection.cascade);
         }
@@ -153,9 +153,9 @@ impl<'t, Key: Eq> Tree<'t, Key> {
     fn iter_sorted(&self, sort: Sort) -> impl Iterator<Item = &Tree<Key>> {
         let mut children = self.children.iter().collect::<Vec<_>>();
         children.sort_by(|a, b| match sort {
-            Sort::None => a.name.cmp(&b.name),
-            Sort::Ascending => a.name.cmp(&b.name),
-            Sort::Descending => b.name.cmp(&a.name),
+            Sort::None => a.name.cmp(b.name),
+            Sort::Ascending => a.name.cmp(b.name),
+            Sort::Descending => b.name.cmp(a.name),
         });
         let mut result = Vec::new();
         for child in children {
@@ -198,9 +198,9 @@ impl<'t, Key: Eq> Tree<'t, Key> {
 
         let mut children = self.children.iter_mut().collect::<Vec<_>>();
         children.sort_by(|a, b| match sort {
-            Sort::None => a.name.cmp(&b.name),
-            Sort::Ascending => a.name.cmp(&b.name),
-            Sort::Descending => b.name.cmp(&a.name),
+            Sort::None => a.name.cmp(b.name),
+            Sort::Ascending => a.name.cmp(b.name),
+            Sort::Descending => b.name.cmp(a.name),
         });
 
         for child in children {

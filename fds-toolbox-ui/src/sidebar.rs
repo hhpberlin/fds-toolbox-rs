@@ -1,4 +1,4 @@
-use iced::Element;
+
 
 struct Sidebar {
     search: String,
@@ -11,5 +11,5 @@ impl Sidebar {
         }
     }
 
-    pub fn view(&self) -> () {}
+    pub fn view(&self) {}
 }
