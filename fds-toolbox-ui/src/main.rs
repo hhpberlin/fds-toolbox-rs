@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
