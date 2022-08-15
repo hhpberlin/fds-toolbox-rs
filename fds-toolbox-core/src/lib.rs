@@ -1,12 +1,7 @@
-
-
 pub mod formats;
 pub(crate) mod geom;
 pub(crate) mod lazy_data;
 pub(crate) mod sync;
-
-
-
 
 // #[tokio::main]
 // async fn main() {

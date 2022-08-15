@@ -1,6 +1,6 @@
 use iced::{Command, Element};
 
-use crate::{FdsToolboxData};
+use crate::FdsToolboxData;
 
 use self::overview::OverviewTab;
 

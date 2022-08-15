@@ -1,9 +1,9 @@
-use iced::{Command, Element, Text};
+use iced::{Column, Command, Element, Row, Text};
 
 // Based on elm version: https://github.com/gribouille/elm-treeview/blob/master/src/Treeview.elm
 
 #[derive(Debug)]
-struct Tree<'a, Key: Eq> {
+pub struct Tree<'a, Key: Eq> {
     id: Key,
     name: &'a str,
     collapsed: bool,
@@ -12,20 +12,27 @@ struct Tree<'a, Key: Eq> {
 }
 
 #[derive(Debug)]
-struct TreeView<'a, Key: Eq> {
+pub struct TreeView<'a, Key: Eq> {
     tree: Tree<'a, Key>,
-    /// The first selected element in the tree,
-    /// used for shift selection.
-    selection_root: Option<Key>,
-    config: Config,
+    info: TreeViewInfo<Key>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
+pub struct TreeViewInfo<Key: Eq> {
+    /// The first selected element in the tree,
+    /// used for shift selection.
+    pub selection_root: Option<Key>,
+    pub config: Config,
+    pub search: String,
+}
+
+#[derive(Debug, Clone)]
 enum TreeMessage<Key: Eq> {
     ToggleCollapsed(Key),
     Select(Key),
     SelectShift(Key),
     SelectAlt(Key),
+    Search(String),
     DoubleClick(Key),
 }
 
@@ -41,6 +48,7 @@ struct ConfigSelection {
     enabled: bool,
     multiple: bool,
     cascade: bool,
+    cascade_shift: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,6 +74,7 @@ impl<'t, Key: Eq + Copy> TreeView<'t, Key> {
             TreeMessage::Select(ref id) => self.select(id),
             TreeMessage::SelectShift(ref id) => self.select_shift(id),
             TreeMessage::SelectAlt(ref id) => self.select_alt(id),
+            TreeMessage::Search(str) => self.info.search = str,
             TreeMessage::DoubleClick(ref _id) => {}
         }
         Command::none()
@@ -76,20 +85,22 @@ impl<'t, Key: Eq + Copy> TreeView<'t, Key> {
         self.tree.set_selected_rec(false);
 
         if let Some(tree) = self.tree.get_mut(id) {
-            self.selection_root = Some(*id);
-            tree.set_selected(true, self.config.selection.cascade);
+            self.info.selection_root = Some(*id);
+            tree.set_selected(true, self.info.config.selection.cascade);
         }
     }
 
     fn select_shift<'a: 't>(&'a mut self, id: &Key) {
-        match self.selection_root {
+        match self.info.selection_root {
             Some(ref root) => {
                 // Deselect everything
                 self.tree.set_selected_rec(false);
 
-                self.tree.region_op(self.config.sort, id, root, |tree| {
-                    tree.set_selected(true, self.config.selection.cascade); // Cascading is very inefficient like this
-                });
+                self.tree
+                    .region_op(self.info.config.sort, id, root, |tree| {
+                        // TODO: Cascading is very inefficient like this
+                        tree.set_selected(true, self.info.config.selection.cascade_shift);
+                    });
             }
             None => self.select(id),
         }
@@ -97,12 +108,12 @@ impl<'t, Key: Eq + Copy> TreeView<'t, Key> {
 
     fn select_alt<'a: 't>(&'a mut self, id: &Key) {
         if let Some(tree) = self.tree.get_mut(id) {
-            tree.set_selected(true, self.config.selection.cascade);
+            tree.set_selected(true, self.info.config.selection.cascade);
         }
     }
 
     fn view(&self) -> Element<TreeMessage<Key>> {
-        self.tree.view()
+        self.tree.view(&self.info)
     }
 }
 
@@ -146,8 +157,22 @@ impl<'t, Key: Eq> Tree<'t, Key> {
         None
     }
 
-    fn view(&self) -> Element<TreeMessage<Key>> {
-        Text::new(self.name).into()
+    fn view(&self, info: &TreeViewInfo<Key>) -> Element<TreeMessage<Key>> {
+        let mut column = Column::new().push({
+            let mut row = Row::new();
+            if self.children.is_empty() {
+                row = row.push(Text::new(if self.collapsed { ">" } else { "V" }))
+                // TODO: Fancy icon
+            }
+            row = row.push(Text::new(self.name));
+            row
+        });
+        if !self.collapsed {
+            for child in &self.children {
+                column = column.push(child.view(info));
+            }
+        }
+        column.into()
     }
 
     fn iter_sorted(&self, sort: Sort) -> impl Iterator<Item = &Tree<Key>> {
@@ -164,6 +189,7 @@ impl<'t, Key: Eq> Tree<'t, Key> {
         }
         result.into_iter()
     }
+
     fn region_op<'a: 't>(
         &'a mut self,
         sort: Sort,

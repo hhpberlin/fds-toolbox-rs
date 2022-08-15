@@ -198,11 +198,7 @@ impl HRRStep {
 
 #[cfg(test)]
 mod tests {
-    use uom::si::{
-        mass_rate::kilogram_per_second,
-        power::kilowatt,
-        time::{second},
-    };
+    use uom::si::{mass_rate::kilogram_per_second, power::kilowatt, time::second};
 
     use super::*;
 

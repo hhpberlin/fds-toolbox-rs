@@ -1,6 +1,6 @@
 use iced::{Command, Element, Text};
 
-use crate::{FdsToolboxData};
+use crate::FdsToolboxData;
 
 use super::Tab;
 

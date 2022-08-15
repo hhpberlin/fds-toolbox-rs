@@ -1,5 +1,3 @@
-
-
 struct Sidebar {
     search: String,
 }

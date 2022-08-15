@@ -1,7 +1,5 @@
 use iced::widget::{Column, Text};
-use iced::{
-    executor, Application, Command, Container, Element, Length, Row, Settings,
-};
+use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
@@ -19,6 +17,7 @@ struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     data: FdsToolboxData,
+    tree: TreeView<'static, usize>,
 }
 
 #[derive(Debug)]
@@ -64,7 +63,7 @@ impl Application for FdsToolbox {
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
-        let sidebar = Column::new();
+        let sidebar = ;
 
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
