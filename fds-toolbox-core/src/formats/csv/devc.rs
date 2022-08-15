@@ -1,8 +1,11 @@
 use std::{io::Read, num::ParseFloatError, str::FromStr};
 
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
+
+use crate::formats::arr_meta::ArrayMeta;
 
 // TODO: Use nd-array instead?
 
@@ -16,7 +19,8 @@ pub struct Devices {
 pub struct DeviceReadings {
     unit: String,
     name: String,
-    values: Vec<f32>,
+    values: Array1<f32>,
+    meta: ArrayMeta<f32>,
 }
 
 #[derive(Error, Debug)]
@@ -90,15 +94,12 @@ impl Devices {
             None => return Err(DevicesParsingError::MissingTimeUnit),
         };
 
-        let mut times = Vec::new();
-        let mut devices = units_iter
+        let units: Vec<_> = units_iter
             .zip(names.iter().skip(1))
-            .map(|(unit, name)| DeviceReadings {
-                unit: unit.to_string(),
-                name: name.to_string(),
-                values: Vec::new(),
-            })
-            .collect::<Vec<_>>();
+            .collect();
+
+        let mut times = Vec::new();
+        let mut devices: Vec<_> = (0..units.len()).map(|_| Vec::new()).collect();
 
         let len = devices.len();
 
@@ -126,7 +127,7 @@ impl Devices {
                     let val = x
                         .parse::<f32>()
                         .map_err(|x| DevicesParsingError::ParsingError(i + 2, j + 1, x))?;
-                    devices[j].values.push(val);
+                    devices[j].push(val);
                 }
                 j += 1;
             }
@@ -137,6 +138,18 @@ impl Devices {
                 return Err(DevicesParsingError::WrongValueCount(i + 2, j, len));
             }
         }
+
+        let devices = units.into_iter()
+            .zip(devices.into_iter())
+            .map(|((unit, name), values)| {
+                let meta = ArrayMeta::new(values.iter().map(|x| *x), |x, c| x/(c as f32)).unwrap_or_default();
+                DeviceReadings {
+                unit: unit.to_string(),
+                name: name.to_string(),
+                values: Array1::from_vec(values),
+                meta,
+            }})
+            .collect::<Vec<_>>();
 
         Ok(Devices { times, devices })
     }
@@ -177,9 +190,9 @@ mod tests {
         assert_eq!(devices.devices[1].name, "Abluft_1");
         assert_eq!(devices.devices[2].name, "T_B01");
 
-        assert_eq!(devices.devices[0].values, [1.2e3]);
-        assert_eq!(devices.devices[1].values, [-2.3e-2]);
-        assert_eq!(devices.devices[2].values, [4.1e-12]);
+        assert_eq!(devices.devices[0].values[0], 1.2e3);
+        assert_eq!(devices.devices[1].values[0], -2.3e-2);
+        assert_eq!(devices.devices[2].values[0], 4.1e-12);
     }
 
     #[test]
