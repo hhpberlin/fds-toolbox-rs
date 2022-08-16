@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::formats::arr_meta::ArrayMeta;
+use crate::formats::arr_meta::ArrayStats;
 
 // TODO: Use nd-array instead?
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
-    times: Vec<Time>,
-    devices: Vec<DeviceReadings>,
+    pub times: Vec<Time>,
+    pub devices: Vec<DeviceReadings>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceReadings {
-    unit: String,
-    name: String,
-    values: Array1<f32>,
-    meta: ArrayMeta<f32>,
+    pub unit: String,
+    pub name: String,
+    pub values: Array1<f32>,
+    pub meta: ArrayStats<f32>,
 }
 
 #[derive(Error, Debug)]
@@ -142,7 +142,7 @@ impl Devices {
         let devices = units.into_iter()
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
-                let meta = ArrayMeta::new(values.iter().map(|x| *x), |x, c| x/(c as f32)).unwrap_or_default();
+                let meta = ArrayStats::new(values.iter().map(|x| *x), |x, c| x/(c as f32)).unwrap_or_default();
                 DeviceReadings {
                 unit: unit.to_string(),
                 name: name.to_string(),

@@ -3,14 +3,14 @@ use std::ops::{Add, Div, Mul, Sub};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ArrayMeta<N, M = N> {
+pub struct ArrayStats<N, M = N> {
     pub min: N,
     pub max: N,
     pub mean: M,
     pub variance: M,
 }
 
-impl<N: Default, M: Default> Default for ArrayMeta<N, M> {
+impl<N: Default, M: Default> Default for ArrayStats<N, M> {
     fn default() -> Self {
         Self {
             min: N::default(),
@@ -21,7 +21,7 @@ impl<N: Default, M: Default> Default for ArrayMeta<N, M> {
     }
 }
 
-impl<N: PartialOrd + Copy, M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy> ArrayMeta<N, M> {
+impl<N: PartialOrd + Copy, M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy> ArrayStats<N, M> {
     pub fn new(mut data: impl Iterator<Item = N>, div: fn(M, usize) -> M) -> Option<Self> {
         let first = match data.next() {
             Some(value) => value,
