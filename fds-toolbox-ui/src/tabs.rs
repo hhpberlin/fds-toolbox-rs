@@ -12,7 +12,7 @@ pub trait Tab<Model> {
     fn title(&self) -> String;
 
     fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message>;
-    fn view(&mut self, model: &mut Model) -> Element<'_, Self::Message>;
+    fn view(&self, model: &Model) -> Element<'_, Self::Message>;
 }
 
 // TODO: This is very boilerplate-y
@@ -52,7 +52,7 @@ impl Tab<FdsToolboxData> for FdsToolboxTab {
         }
     }
 
-    fn view(&mut self, model: &mut FdsToolboxData) -> Element<'_, Self::Message> {
+    fn view(&self, model: &FdsToolboxData) -> Element<'_, Self::Message> {
         match self {
             FdsToolboxTab::Overview(tab) => tab.view(model).map(FdsToolboxTabMessage::Overview),
         }

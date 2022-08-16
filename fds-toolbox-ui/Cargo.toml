@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.4", features = ["canvas", "tokio"] }
+iced = { version = "0.4", features = ["canvas", "tokio", "pure"] }
 iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_bar"] }
 
 plotters = "0.3"

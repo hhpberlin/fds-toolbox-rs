@@ -1,10 +1,13 @@
 #![warn(clippy::pedantic)]
 
+use std::collections::HashMap;
+
 use fds_toolbox_core::formats::Simulation;
 use fds_toolbox_core::formats::arr_meta::ArrayStats;
 use fds_toolbox_core::formats::csv::devc::Devices;
+use iced::pure::Pure;
 use iced::widget::{Column, Text};
-use iced::{executor, Application, Command, Container, Element, Length, Row, Settings, Scrollable, scrollable, Button, button};
+use iced::{executor, Application, Command, Container, Element, Length, Row, Settings, Scrollable, scrollable, Button, button, pure};
 use iced_aw::{TabBar, TabLabel};
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
@@ -15,7 +18,6 @@ pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
 }
 
-#[derive(Debug)]
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
@@ -23,17 +25,14 @@ struct FdsToolbox {
     sidebar: Sidebar,
 }
 
-#[derive(Debug)]
 struct Sidebar {
-    scroll: scrollable::State,
-    buttons: Vec<button::State>,
+    state: pure::State,
 }
 
 impl Sidebar {
     fn new() -> Self {
         Self {
-            scroll: scrollable::State::new(),
-            buttons: vec![button::State::new(); 3],
+            state: pure::State::new(),
         }
     }
 }
@@ -121,7 +120,7 @@ impl Application for FdsToolbox {
         };
 
         let content = match self.tabs.get_mut(self.active_tab) {
-            Some(tab) => tab.view(&mut self.data),
+            Some(tab) => tab.view(&self.data),
             None => Text::new("No tabs open").into(),
         };
 
@@ -138,14 +137,23 @@ impl Application for FdsToolbox {
     }
 }
 
-struct SidebarBlock<'a, Iter: Iterator> {
+#[derive(Debug)]
+struct SidebarBlock<'a, Iter: Iterator, Id> {
     title: &'a str,
+    id: Id,
     content: Iter,
 }
 
+#[derive(Debug)]
 struct DevcSidebar<'a> {
     name: &'a str,
     meta: &'a ArrayStats<f32>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+enum SidebarId {
+    Devc,
+
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -160,7 +168,7 @@ impl Sidebar {
     //     self.active_tab = self.tabs.len() - 1;
     // }
 
-    fn sidebar_content<'a>(data: &'a FdsToolboxData) -> impl Iterator<Item = SidebarBlock<'a, impl Iterator<Item = DevcSidebar<'a>> + 'a>> + 'a {
+    fn sidebar_content<'a>(data: &'a FdsToolboxData) -> impl Iterator<Item = SidebarBlock<'a, impl Iterator<Item = DevcSidebar<'a>> + 'a, SidebarId>> + 'a {
         let devc = data
             .simulations
             .iter()
@@ -172,31 +180,33 @@ impl Sidebar {
 
         vec![SidebarBlock {
             title: "DEVC",
+            id: SidebarId::Devc,
             content: devc,
         }]
         .into_iter()
     }
 
-    fn view_sidebar(&mut self, data: &FdsToolboxData) -> Element<'_, SidebarMessage> {
-        let mut col = Scrollable::new(&mut self.scroll)
-            .on_scroll(SidebarMessage::Scroll);
+    fn view_sidebar<'a>(&'a mut self, data: &'a FdsToolboxData) -> Element<'a, SidebarMessage> {
+        Pure::new(&mut self.state, Self::view_sidebar_pure(data)).into()
+    }
+
+    fn view_sidebar_pure(data: &FdsToolboxData) -> pure::Element<'_, SidebarMessage> {
+        let mut col = pure::column();
 
         for block in Self::sidebar_content(data) {
-            col = col.push(
-                Column::new()
-                    // .push(Button::new(self.buttons, Text::new(block.title).size(20)))
-                    .push(
-                        block
-                            .content
-                            .fold(Column::new(), |col, devc| {
-                                col.push(Text::new(devc.name))
-                            })
-                            .spacing(5)
-                            .padding(10),
-                    ),
-            );
+            let mut content = pure::column()
+                .push(pure::button(pure::text(block.title).size(20)).on_press(SidebarMessage::DevcSelected))
+                // .spacing(5)
+                .padding(10);
+
+            for elem in block.content {
+                content = content
+                    .push(pure::button(pure::text(elem.name).size(12)).on_press(SidebarMessage::DevcSelected));
+            }
+
+            col = col.push(content);
         }
 
-        col.into()
+        pure::scrollable(col).into()
     }
 }

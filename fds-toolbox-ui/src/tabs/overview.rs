@@ -22,7 +22,7 @@ impl Tab<FdsToolboxData> for OverviewTab {
         Command::none()
     }
 
-    fn view(&mut self, _model: &mut FdsToolboxData) -> Element<'_, Self::Message> {
+    fn view(&self, _model: &FdsToolboxData) -> Element<'_, Self::Message> {
         Text::new("Overview").size(20).into()
     }
 }
