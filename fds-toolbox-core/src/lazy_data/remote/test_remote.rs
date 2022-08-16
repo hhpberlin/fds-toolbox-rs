@@ -11,7 +11,7 @@ pub struct TestRemote<Key: Eq + Hash + Clone + Send> {
     request_count: RwLock<u32>,
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[error("Key not present")]
 pub struct RemoteNotFoundError;
 

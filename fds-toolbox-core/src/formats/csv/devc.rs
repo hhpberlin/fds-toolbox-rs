@@ -94,9 +94,7 @@ impl Devices {
             None => return Err(DevicesParsingError::MissingTimeUnit),
         };
 
-        let units: Vec<_> = units_iter
-            .zip(names.iter().skip(1))
-            .collect();
+        let units: Vec<_> = units_iter.zip(names.iter().skip(1)).collect();
 
         let mut times = Vec::new();
         let mut devices: Vec<_> = (0..units.len()).map(|_| Vec::new()).collect();
@@ -139,16 +137,19 @@ impl Devices {
             }
         }
 
-        let devices = units.into_iter()
+        let devices = units
+            .into_iter()
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
-                let meta = ArrayStats::new(values.iter().map(|x| *x), |x, c| x/(c as f32)).unwrap_or_default();
+                let meta = ArrayStats::new(values.iter().copied(), |x, c| x / (c as f32))
+                    .unwrap_or_default();
                 DeviceReadings {
-                unit: unit.to_string(),
-                name: name.to_string(),
-                values: Array1::from_vec(values),
-                meta,
-            }})
+                    unit: unit.to_string(),
+                    name: name.to_string(),
+                    values: Array1::from_vec(values),
+                    meta,
+                }
+            })
             .collect::<Vec<_>>();
 
         Ok(Devices { times, devices })

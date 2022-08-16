@@ -8,8 +8,6 @@ pub(crate) use loom::sync::RwLock;
 pub(crate) use loom::sync::RwLockWriteGuard;
 
 #[cfg(not(loom))]
-pub(crate) use std::sync::atomic::AtomicU64;
-#[cfg(not(loom))]
 pub(crate) use std::sync::Arc;
 #[cfg(not(loom))]
 pub(crate) use tokio::sync::RwLock;

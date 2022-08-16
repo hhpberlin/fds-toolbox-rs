@@ -1,8 +1,8 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArrayStats<N, M = N> {
     pub min: N,
     pub max: N,
@@ -21,7 +21,11 @@ impl<N: Default, M: Default> Default for ArrayStats<N, M> {
     }
 }
 
-impl<N: PartialOrd + Copy, M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy> ArrayStats<N, M> {
+impl<
+        N: PartialOrd + Copy,
+        M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy,
+    > ArrayStats<N, M>
+{
     pub fn new(mut data: impl Iterator<Item = N>, div: fn(M, usize) -> M) -> Option<Self> {
         let first = match data.next() {
             Some(value) => value,
@@ -33,8 +37,8 @@ impl<N: PartialOrd + Copy, M: Add<Output = M> + Sub<Output = M> + Div<Output = M
         let mut sum = first_m;
         let mut sum_sq = first_m * first_m;
         let mut count = 1usize;
-        let mut data = data.peekable();
-        while let Some(value) = data.next() {
+        let data = data.peekable();
+        for value in data {
             if value < min {
                 min = value;
             }
