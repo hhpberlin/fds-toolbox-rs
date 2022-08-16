@@ -28,7 +28,7 @@ struct SidebarBlock<'a, Iter: Iterator, Id> {
 }
 
 #[derive(Debug)]
-struct DevcSidebar<'a> {
+struct ArraySidebarElement<'a> {
     name: &'a str,
     meta: &'a ArrayStats<f32>,
 }
@@ -41,19 +41,18 @@ enum SidebarId {
 #[derive(Debug, Clone, Copy)]
 pub enum SidebarMessage {
     DevcSelected,
-    Scroll(f32),
 }
 
 impl Sidebar {
     fn sidebar_content<'a>(
         data: &'a FdsToolboxData,
-    ) -> impl Iterator<Item = SidebarBlock<'a, impl Iterator<Item = DevcSidebar<'a>> + 'a, SidebarId>> + 'a
+    ) -> impl Iterator<Item = SidebarBlock<'a, impl Iterator<Item = ArraySidebarElement<'a>> + 'a, SidebarId>> + 'a
     {
         let devc = data
             .simulations
             .iter()
             .flat_map(|sim| sim.devc.devices.iter())
-            .map(|devc| DevcSidebar {
+            .map(|devc| ArraySidebarElement {
                 name: &devc.name,
                 meta: &devc.meta,
             });
@@ -66,7 +65,7 @@ impl Sidebar {
         .into_iter()
     }
 
-    pub fn view_sidebar<'a>(&'a mut self, data: &'a FdsToolboxData) -> Element<'a, SidebarMessage> {
+    pub(crate) fn view_sidebar<'a>(&'a mut self, data: &'a FdsToolboxData) -> Element<'a, SidebarMessage> {
         Pure::new(&mut self.state, Self::view_sidebar_pure(data)).into()
     }
 
@@ -84,8 +83,7 @@ impl Sidebar {
 
             for elem in block.content {
                 content = content.push(
-                    pure::button(pure::text(elem.name).size(12))
-                        .on_press(SidebarMessage::DevcSelected),
+                    elem.view(SidebarMessage::DevcSelected),
                 );
             }
 
@@ -93,5 +91,13 @@ impl Sidebar {
         }
 
         pure::scrollable(col).into()
+    }
+}
+
+impl ArraySidebarElement<'_> {
+    fn view<'a, Message: Copy + 'a>(&self, m: Message) -> pure::Element<'a, Message> {
+        pure::button(pure::text(self.name).size(12))
+            .on_press(m)
+            .into()
     }
 }

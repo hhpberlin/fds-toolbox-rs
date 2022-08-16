@@ -27,7 +27,7 @@ struct FdsToolbox {
 }
 
 #[derive(Debug)]
-struct FdsToolboxData {
+pub struct FdsToolboxData {
     simulations: Vec<Simulation>,
 }
 
@@ -80,7 +80,6 @@ impl Application for FdsToolbox {
             Message::TabMessage(_) => todo!(),
             Message::SidebarMessage(message) => match message {
                 sidebar::SidebarMessage::DevcSelected => todo!(),
-                sidebar::SidebarMessage::Scroll(_scroll) => (), // self.sidebar.scroll.snap_to(scroll),
             },
         }
         Command::none()
