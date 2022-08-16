@@ -20,7 +20,7 @@ pub struct DeviceReadings {
     pub unit: String,
     pub name: String,
     pub values: Array1<f32>,
-    pub meta: ArrayStats<f32>,
+    pub stats: ArrayStats<f32>,
 }
 
 #[derive(Error, Debug)]
@@ -141,13 +141,13 @@ impl Devices {
             .into_iter()
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
-                let meta = ArrayStats::new(values.iter().copied(), |x, c| x / (c as f32))
+                let meta = ArrayStats::new_f32(values.iter().copied())
                     .unwrap_or_default();
                 DeviceReadings {
                     unit: unit.to_string(),
                     name: name.to_string(),
                     values: Array1::from_vec(values),
-                    meta,
+                    stats: meta,
                 }
             })
             .collect::<Vec<_>>();
