@@ -1,20 +1,21 @@
 pub struct Sidebar {
     state: pure::State,
-    // caches: HashMap,
+    caches: HashMap<ArrayStats<f32>, Cache>,
 }
 
 impl Sidebar {
     pub fn new() -> Self {
         Self {
             state: pure::State::new(),
+            caches: HashMap::new(),
         }
     }
 }
 
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
-use iced::canvas::{Cache, Frame, LineCap, Path, Stroke};
-use iced::pure::widget::canvas::{self, Program};
+use iced::canvas::{Frame, LineCap, Path, Stroke};
+use iced::pure::widget::canvas::{self, Program, Cache};
 use iced::{pure, Background, Color, Length, Padding, Point, Size, Vector};
 
 use iced::pure::Pure;
@@ -37,6 +38,8 @@ struct SidebarBlock<'a, Iter: Iterator, Id> {
 struct ArraySidebarElement<'a> {
     name: &'a str,
     stats: &'a ArrayStats<f32>,
+    range: &'a Range<f32>,
+    cache: &'a Cache,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -62,6 +65,8 @@ impl Sidebar {
             .map(|devc| ArraySidebarElement {
                 name: &devc.name,
                 stats: &devc.stats,
+                range: &devc.range,
+                cache: &self.caches[&devc.stats],
             });
 
         vec![SidebarBlock {
@@ -108,10 +113,7 @@ impl ArraySidebarElement<'_> {
     fn view<'a, Message: Copy + 'a>(&self, m: Message) -> pure::Element<'a, Message> {
         pure::button(
             pure::row().push(pure::text(self.name).size(20)).push(
-                Canvas::new(ArrayStatsVis {
-                    stats: self.stats.clone(),
-                    range: Range::new(0.0, 100.0),
-                })
+                Canvas::new(self)
                 .width(Length::FillPortion(3))
                 .height(Length::Units(20)),
             ),
@@ -124,14 +126,14 @@ impl ArraySidebarElement<'_> {
     }
 }
 
-#[derive(Debug)]
-struct ArrayStatsVis {
-    stats: ArrayStats<f32>,
-    range: Range<f32>,
-    // cache: Cache,
-}
+// #[derive(Debug)]
+// struct ArrayStatsVis<'a> {
+//     stats: &'a ArrayStats<f32>,
+//     range: Range<f32>,
+//     cache: &'a Cache,
+// }
 
-impl<Message> Program<Message> for ArrayStatsVis {
+impl<Message> Program<Message> for ArraySidebarElement<'_> {
     type State = ();
 
     fn draw(
@@ -140,10 +142,6 @@ impl<Message> Program<Message> for ArrayStatsVis {
         bounds: iced::Rectangle,
         cursor: iced::canvas::Cursor,
     ) -> Vec<iced::canvas::Geometry> {
-        let mut frame = Frame::new(bounds.size());
-        // let vis = self.cache.draw(bounds.size(), |frame| {
-        // let background = Path::rectangle(Point::ORIGIN, frame.size());
-        // frame.fill(&background, Color::TRANSPARENT);
         let Size {
             width: w,
             height: h,
@@ -152,6 +150,11 @@ impl<Message> Program<Message> for ArrayStatsVis {
         if w == 0.0 || h == 0.0 {
             return vec![];
         }
+
+        // let mut frame = Frame::new(bounds.size());
+        let vis = self.cache.draw(bounds.size(), |frame| {
+        // let background = Path::rectangle(Point::ORIGIN, frame.size());
+        // frame.fill(&background, Color::TRANSPARENT);
 
         let map = move |s| {
             let res = self.range.map(s) * w;
@@ -195,9 +198,9 @@ impl<Message> Program<Message> for ArrayStatsVis {
 
         frame.stroke(&std_dev, stddev_stroke);
         frame.stroke(&mean, mean_stroke);
-        // });
+        });
 
-        vec![frame.into_geometry()]
+        vec![vis.into()]
     }
 }
 

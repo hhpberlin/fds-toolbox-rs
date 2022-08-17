@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ArrayStats<N, M = N> {
     pub min: N,
     pub max: N,
@@ -11,7 +11,7 @@ pub struct ArrayStats<N, M = N> {
     pub std_dev: M,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Range<N> {
     pub min: N,
     pub max: N,
