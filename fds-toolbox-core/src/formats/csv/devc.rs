@@ -141,8 +141,7 @@ impl Devices {
             .into_iter()
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
-                let meta = ArrayStats::new_f32(values.iter().copied())
-                    .unwrap_or_default();
+                let meta = ArrayStats::new_f32(values.iter().copied()).unwrap_or_default();
                 DeviceReadings {
                     unit: unit.to_string(),
                     name: name.to_string(),

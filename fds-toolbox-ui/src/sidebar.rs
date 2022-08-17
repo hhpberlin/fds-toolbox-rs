@@ -1,5 +1,6 @@
 pub struct Sidebar {
     state: pure::State,
+    // caches: HashMap,
 }
 
 impl Sidebar {
@@ -10,9 +11,11 @@ impl Sidebar {
     }
 }
 
-use iced::canvas::{Cache, Path, Frame, LineCap, Stroke};
-use iced::pure::widget::canvas::{Program, self};
-use iced::{pure, Vector, Length, Padding, Color, Point, Background, Size};
+// use std::collections::HashMap;
+
+use iced::canvas::{Cache, Frame, LineCap, Path, Stroke};
+use iced::pure::widget::canvas::{self, Program};
+use iced::{pure, Background, Color, Length, Padding, Point, Size, Vector};
 
 use iced::pure::Pure;
 
@@ -104,19 +107,20 @@ impl Sidebar {
 impl ArraySidebarElement<'_> {
     fn view<'a, Message: Copy + 'a>(&self, m: Message) -> pure::Element<'a, Message> {
         pure::button(
-            pure::row()
-                .push(pure::text(self.name).size(20))
-                .push(
-                    Canvas::new(ArrayStatsVis{ stats: self.stats.clone(), range: Range::new(0.0, 100.0) } )
-                    .width(Length::FillPortion(3))
-                    .height(Length::Units(20))
-                )
-            )
-            .on_press(m)
-            .style(style::SidebarStyle::Element)
-            .width(Length::FillPortion(5))
-            .padding([5, 5, 5, 15])
-            .into()
+            pure::row().push(pure::text(self.name).size(20)).push(
+                Canvas::new(ArrayStatsVis {
+                    stats: self.stats.clone(),
+                    range: Range::new(0.0, 100.0),
+                })
+                .width(Length::FillPortion(3))
+                .height(Length::Units(20)),
+            ),
+        )
+        .on_press(m)
+        .style(style::SidebarStyle::Element)
+        .width(Length::FillPortion(5))
+        .padding([5, 5, 5, 15])
+        .into()
     }
 }
 
@@ -138,45 +142,59 @@ impl<Message> Program<Message> for ArrayStatsVis {
     ) -> Vec<iced::canvas::Geometry> {
         let mut frame = Frame::new(bounds.size());
         // let vis = self.cache.draw(bounds.size(), |frame| {
-            // let background = Path::rectangle(Point::ORIGIN, frame.size());
-            // frame.fill(&background, Color::TRANSPARENT);
-            let Size { width: w, height: h } = bounds.size();
+        // let background = Path::rectangle(Point::ORIGIN, frame.size());
+        // frame.fill(&background, Color::TRANSPARENT);
+        let Size {
+            width: w,
+            height: h,
+        } = bounds.size();
 
-            if w == 0.0 || h == 0.0 { return vec![]; }
-            dbg!(self);
+        if w == 0.0 || h == 0.0 {
+            return vec![];
+        }
 
-            let map = move |s| {
-                let res = self.range.map(s) * w;
-                // if !res.is_finite() || res.is_nan() { return vec![]; } // Guard against divisions by very small numbers
-                if !res.is_finite() || res.is_nan() { 0.0 } else { res }
-            };
-            // dbg!(bounds);
+        let map = move |s| {
+            let res = self.range.map(s) * w;
+            // if !res.is_finite() || res.is_nan() { return vec![]; } // Guard against divisions by very small numbers
+            if !res.is_finite() || res.is_nan() {
+                0.0
+            } else {
+                res
+            }
+        };
+        // dbg!(bounds);
 
-            let range = Path::rectangle(Point::new(map(self.stats.min), 0.0), Size::new(map(self.stats.max), h));
-            frame.fill(&range, Color::from_rgb8(0x66, 0x66, 0x66));
+        let range = Path::rectangle(
+            Point::new(map(self.stats.min), 0.0),
+            Size::new(map(self.stats.max), h),
+        );
+        frame.fill(&range, Color::from_rgb8(0x66, 0x66, 0x66));
 
-            let mean_stroke = Stroke {
-                width: 2.0,
-                color: Color::from_rgb8(0x00, 0x00, 0x00),
-                line_cap: LineCap::Round,
-                ..Stroke::default()
-            };
+        let mean_stroke = Stroke {
+            width: 2.0,
+            color: Color::from_rgb8(0x00, 0x00, 0x00),
+            line_cap: LineCap::Round,
+            ..Stroke::default()
+        };
 
-            let mean_pos = map(self.stats.mean);
-            let mean = Path::line(Point::new(mean_pos, 0.0), Point::new(mean_pos, h));
+        let mean_pos = map(self.stats.mean);
+        let mean = Path::line(Point::new(mean_pos, 0.0), Point::new(mean_pos, h));
 
-            let stddev_stroke = Stroke {
-                width: 2.0,
-                color: Color::from_rgb8(0xF0, 0x16, 0x16),
-                line_cap: LineCap::Round,
-                ..Stroke::default()
-            };
+        let stddev_stroke = Stroke {
+            width: 2.0,
+            color: Color::from_rgb8(0xF0, 0x16, 0x16),
+            line_cap: LineCap::Round,
+            ..Stroke::default()
+        };
 
-            let std_dev = map(self.stats.variance.abs().sqrt()); // TODO
-            let std_dev = Path::line(Point::new(mean_pos - std_dev, h/2.0), Point::new(mean_pos + std_dev, h/2.0));
+        let std_dev = map(self.stats.variance.abs().sqrt()); // TODO
+        let std_dev = Path::line(
+            Point::new(mean_pos - std_dev, h / 2.0),
+            Point::new(mean_pos + std_dev, h / 2.0),
+        );
 
-            frame.stroke(&std_dev, stddev_stroke);
-            frame.stroke(&mean, mean_stroke);
+        frame.stroke(&std_dev, stddev_stroke);
+        frame.stroke(&mean, mean_stroke);
         // });
 
         vec![frame.into_geometry()]
@@ -184,7 +202,10 @@ impl<Message> Program<Message> for ArrayStatsVis {
 }
 
 mod style {
-    use iced::{pure::widget::{button, toggler}, Vector, Color};
+    use iced::{
+        pure::widget::{button, toggler},
+        Color, Vector,
+    };
 
     pub enum SidebarStyle {
         Title,
@@ -227,9 +248,7 @@ mod style {
     impl toggler::StyleSheet for SidebarStyle {
         fn hovered(&self, is_active: bool) -> iced::toggler::Style {
             iced::toggler::Style {
-                background: iced::Color::from_rgb8(
-                    0xFF, 0xFF, 0xFF,
-                ),
+                background: iced::Color::from_rgb8(0xFF, 0xFF, 0xFF),
                 background_border: None,
                 foreground: Color::from_rgb8(0x00, 0x00, 0x00),
                 foreground_border: None,
@@ -238,9 +257,7 @@ mod style {
 
         fn active(&self, is_active: bool) -> iced::toggler::Style {
             iced::toggler::Style {
-                background: iced::Color::from_rgb8(
-                    0x0F, 0xFF, 0xFF,
-                ),
+                background: iced::Color::from_rgb8(0x0F, 0xFF, 0xFF),
                 background_border: None,
                 foreground: Color::from_rgb8(0x00, 0x00, 0x00),
                 foreground_border: None,

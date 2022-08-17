@@ -34,7 +34,11 @@ impl<
         M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy,
     > ArrayStats<N, M>
 {
-    pub fn new(mut data: impl Iterator<Item = N>, div: fn(M, usize) -> M, sqrt: fn(M) -> M) -> Option<Self> {
+    pub fn new(
+        mut data: impl Iterator<Item = N>,
+        div: fn(M, usize) -> M,
+        sqrt: fn(M) -> M,
+    ) -> Option<Self> {
         let first = match data.next() {
             Some(value) => value,
             None => return None,
@@ -77,7 +81,10 @@ impl<
             Some(value) => value,
             None => return None,
         };
-        let mut range = Range { min: first.min, max: first.max };
+        let mut range = Range {
+            min: first.min,
+            max: first.max,
+        };
         for stats in iter {
             if stats.min < range.min {
                 range.min = stats.min;
@@ -97,7 +104,8 @@ impl<N> Range<N> {
 }
 
 impl<N: Sub + Copy> Range<N>
-    where <N as Sub>::Output: Div<<N as Sub>::Output>
+where
+    <N as Sub>::Output: Div<<N as Sub>::Output>,
 {
     pub fn width(&self) -> <N as Sub>::Output {
         self.max - self.min
