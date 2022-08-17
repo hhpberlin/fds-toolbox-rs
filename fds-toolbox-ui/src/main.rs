@@ -11,9 +11,11 @@ use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 mod panes;
 mod tabs;
 
-mod sidebar;
+mod array_stats_vis;
+mod select_list;
+// mod sidebar;
 
-use sidebar::Sidebar;
+// use sidebar::Sidebar;
 
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
@@ -23,7 +25,7 @@ struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     data: FdsToolboxData,
-    sidebar: Sidebar,
+    // sidebar: Sidebar,
 }
 
 #[derive(Debug)]
@@ -36,7 +38,7 @@ enum Message {
     TabSelected(usize),
     TabClosed(usize),
     TabMessage(FdsToolboxTabMessage),
-    SidebarMessage(sidebar::SidebarMessage),
+    // SidebarMessage(sidebar::SidebarMessage),
 }
 
 impl FdsToolbox {
@@ -63,7 +65,7 @@ impl Application for FdsToolbox {
                         .unwrap(),
                     }],
                 },
-                sidebar: Sidebar::new(),
+                // sidebar: Sidebar::new(),
             },
             Command::none(),
         )
@@ -78,15 +80,15 @@ impl Application for FdsToolbox {
             Message::TabSelected(_) => todo!(),
             Message::TabClosed(_) => todo!(),
             Message::TabMessage(_) => todo!(),
-            Message::SidebarMessage(message) => match message {
-                sidebar::SidebarMessage::DevcSelected => todo!(),
-            },
+            // Message::SidebarMessage(message) => match message {
+            //     sidebar::SidebarMessage::DevcSelected => todo!(),
+            // },
         }
         Command::none()
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
-        let sidebar = self.sidebar.view_sidebar(&self.data);
+        // let sidebar = self.sidebar.view_sidebar(&self.data);
 
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
@@ -114,7 +116,7 @@ impl Application for FdsToolbox {
         };
 
         Row::new()
-            .push(sidebar.map(Message::SidebarMessage))
+            // .push(sidebar.map(Message::SidebarMessage))
             .push(
                 Column::new().push(tab_bar).push(
                     Container::new(content.map(Message::TabMessage))
