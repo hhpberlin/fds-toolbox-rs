@@ -5,7 +5,16 @@ use crate::FdsToolboxData;
 use super::Tab;
 
 #[derive(Debug)]
-pub struct OverviewTab;
+pub struct OverviewTab {
+}
+
+impl OverviewTab {
+    pub fn new() -> Self {
+        Self {
+
+        }
+    }
+}
 
 impl Tab<FdsToolboxData> for OverviewTab {
     type Message = ();
@@ -22,7 +31,8 @@ impl Tab<FdsToolboxData> for OverviewTab {
         Command::none()
     }
 
-    fn view(&self, _model: &FdsToolboxData) -> Element<'_, Self::Message> {
+    fn view(&self, model: &FdsToolboxData) -> Element<'_, Self::Message> {
+        let devc = &model.simulations[0].devc;
         Text::new("Overview").size(20).into()
     }
 }

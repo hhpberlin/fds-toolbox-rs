@@ -4,7 +4,7 @@ use crate::FdsToolboxData;
 
 use self::overview::OverviewTab;
 
-mod overview;
+pub mod overview;
 
 pub trait Tab<Model> {
     type Message;

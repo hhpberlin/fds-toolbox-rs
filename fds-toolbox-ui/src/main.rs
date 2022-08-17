@@ -1,14 +1,17 @@
 #![warn(clippy::pedantic)]
 
+use std::sync::Arc;
+
 use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::Simulation;
 
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
+use tabs::overview::OverviewTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
-mod panes;
+mod plot;
 mod tabs;
 
 mod array_stats_vis;
@@ -56,7 +59,7 @@ impl Application for FdsToolbox {
         (
             FdsToolbox {
                 active_tab: 0,
-                tabs: Vec::new(),
+                tabs: vec![FdsToolboxTab::Overview(OverviewTab::new())],
                 data: FdsToolboxData {
                     simulations: vec![Simulation {
                         devc: Devices::from_reader(
@@ -77,8 +80,8 @@ impl Application for FdsToolbox {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::TabSelected(_) => todo!(),
-            Message::TabClosed(_) => todo!(),
+            Message::TabSelected(tab) => self.active_tab = tab,
+            Message::TabClosed(tab) => { self.tabs.remove(tab); },
             Message::TabMessage(_) => todo!(),
             // Message::SidebarMessage(message) => match message {
             //     sidebar::SidebarMessage::DevcSelected => todo!(),

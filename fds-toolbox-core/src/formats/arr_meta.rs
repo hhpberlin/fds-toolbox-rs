@@ -116,6 +116,18 @@ where
     }
 }
 
+impl<N> Range<N> {
+    pub fn into_range(self) -> std::ops::Range<N> {
+        self.min..self.max
+    }
+}
+
+impl<N> Into<std::ops::Range<N>> for Range<N> {
+    fn into(self) -> std::ops::Range<N> {
+        self.into_range()
+    }
+}
+
 impl ArrayStats<f32> {
     pub fn new_f32(data: impl Iterator<Item = f32>) -> Option<Self> {
         Self::new(data, |a, b| a / b as f32, |a| a.sqrt())
