@@ -126,11 +126,12 @@ impl<N> Range<N> {
     }
 
     pub fn expand(&self, new: N) -> Self
-        where N: PartialOrd + Copy
+    where
+        N: PartialOrd + Copy,
     {
         Self::new(
-            if self.min < new {self.min} else {new}, 
-            if self.max > new {self.max} else {new},
+            if self.min < new { self.min } else { new },
+            if self.max > new { self.max } else { new },
         )
     }
 }

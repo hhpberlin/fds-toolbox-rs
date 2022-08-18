@@ -1,7 +1,5 @@
 #![warn(clippy::pedantic)]
 
-use std::sync::Arc;
-
 use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::Simulation;
 
@@ -56,26 +54,36 @@ impl Application for FdsToolbox {
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut this =
-            FdsToolbox {
-                active_tab: 0,
-                tabs: vec![],
-                data: FdsToolboxData {
-                    simulations: vec![Simulation {
-                        devc: Devices::from_reader(
-                            include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
-                        )
-                        .unwrap(),
-                    }],
-                },
-                // sidebar: Sidebar::new(),
-            };
-            this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(this.data.simulations[0].devc.get_device("T_B05").unwrap().iter_f32().collect())));
-            this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(this.data.simulations[0].devc.get_device("AST_1OG_Glaswand_N2").unwrap().iter_f32().collect())));
-        (
-            this,
-            Command::none(),
-        )
+        let mut this = FdsToolbox {
+            active_tab: 0,
+            tabs: vec![],
+            data: FdsToolboxData {
+                simulations: vec![Simulation {
+                    devc: Devices::from_reader(
+                        include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
+                    )
+                    .unwrap(),
+                }],
+            },
+            // sidebar: Sidebar::new(),
+        };
+        this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+            this.data.simulations[0]
+                .devc
+                .get_device("T_B05")
+                .unwrap()
+                .iter_f32()
+                .collect(),
+        )));
+        this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+            this.data.simulations[0]
+                .devc
+                .get_device("AST_1OG_Glaswand_N2")
+                .unwrap()
+                .iter_f32()
+                .collect(),
+        )));
+        (this, Command::none())
     }
 
     fn title(&self) -> String {
@@ -85,7 +93,9 @@ impl Application for FdsToolbox {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::TabSelected(tab) => self.active_tab = tab,
-            Message::TabClosed(tab) => { self.tabs.remove(tab); },
+            Message::TabClosed(tab) => {
+                self.tabs.remove(tab);
+            }
             Message::TabMessage(_) => todo!(),
             // Message::SidebarMessage(message) => match message {
             //     sidebar::SidebarMessage::DevcSelected => todo!(),

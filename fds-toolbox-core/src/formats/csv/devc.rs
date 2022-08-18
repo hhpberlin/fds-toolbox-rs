@@ -1,6 +1,5 @@
-use std::{io::Read, num::ParseFloatError, str::FromStr, collections::HashMap};
+use std::{collections::HashMap, io::Read, num::ParseFloatError, str::FromStr};
 
-use blake3::Hash;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -149,12 +148,14 @@ impl Devices {
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
                 let meta = ArrayStats::new_f32(values.iter().copied()).unwrap_or_default();
-                (name.to_string(),
-                DeviceReadings {
-                    unit: unit.to_string(),
-                    values: Array1::from_vec(values),
-                    stats: meta,
-                })
+                (
+                    name.to_string(),
+                    DeviceReadings {
+                        unit: unit.to_string(),
+                        values: Array1::from_vec(values),
+                        stats: meta,
+                    },
+                )
             })
             .collect::<HashMap<_, _>>();
 
@@ -173,11 +174,17 @@ impl Devices {
 
 impl<'a> Device<'a> {
     pub fn iter(&'a self) -> impl Iterator<Item = (Time, f32)> + 'a {
-        self.times.iter().copied().zip(self.readings.values.iter().copied())
+        self.times
+            .iter()
+            .copied()
+            .zip(self.readings.values.iter().copied())
     }
 
     pub fn iter_f32(&'a self) -> impl Iterator<Item = (f32, f32)> + 'a {
-        self.times.iter().map(|x| x.value).zip(self.readings.values.iter().copied())
+        self.times
+            .iter()
+            .map(|x| x.value)
+            .zip(self.readings.values.iter().copied())
         // self.iter().map(|(t, v)| (t.value, v))
     }
 }
@@ -238,7 +245,10 @@ mod tests {
         );
         assert_eq!(devices.devices.len(), 3);
 
-        assert_eq!(devices.get_device("Zuluft_1").unwrap().readings.unit, "m3/s");
+        assert_eq!(
+            devices.get_device("Zuluft_1").unwrap().readings.unit,
+            "m3/s"
+        );
         assert_eq!(devices.get_device("Abluft_1").unwrap().readings.unit, "C");
         assert_eq!(devices.get_device("T_B01").unwrap().readings.unit, "1/m");
 
@@ -246,9 +256,18 @@ mod tests {
         // assert_eq!(devices.devices[1].name, "Abluft_1");
         // assert_eq!(devices.devices[2].name, "T_B01");
 
-        assert_eq!(devices.get_device("Zuluft_1").unwrap().readings.values[0], 1.2e3);
-        assert_eq!(devices.get_device("Abluft_1").unwrap().readings.values[0], -2.3e-2);
-        assert_eq!(devices.get_device("T_B01").unwrap().readings.values[0], 4.1e-12);
+        assert_eq!(
+            devices.get_device("Zuluft_1").unwrap().readings.values[0],
+            1.2e3
+        );
+        assert_eq!(
+            devices.get_device("Abluft_1").unwrap().readings.values[0],
+            -2.3e-2
+        );
+        assert_eq!(
+            devices.get_device("T_B01").unwrap().readings.values[0],
+            4.1e-12
+        );
     }
 
     #[test]

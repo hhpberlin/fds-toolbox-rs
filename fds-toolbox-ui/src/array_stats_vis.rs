@@ -8,7 +8,7 @@ use iced::{
             Canvas,
         },
     },
-    Color, Length, Point, Size,
+    Color, Point, Size,
 };
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct ArrayStatsVis<'a> {
 }
 
 impl ArrayStatsVis<'_> {
-    pub fn view<'a, Message: Copy + 'a>(&'a self, m: Message) -> pure::Element<'a, Message> {
+    pub fn view<'a, Message: Copy + 'a>(&'a self, _m: Message) -> pure::Element<'a, Message> {
         Canvas::new(self).into()
     }
 }
@@ -36,9 +36,9 @@ impl<Message> Program<Message> for ArrayStatsVis<'_> {
 
     fn draw(
         &self,
-        state: &Self::State,
+        _state: &Self::State,
         bounds: iced::Rectangle,
-        cursor: iced::canvas::Cursor,
+        _cursor: iced::canvas::Cursor,
     ) -> Vec<iced::canvas::Geometry> {
         let Size {
             width: w,
@@ -98,6 +98,6 @@ impl<Message> Program<Message> for ArrayStatsVis<'_> {
             frame.stroke(&mean, mean_stroke);
         });
 
-        vec![vis.into()]
+        vec![vis]
     }
 }
