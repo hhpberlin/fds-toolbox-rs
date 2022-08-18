@@ -10,7 +10,7 @@ pub enum ChartMessage {
 }
 
 #[derive(Debug)]
-pub struct MyChart
+pub struct Plot2D
 {
     cache: Cache,
     data: Option<MyChartData>,
@@ -24,7 +24,7 @@ pub struct MyChartData
     y_range: Range<f32>,
 }
 
-impl Chart<ChartMessage> for MyChart
+impl Chart<ChartMessage> for Plot2D
 {
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
@@ -67,7 +67,7 @@ pub fn get_range<X: Copy + PartialOrd, Y: Copy + PartialOrd>(mut iter: impl Iter
     Some(iter.fold((xr, yr), |(xr, yr), (x, y)| (xr.expand(x), yr.expand(y))))
 }
 
-impl MyChart
+impl Plot2D
 {
     pub fn from_(data: Vec<(f32, f32)>) -> Self {
         let r = get_range(data.iter().copied());

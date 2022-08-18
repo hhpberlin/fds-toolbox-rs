@@ -1,24 +1,24 @@
 use fds_toolbox_core::formats::csv::devc::Device;
 use iced::{Command, Element, Text};
 
-use crate::{FdsToolboxData, plot::{MyChart, ChartMessage}};
+use crate::{FdsToolboxData, plot::{Plot2D, ChartMessage}};
 
 use super::Tab;
 
 #[derive(Debug)]
-pub struct OverviewTab {
-    chart: MyChart,
+pub struct PlotTab {
+    chart: Plot2D,
 }
 
-impl OverviewTab {
-    pub fn new(device: Device) -> Self {
+impl PlotTab {
+    pub fn new(coords: Vec<(f32, f32)>) -> Self {
         Self {
-            chart: MyChart::from_(device.iter_f32().collect())
+            chart: Plot2D::from_(coords)
         }
     }
 }
 
-impl Tab<FdsToolboxData> for OverviewTab {
+impl Tab<FdsToolboxData> for PlotTab {
     type Message = ChartMessage;
 
     fn title(&self) -> String {

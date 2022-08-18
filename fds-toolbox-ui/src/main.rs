@@ -8,7 +8,7 @@ use fds_toolbox_core::formats::Simulation;
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
-use tabs::overview::OverviewTab;
+use tabs::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 mod plot;
@@ -70,7 +70,8 @@ impl Application for FdsToolbox {
                 },
                 // sidebar: Sidebar::new(),
             };
-        this.tabs.push(FdsToolboxTab::Overview(OverviewTab::new(this.data.simulations[0].devc.get_device("T_B05").unwrap())));
+            this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(this.data.simulations[0].devc.get_device("T_B05").unwrap().iter_f32().collect())));
+            this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(this.data.simulations[0].devc.get_device("AST_1OG_Glaswand_N2").unwrap().iter_f32().collect())));
         (
             this,
             Command::none(),

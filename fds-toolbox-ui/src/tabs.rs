@@ -2,9 +2,9 @@ use iced::{Command, Element};
 
 use crate::FdsToolboxData;
 
-use self::overview::OverviewTab;
+use self::plot_tab::PlotTab;
 
-pub mod overview;
+pub mod plot_tab;
 
 pub trait Tab<Model> {
     type Message;
@@ -19,12 +19,12 @@ pub trait Tab<Model> {
 
 #[derive(Debug)]
 pub enum FdsToolboxTab {
-    Overview(OverviewTab),
+    Overview(PlotTab),
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum FdsToolboxTabMessage {
-    Overview(<OverviewTab as Tab<FdsToolboxData>>::Message),
+    Overview(<PlotTab as Tab<FdsToolboxData>>::Message),
 }
 
 impl Tab<FdsToolboxData> for FdsToolboxTab {
