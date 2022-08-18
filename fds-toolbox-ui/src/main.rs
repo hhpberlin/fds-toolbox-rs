@@ -56,10 +56,10 @@ impl Application for FdsToolbox {
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        (
+        let mut this =
             FdsToolbox {
                 active_tab: 0,
-                tabs: vec![FdsToolboxTab::Overview(OverviewTab::new())],
+                tabs: vec![],
                 data: FdsToolboxData {
                     simulations: vec![Simulation {
                         devc: Devices::from_reader(
@@ -69,7 +69,10 @@ impl Application for FdsToolbox {
                     }],
                 },
                 // sidebar: Sidebar::new(),
-            },
+            };
+        this.tabs.push(FdsToolboxTab::Overview(OverviewTab::new(this.data.simulations[0].devc.get_device("T_B05").unwrap())));
+        (
+            this,
             Command::none(),
         )
     }

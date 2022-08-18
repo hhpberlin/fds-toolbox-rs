@@ -1,5 +1,6 @@
-use std::{io::Read, num::ParseFloatError, str::FromStr};
+use std::{io::Read, num::ParseFloatError, str::FromStr, collections::HashMap};
 
+use blake3::Hash;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -12,15 +13,21 @@ use crate::formats::arr_meta::ArrayStats;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
     pub times: Vec<Time>,
-    pub devices: Vec<DeviceReadings>,
+    pub devices: HashMap<String, DeviceReadings>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceReadings {
     pub unit: String,
-    pub name: String,
+    // pub name: String,
     pub values: Array1<f32>,
     pub stats: ArrayStats<f32>,
+}
+
+pub struct Device<'a> {
+    pub name: &'a str,
+    pub readings: &'a DeviceReadings,
+    pub times: &'a [Time],
 }
 
 #[derive(Error, Debug)]
@@ -142,20 +149,65 @@ impl Devices {
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
                 let meta = ArrayStats::new_f32(values.iter().copied()).unwrap_or_default();
+                (name.to_string(),
                 DeviceReadings {
                     unit: unit.to_string(),
-                    name: name.to_string(),
                     values: Array1::from_vec(values),
                     stats: meta,
-                }
+                })
             })
-            .collect::<Vec<_>>();
+            .collect::<HashMap<_, _>>();
 
         Ok(Devices { times, devices })
     }
 
-    pub fn get_device(&self, name: &str) -> Option<&DeviceReadings> {
-        self.devices.iter().find(|x| x.name == name)
+    pub fn get_device(&self, name: &str) -> Option<Device> {
+        let readings = self.devices.get_key_value(name);
+        readings.map(|(name, readings)| Device {
+            name,
+            readings,
+            times: &self.times,
+        })
+    }
+}
+
+impl<'a> Device<'a> {
+    pub fn iter(&'a self) -> impl Iterator<Item = (Time, f32)> + 'a {
+        self.times.iter().copied().zip(self.readings.values.iter().copied())
+    }
+
+    pub fn iter_f32(&'a self) -> impl Iterator<Item = (f32, f32)> + 'a {
+        self.times.iter().map(|x| x.value).zip(self.readings.values.iter().copied())
+        // self.iter().map(|(t, v)| (t.value, v))
+    }
+}
+
+// pub struct IntoIter<'a>(&'a Device<'a>);
+
+// impl IntoIterator for IntoIter<'_> {
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.0.iter().next()
+//     }
+// }
+
+// impl<'a> IntoIterator for &'a Device<'a> {
+//     type Item = (f32, f32);
+//     // type IntoIter = std::iter::Zip<std::slice::Iter<'a, Time>, std::slice::Iter<'a, f32>>;
+//     type IntoIter = impl Iterator<Item = (f32, f32)> + 'a;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+
+impl<'a, 'b> IntoIterator for &'a Device<'b> {
+    type Item = (f32, f32);
+    // type IntoIter = std::iter::Zip<std::slice::Iter<'a, Time>, std::slice::Iter<'a, f32>>;
+    // TODO: Tracking https://github.com/rust-lang/rust/issues/63063 to avoid alloc
+    type IntoIter = Box<dyn Iterator<Item = (f32, f32)> + 'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Box::new(self.iter_f32())
     }
 }
 
@@ -186,17 +238,17 @@ mod tests {
         );
         assert_eq!(devices.devices.len(), 3);
 
-        assert_eq!(devices.devices[0].unit, "m3/s");
-        assert_eq!(devices.devices[1].unit, "C");
-        assert_eq!(devices.devices[2].unit, "1/m");
+        assert_eq!(devices.get_device("Zuluft_1").unwrap().readings.unit, "m3/s");
+        assert_eq!(devices.get_device("Abluft_1").unwrap().readings.unit, "C");
+        assert_eq!(devices.get_device("T_B01").unwrap().readings.unit, "1/m");
 
-        assert_eq!(devices.devices[0].name, "Zuluft_1");
-        assert_eq!(devices.devices[1].name, "Abluft_1");
-        assert_eq!(devices.devices[2].name, "T_B01");
+        // assert_eq!(devices.devices[0].name, "Zuluft_1");
+        // assert_eq!(devices.devices[1].name, "Abluft_1");
+        // assert_eq!(devices.devices[2].name, "T_B01");
 
-        assert_eq!(devices.devices[0].values[0], 1.2e3);
-        assert_eq!(devices.devices[1].values[0], -2.3e-2);
-        assert_eq!(devices.devices[2].values[0], 4.1e-12);
+        assert_eq!(devices.get_device("Zuluft_1").unwrap().readings.values[0], 1.2e3);
+        assert_eq!(devices.get_device("Abluft_1").unwrap().readings.values[0], -2.3e-2);
+        assert_eq!(devices.get_device("T_B01").unwrap().readings.values[0], 4.1e-12);
     }
 
     #[test]

@@ -2,29 +2,29 @@ use fds_toolbox_core::formats::arr_meta::Range;
 use iced::{Element, Length, canvas::{Cache, Frame, Geometry}, Size};
 use plotters::prelude::*;
 use plotters_iced::{Chart, ChartWidget, DrawingBackend, ChartBuilder};
+// use uom::si::f32::Time;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ChartMessage {
 
 }
 
-pub struct MyChart<Iter>
-    where for<'a> &'a Iter: IntoIterator<Item = (f32, f32)>
+#[derive(Debug)]
+pub struct MyChart
 {
     cache: Cache,
-    data: Option<MyChartData<Iter>>,
+    data: Option<MyChartData>,
 }
 
-pub struct MyChartData<Iter>
-    where for<'a> &'a Iter: IntoIterator<Item = (f32, f32)>
+#[derive(Debug)]
+pub struct MyChartData
 {
-    data: Iter,
+    data: Vec<(f32, f32)>,
     x_range: Range<f32>,
     y_range: Range<f32>,
 }
 
-impl<Iter> Chart<ChartMessage> for MyChart<Iter>
-    where for<'a> &'a Iter: IntoIterator<Item = (f32, f32)>
+impl Chart<ChartMessage> for MyChart
 {
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
@@ -52,7 +52,7 @@ impl<Iter> Chart<ChartMessage> for MyChart<Iter>
         chart
             .draw_series(
                 LineSeries::new(
-                    data.data.into_iter(),
+                    data.data.iter().copied(),
                     color.stroke_width(2),
                 ),
             )
@@ -60,18 +60,17 @@ impl<Iter> Chart<ChartMessage> for MyChart<Iter>
     }
 }
 
-pub fn get_range<T: Copy + PartialOrd>(iter: impl Iterator<Item = (T, T)>) -> Option<(Range<T>, Range<T>)> {
+pub fn get_range<X: Copy + PartialOrd, Y: Copy + PartialOrd>(mut iter: impl Iterator<Item = (X, Y)>) -> Option<(Range<X>, Range<Y>)> {
     let first = iter.next()?;
     let xr = Range::new(first.0, first.0);
     let yr = Range::new(first.1, first.1);
     Some(iter.fold((xr, yr), |(xr, yr), (x, y)| (xr.expand(x), yr.expand(y))))
 }
 
-impl<Iter> MyChart<Iter>
-    where for<'a> &'a Iter: IntoIterator<Item = (f32, f32)>
+impl MyChart
 {
-    pub fn from_(data: Iter) -> Self {
-        let r = get_range(data.into_iter());
+    pub fn from_(data: Vec<(f32, f32)>) -> Self {
+        let r = get_range(data.iter().copied());
         let data = match r {
             Some((x_range, y_range)) => Some(MyChartData {
                 data,
@@ -86,7 +85,7 @@ impl<Iter> MyChart<Iter>
         }
     }
 
-    pub fn view(&mut self)->Element<ChartMessage> {
+    pub fn view(&mut self) -> Element<ChartMessage> {
         ChartWidget::new(self)
             .width(Length::Units(200))
             .height(Length::Units(200))

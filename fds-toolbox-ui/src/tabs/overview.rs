@@ -1,3 +1,4 @@
+use fds_toolbox_core::formats::csv::devc::Device;
 use iced::{Command, Element, Text};
 
 use crate::{FdsToolboxData, plot::{MyChart, ChartMessage}};
@@ -6,12 +7,13 @@ use super::Tab;
 
 #[derive(Debug)]
 pub struct OverviewTab {
+    chart: MyChart,
 }
 
 impl OverviewTab {
-    pub fn new() -> Self {
+    pub fn new(device: Device) -> Self {
         Self {
-
+            chart: MyChart::from_(device.iter_f32().collect())
         }
     }
 }
@@ -31,15 +33,13 @@ impl Tab<FdsToolboxData> for OverviewTab {
         Command::none()
     }
 
-    fn view(&self, model: &FdsToolboxData) -> Element<'_, Self::Message> {
-        let devc = &model.simulations[0].devc;
+    fn view<'a, 'b>(&'a mut self, model: &'b FdsToolboxData) -> Element<'_, Self::Message> {
+        // let devc = &model.simulations[0].devc;
         // Text::new("Overview").size(20).into()
 
-        let times = devc.times.iter().map(|x| x.value);
-        let values = devc.devices[1].values.iter().map(|x| *x);
-        let coords = times.zip(values);
-        let coords = coords.collect::<Vec<_>>(); // TODO: Don't alloc for this
+        // let values = devc.get_device("Abluft_1").unwrap();
+        // let mogus: () = MyChart::from_(values);
 
-        MyChart::from_(coords).view()
+        self.chart.view()
     }
 }
