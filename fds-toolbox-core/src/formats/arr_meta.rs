@@ -120,6 +120,19 @@ impl<N> Range<N> {
     pub fn into_range(self) -> std::ops::Range<N> {
         self.min..self.max
     }
+
+    pub fn into_range_inclusive(self) -> std::ops::RangeInclusive<N> {
+        self.min..=self.max
+    }
+
+    pub fn expand(&self, new: N) -> Self
+        where N: PartialOrd + Copy
+    {
+        Self::new(
+            if self.min < new {self.min} else {new}, 
+            if self.max > new {self.max} else {new},
+        )
+    }
 }
 
 impl<N> Into<std::ops::Range<N>> for Range<N> {

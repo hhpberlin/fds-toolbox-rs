@@ -153,6 +153,10 @@ impl Devices {
 
         Ok(Devices { times, devices })
     }
+
+    pub fn get_device(&self, name: &str) -> Option<&DeviceReadings> {
+        self.devices.iter().find(|x| x.name == name)
+    }
 }
 
 #[cfg(test)]

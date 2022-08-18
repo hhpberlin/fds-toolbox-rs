@@ -12,7 +12,7 @@ use tabs::overview::OverviewTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 mod plot;
-mod tabs;
+pub mod tabs;
 
 mod array_stats_vis;
 mod select_list;

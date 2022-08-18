@@ -1,6 +1,6 @@
 use iced::{Command, Element, Text};
 
-use crate::FdsToolboxData;
+use crate::{FdsToolboxData, plot::{MyChart, ChartMessage}};
 
 use super::Tab;
 
@@ -17,7 +17,7 @@ impl OverviewTab {
 }
 
 impl Tab<FdsToolboxData> for OverviewTab {
-    type Message = ();
+    type Message = ChartMessage;
 
     fn title(&self) -> String {
         "Overview".to_string()
@@ -33,6 +33,13 @@ impl Tab<FdsToolboxData> for OverviewTab {
 
     fn view(&self, model: &FdsToolboxData) -> Element<'_, Self::Message> {
         let devc = &model.simulations[0].devc;
-        Text::new("Overview").size(20).into()
+        // Text::new("Overview").size(20).into()
+
+        let times = devc.times.iter().map(|x| x.value);
+        let values = devc.devices[1].values.iter().map(|x| *x);
+        let coords = times.zip(values);
+        let coords = coords.collect::<Vec<_>>(); // TODO: Don't alloc for this
+
+        MyChart::from_(coords).view()
     }
 }
