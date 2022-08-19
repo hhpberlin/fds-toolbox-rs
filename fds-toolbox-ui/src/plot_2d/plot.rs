@@ -15,7 +15,7 @@ pub enum ChartMessage {}
 #[derive(Debug)]
 pub struct Plot2D {
     cache: Cache,
-    data: Vec<Plot2DDataBoxed>,
+    data: Vec<Box<dyn Plottable2D>>,
 }
 
 type BoxCoordIter = Box<dyn Iterator<Item = (f32, f32)>>;
@@ -36,11 +36,25 @@ impl<Iter: Iterator<Item = (f32, f32)>> Debug for Plot2DData<Iter> {
     }
 }
 
-pub trait Plottable2D {
+impl Plottable2D for Vec<(f32, f32)> {
+    fn plot_data<'a>(&'a self) -> Option<Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>> {
+        let (x_range, y_range) = match (Range::range_iter(self.iter().map(|(x, _)| *x)), Range::range_iter(self.iter().map(|(_, y)| *y))) {
+            (Some(x_range), Some(y_range)) => (x_range, y_range),
+            _ => return None,
+        };
+        Some(Plot2DData {
+            data: Box::new(self.iter().copied()),
+            x_range,
+            y_range,
+        })
+    }
+}
+
+pub trait Plottable2D: Debug {
     // TODO: Tracking https://github.com/rust-lang/rust/issues/63063 to avoid alloc
     // type IntoIter: Iterator<Item = (f32, f32)>;
     // type IntoIter = impl Iterator<Item = (f32, f32)>;
-    fn plot_data<'a>(&'a self) -> Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>;
+    fn plot_data<'a>(&'a self) -> Option<Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>>;
 }
 
 impl Chart<ChartMessage> for Plot2D {
@@ -52,25 +66,36 @@ impl Chart<ChartMessage> for Plot2D {
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
-        let data = &self.data;
+        // TODO: Avoid alloc by reusing iterator?
+        let data = self.data.iter().map(|x| x.plot_data()).filter_map(|x| x).collect::<Vec<_>>(); 
+
+        let x_range = Range::max_iter(data.iter().map(|x| x.x_range));
+        let y_range = Range::max_iter(data.iter().map(|x| x.y_range));
+
+        let (x_range, y_range) = match (x_range, y_range) {
+            (Some(x_range), Some(y_range)) => (x_range, y_range),
+            // _ => return,
+            _ => (Range::new(0.0, 1.0), Range::new(0.0, 1.0)),
+        };
 
         let mut chart = chart
-            .build_cartesian_2d(data.x_range.into_range(), data.y_range.into_range())
+            .build_cartesian_2d(x_range.into_range(), y_range.into_range())
             .expect("failed to build chart");
 
         chart.configure_mesh().draw().expect("failed to draw mesh");
 
         let color = Palette99::pick(4).mix(0.9);
 
-        data.map
-        chart
-            .draw_series(LineSeries::new(
-                data,
-                color.stroke_width(2),
-            ))
-            // .label("y = x^2")
-            // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
-            .expect("failed to draw chart data");
+        for data in data.into_iter() {
+            chart
+                .draw_series(LineSeries::new(
+                    data.data,
+                    color.stroke_width(2),
+                ))
+                // .label("y = x^2")
+                // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
+                .expect("failed to draw chart data");
+        }
 
 
         // chart
@@ -93,18 +118,15 @@ pub fn get_range<X: Copy + PartialOrd, Y: Copy + PartialOrd>(
 
 impl Plot2D {
     pub fn from_(data: Vec<(f32, f32)>) -> Self {
-        let r = get_range(data.iter().copied());
-        let data = r.map(|(x_range, y_range)| Plot2DData {
-            data: Box::new(data.iter().copied()) as BoxCoordIter,
-            x_range,
-            y_range,
-        });
+        // let r = get_range(data.iter().copied());
+        // let data = r.map(|(x_range, y_range)| Plot2DData {
+        //     data: Box::new(data.iter().copied()) as BoxCoordIter,
+        //     x_range,
+        //     y_range,
+        // });
         Self {
             cache: Cache::new(),
-            data: match data {
-                Some(data) => vec![data],
-                None => vec![],
-            },
+            data: vec![Box::new(data)],
         }
     }
 

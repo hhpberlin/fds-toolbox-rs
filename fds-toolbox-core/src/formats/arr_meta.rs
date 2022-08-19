@@ -86,7 +86,7 @@ impl<
             max: first.max,
         };
         for stats in iter {
-            range = range.max(new);
+            range = range.max(Range::new(stats.min, stats.max));
         }
         Some(range)
     }
@@ -121,10 +121,10 @@ impl<N> Range<N> {
     pub fn into_range_inclusive(self) -> std::ops::RangeInclusive<N> {
         self.min..=self.max
     }
+}
 
+impl<N: PartialOrd + Copy> Range<N> {
     pub fn expand(&self, new: N) -> Self
-    where
-        N: PartialOrd + Copy,
     {
         Self::new(
             if self.min < new { self.min } else { new },
@@ -133,15 +133,42 @@ impl<N> Range<N> {
     }
 
     pub fn max(&self, new: Range<N>) -> Self
-    where
-        N: PartialOrd + Copy,
     {
         Self::new(
             if self.min < new.min { self.min } else { new.min },
             if self.max > new.max { self.max } else { new.max },
         )
     }
+
+    pub fn range_iter(iter: impl IntoIterator<Item = N>) -> Option<Range<N>> {
+        iter.into_iter().fold(None, |acc, n| {
+            match acc {
+                Some(acc) => Some(acc.expand(n)),
+                None => Some(Range::new(n, n)),
+            }
+        })
+    }
+
+    pub fn max_iter(iter: impl IntoIterator<Item = Range<N>>) -> Option<Range<N>> {
+        iter.into_iter().fold(None, |acc, range| {
+            match acc {
+                Some(acc) => Some(acc.max(range)),
+                None => Some(range),
+            }
+        })
+    }
 }
+
+// trait RangeExt<N>: Iterator {
+//     fn expand(&self, new: N) -> Range<N>
+//         where Self::Item == N;
+//     {
+
+//     }
+//     fn max(&self, new: Self) -> Self;
+// }
+// impl<N: PartialOrd + Copy, I: Iterator<Item = Range<N>>> I {}
+// }
 
 impl<N> Into<std::ops::Range<N>> for Range<N> {
     fn into(self) -> std::ops::Range<N> {
