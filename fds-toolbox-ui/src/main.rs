@@ -9,7 +9,6 @@ use iced_aw::{TabBar, TabLabel};
 use tabs::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
-mod plot;
 pub mod tabs;
 
 mod array_stats_vis;

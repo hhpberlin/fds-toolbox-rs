@@ -4,6 +4,7 @@ use crate::FdsToolboxData;
 
 use self::plot_tab::PlotTab;
 
+mod plot;
 pub mod plot_tab;
 
 pub trait Tab<Model> {

@@ -1,9 +1,8 @@
 use iced::{Command, Element};
 
-use crate::{
-    plot::{ChartMessage, Plot2D},
-    FdsToolboxData,
-};
+use crate::FdsToolboxData;
+
+use super::plot::{ChartMessage, Plot2D};
 
 use super::Tab;
 
