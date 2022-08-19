@@ -2,7 +2,7 @@ use iced::{Command, Element};
 
 use crate::{FdsToolboxData, tabs::Tab};
 
-use super::plot::{ChartMessage, Plot2D};
+use super::{plot::{ChartMessage, Plot2D}, plottable::Plottable2D};
 
 #[derive(Debug)]
 pub struct PlotTab {
@@ -10,10 +10,9 @@ pub struct PlotTab {
 }
 
 impl PlotTab {
-    #[must_use]
-    pub fn new(coords: Vec<(f32, f32)>) -> Self {
+    pub fn new(plt: Box<dyn Plottable2D>) -> Self {
         Self {
-            chart: Plot2D::from_(coords),
+            chart: Plot2D::from_single_plottable(plt),
         }
     }
 }

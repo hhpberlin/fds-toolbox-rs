@@ -71,10 +71,17 @@ impl Chart<ChartMessage> for Plot2D {
 }
 
 impl Plot2D {
-    pub fn from_(data: Vec<(f32, f32)>) -> Self {
+    pub fn new() -> Self {
+        Self {
+            cache: Cache::default(),
+            data: Vec::new(),
+        }
+    }
+
+    pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
         Self {
             cache: Cache::new(),
-            data: vec![Box::new(data)],
+            data: vec![plt],
         }
     }
 

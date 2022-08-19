@@ -1,5 +1,7 @@
 #![warn(clippy::pedantic)]
 
+use std::sync::Arc;
+
 use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::Simulation;
 
@@ -25,7 +27,7 @@ pub fn main() -> iced::Result {
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
-    data: FdsToolboxData,
+    data: Arc<FdsToolboxData>,
     // sidebar: Sidebar,
 }
 
@@ -46,6 +48,21 @@ impl FdsToolbox {
     pub fn active_tab(&mut self) -> Option<&mut FdsToolboxTab> {
         self.tabs.get_mut(self.active_tab)
     }
+
+    async fn open_some_tabs(&mut self) {
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+            Box::new(self.data.simulations[0]
+                            .devc
+                            .get_device("T_B05")
+                            .unwrap()),
+        )));
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+            Box::new(self.data.simulations[0]
+                            .devc
+                            .get_device("AST_1OG_Glaswand_N2")
+                            .unwrap()),
+        )));
+    }
 }
 
 impl Application for FdsToolbox {
@@ -57,32 +74,16 @@ impl Application for FdsToolbox {
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
-            data: FdsToolboxData {
+            data: Arc::new(FdsToolboxData {
                 simulations: vec![Simulation {
                     devc: Devices::from_reader(
                         include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
                     )
                     .unwrap(),
                 }],
-            },
+            }),
             // sidebar: Sidebar::new(),
         };
-        this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
-            this.data.simulations[0]
-                .devc
-                .get_device("T_B05")
-                .unwrap()
-                .iter_f32()
-                .collect(),
-        )));
-        this.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
-            this.data.simulations[0]
-                .devc
-                .get_device("AST_1OG_Glaswand_N2")
-                .unwrap()
-                .iter_f32()
-                .collect(),
-        )));
         (this, Command::none())
     }
 
