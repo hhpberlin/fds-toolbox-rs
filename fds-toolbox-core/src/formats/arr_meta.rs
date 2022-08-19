@@ -140,7 +140,7 @@ impl<N: PartialOrd + Copy> Range<N> {
         )
     }
 
-    pub fn range_iter(iter: impl IntoIterator<Item = N>) -> Option<Range<N>> {
+    pub fn from_iter_val(iter: impl IntoIterator<Item = N>) -> Option<Range<N>> {
         iter.into_iter().fold(None, |acc, n| {
             match acc {
                 Some(acc) => Some(acc.expand(n)),
@@ -149,7 +149,7 @@ impl<N: PartialOrd + Copy> Range<N> {
         })
     }
 
-    pub fn max_iter(iter: impl IntoIterator<Item = Range<N>>) -> Option<Range<N>> {
+    pub fn from_iter_range(iter: impl IntoIterator<Item = Range<N>>) -> Option<Range<N>> {
         iter.into_iter().fold(None, |acc, range| {
             match acc {
                 Some(acc) => Some(acc.max(range)),

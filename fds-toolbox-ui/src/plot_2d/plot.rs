@@ -7,6 +7,8 @@ use iced::{
 };
 use plotters::prelude::*;
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
+
+use super::plottable::Plottable2D;
 // use uom::si::f32::Time;
 
 #[derive(Debug, Clone, Copy)]
@@ -16,45 +18,6 @@ pub enum ChartMessage {}
 pub struct Plot2D {
     cache: Cache,
     data: Vec<Box<dyn Plottable2D>>,
-}
-
-type BoxCoordIter = Box<dyn Iterator<Item = (f32, f32)>>;
-type Plot2DDataBoxed = Plot2DData<BoxCoordIter>;
-
-pub struct Plot2DData<Iter: Iterator<Item = (f32, f32)>> {
-    data: Iter,
-    x_range: Range<f32>,
-    y_range: Range<f32>,
-}
-
-impl<Iter: Iterator<Item = (f32, f32)>> Debug for Plot2DData<Iter> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Plot2DData")
-            .field("x_range", &self.x_range)
-            .field("y_range", &self.y_range)
-            .finish()
-    }
-}
-
-impl Plottable2D for Vec<(f32, f32)> {
-    fn plot_data<'a>(&'a self) -> Option<Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>> {
-        let (x_range, y_range) = match (Range::range_iter(self.iter().map(|(x, _)| *x)), Range::range_iter(self.iter().map(|(_, y)| *y))) {
-            (Some(x_range), Some(y_range)) => (x_range, y_range),
-            _ => return None,
-        };
-        Some(Plot2DData {
-            data: Box::new(self.iter().copied()),
-            x_range,
-            y_range,
-        })
-    }
-}
-
-pub trait Plottable2D: Debug {
-    // TODO: Tracking https://github.com/rust-lang/rust/issues/63063 to avoid alloc
-    // type IntoIter: Iterator<Item = (f32, f32)>;
-    // type IntoIter = impl Iterator<Item = (f32, f32)>;
-    fn plot_data<'a>(&'a self) -> Option<Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>>;
 }
 
 impl Chart<ChartMessage> for Plot2D {
@@ -69,8 +32,8 @@ impl Chart<ChartMessage> for Plot2D {
         // TODO: Avoid alloc by reusing iterator?
         let data = self.data.iter().map(|x| x.plot_data()).filter_map(|x| x).collect::<Vec<_>>(); 
 
-        let x_range = Range::max_iter(data.iter().map(|x| x.x_range));
-        let y_range = Range::max_iter(data.iter().map(|x| x.y_range));
+        let x_range = Range::from_iter_range(data.iter().map(|x| x.x_range));
+        let y_range = Range::from_iter_range(data.iter().map(|x| x.y_range));
 
         let (x_range, y_range) = match (x_range, y_range) {
             (Some(x_range), Some(y_range)) => (x_range, y_range),
@@ -107,23 +70,8 @@ impl Chart<ChartMessage> for Plot2D {
     }
 }
 
-pub fn get_range<X: Copy + PartialOrd, Y: Copy + PartialOrd>(
-    mut iter: impl Iterator<Item = (X, Y)>,
-) -> Option<(Range<X>, Range<Y>)> {
-    let first = iter.next()?;
-    let xr = Range::new(first.0, first.0);
-    let yr = Range::new(first.1, first.1);
-    Some(iter.fold((xr, yr), |(xr, yr), (x, y)| (xr.expand(x), yr.expand(y))))
-}
-
 impl Plot2D {
     pub fn from_(data: Vec<(f32, f32)>) -> Self {
-        // let r = get_range(data.iter().copied());
-        // let data = r.map(|(x_range, y_range)| Plot2DData {
-        //     data: Box::new(data.iter().copied()) as BoxCoordIter,
-        //     x_range,
-        //     y_range,
-        // });
         Self {
             cache: Cache::new(),
             data: vec![Box::new(data)],

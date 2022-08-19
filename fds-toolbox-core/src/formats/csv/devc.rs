@@ -23,6 +23,7 @@ pub struct DeviceReadings {
     pub stats: ArrayStats<f32>,
 }
 
+#[derive(Debug)]
 pub struct Device<'a> {
     pub name: &'a str,
     pub readings: &'a DeviceReadings,
