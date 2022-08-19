@@ -1,10 +1,8 @@
 use iced::{Command, Element};
 
-use crate::FdsToolboxData;
+use crate::{FdsToolboxData, tabs::Tab};
 
 use super::plot::{ChartMessage, Plot2D};
-
-use super::Tab;
 
 #[derive(Debug)]
 pub struct PlotTab {

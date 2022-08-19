@@ -86,15 +86,12 @@ impl<
             max: first.max,
         };
         for stats in iter {
-            if stats.min < range.min {
-                range.min = stats.min;
-            }
-            if stats.max > range.max {
-                range.max = stats.max;
-            }
+            range = range.max(new);
         }
         Some(range)
     }
+
+
 }
 
 impl<N> Range<N> {
@@ -132,6 +129,16 @@ impl<N> Range<N> {
         Self::new(
             if self.min < new { self.min } else { new },
             if self.max > new { self.max } else { new },
+        )
+    }
+
+    pub fn max(&self, new: Range<N>) -> Self
+    where
+        N: PartialOrd + Copy,
+    {
+        Self::new(
+            if self.min < new.min { self.min } else { new.min },
+            if self.max > new.max { self.max } else { new.max },
         )
     }
 }

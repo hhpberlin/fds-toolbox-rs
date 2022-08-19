@@ -6,9 +6,10 @@ use fds_toolbox_core::formats::Simulation;
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
-use tabs::plot_tab::PlotTab;
+use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
+pub mod plot_2d;
 pub mod tabs;
 
 mod array_stats_vis;

@@ -1,4 +1,6 @@
-use fds_toolbox_core::formats::arr_meta::Range;
+use std::fmt::Debug;
+
+use fds_toolbox_core::formats::{arr_meta::Range, csv::devc::Device};
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size,
@@ -13,14 +15,32 @@ pub enum ChartMessage {}
 #[derive(Debug)]
 pub struct Plot2D {
     cache: Cache,
-    data: Option<MyChartData>,
+    data: Vec<Plot2DDataBoxed>,
 }
 
-#[derive(Debug)]
-pub struct MyChartData {
-    data: Vec<(f32, f32)>,
+type BoxCoordIter = Box<dyn Iterator<Item = (f32, f32)>>;
+type Plot2DDataBoxed = Plot2DData<BoxCoordIter>;
+
+pub struct Plot2DData<Iter: Iterator<Item = (f32, f32)>> {
+    data: Iter,
     x_range: Range<f32>,
     y_range: Range<f32>,
+}
+
+impl<Iter: Iterator<Item = (f32, f32)>> Debug for Plot2DData<Iter> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Plot2DData")
+            .field("x_range", &self.x_range)
+            .field("y_range", &self.y_range)
+            .finish()
+    }
+}
+
+pub trait Plottable2D {
+    // TODO: Tracking https://github.com/rust-lang/rust/issues/63063 to avoid alloc
+    // type IntoIter: Iterator<Item = (f32, f32)>;
+    // type IntoIter = impl Iterator<Item = (f32, f32)>;
+    fn plot_data<'a>(&'a self) -> Plot2DData<Box<dyn Iterator<Item = (f32, f32)> + 'a>>;
 }
 
 impl Chart<ChartMessage> for Plot2D {
@@ -32,10 +52,7 @@ impl Chart<ChartMessage> for Plot2D {
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
-        let data = match &self.data {
-            Some(data) => data,
-            None => return,
-        };
+        let data = &self.data;
 
         let mut chart = chart
             .build_cartesian_2d(data.x_range.into_range(), data.y_range.into_range())
@@ -45,9 +62,10 @@ impl Chart<ChartMessage> for Plot2D {
 
         let color = Palette99::pick(4).mix(0.9);
 
+        data.map
         chart
             .draw_series(LineSeries::new(
-                data.data.iter().copied(),
+                data,
                 color.stroke_width(2),
             ))
             // .label("y = x^2")
@@ -55,12 +73,12 @@ impl Chart<ChartMessage> for Plot2D {
             .expect("failed to draw chart data");
 
 
-        chart
-            .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
-            .border_style(&BLACK)
-            .draw()
-            .expect("failed to draw chart labels");
+        // chart
+        //     .configure_series_labels()
+        //     .background_style(&WHITE.mix(0.8))
+        //     .border_style(&BLACK)
+        //     .draw()
+        //     .expect("failed to draw chart labels");
     }
 }
 
@@ -76,14 +94,17 @@ pub fn get_range<X: Copy + PartialOrd, Y: Copy + PartialOrd>(
 impl Plot2D {
     pub fn from_(data: Vec<(f32, f32)>) -> Self {
         let r = get_range(data.iter().copied());
-        let data = r.map(|(x_range, y_range)| MyChartData {
-            data,
+        let data = r.map(|(x_range, y_range)| Plot2DData {
+            data: Box::new(data.iter().copied()) as BoxCoordIter,
             x_range,
             y_range,
         });
         Self {
             cache: Cache::new(),
-            data,
+            data: match data {
+                Some(data) => vec![data],
+                None => vec![],
+            },
         }
     }
 
