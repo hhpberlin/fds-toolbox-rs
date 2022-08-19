@@ -30,7 +30,7 @@ impl Chart<ChartMessage> for Plot2D {
     }
 
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
-        let chart = chart.x_label_area_size(0).y_label_area_size(28).margin(20);
+        let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
         let data = match &self.data {
             Some(data) => data,
@@ -41,6 +41,8 @@ impl Chart<ChartMessage> for Plot2D {
             .build_cartesian_2d(data.x_range.into_range(), data.y_range.into_range())
             .expect("failed to build chart");
 
+        chart.configure_mesh().draw().expect("failed to draw mesh");
+
         let color = Palette99::pick(4).mix(0.9);
 
         chart
@@ -48,7 +50,17 @@ impl Chart<ChartMessage> for Plot2D {
                 data.data.iter().copied(),
                 color.stroke_width(2),
             ))
+            // .label("y = x^2")
+            // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
             .expect("failed to draw chart data");
+
+
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .draw()
+            .expect("failed to draw chart labels");
     }
 }
 
@@ -77,8 +89,8 @@ impl Plot2D {
 
     pub fn view(&mut self) -> Element<ChartMessage> {
         ChartWidget::new(self)
-            .width(Length::Units(200))
-            .height(Length::Units(200))
+            .width(Length::Fill)
+            .height(Length::Fill)
             .into()
     }
 }
