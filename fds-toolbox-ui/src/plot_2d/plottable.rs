@@ -13,7 +13,7 @@ pub trait Plottable2D: Debug {
     fn store_static(&self) -> Option<Vec<(f32, f32)>> {
         let data = self.plot_data()?;
         let vec: Vec<_> = data.data.collect();
-        Some(Plot2DData::new(vec., x_range, y_range))
+        Some(vec)
     }
 }
 

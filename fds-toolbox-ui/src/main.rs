@@ -9,6 +9,7 @@ use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
+use plot_2d::plottable::Plottable2D;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;
@@ -49,18 +50,18 @@ impl FdsToolbox {
         self.tabs.get_mut(self.active_tab)
     }
 
-    async fn open_some_tabs(&mut self) {
+    fn open_some_tabs(&mut self) {
         self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
             Box::new(self.data.simulations[0]
                             .devc
                             .get_device("T_B05")
-                            .unwrap()),
+                            .unwrap().store_static().unwrap()),
         )));
         self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
             Box::new(self.data.simulations[0]
                             .devc
                             .get_device("AST_1OG_Glaswand_N2")
-                            .unwrap()),
+                            .unwrap().store_static().unwrap()),
         )));
     }
 }
@@ -84,6 +85,7 @@ impl Application for FdsToolbox {
             }),
             // sidebar: Sidebar::new(),
         };
+        Self::open_some_tabs(&mut this);
         (this, Command::none())
     }
 

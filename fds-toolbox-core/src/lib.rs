@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod formats;
 pub(crate) mod geom;
 pub(crate) mod lazy_data;
