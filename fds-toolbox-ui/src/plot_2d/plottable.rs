@@ -1,4 +1,4 @@
-use fds_toolbox_core::formats::{arr_meta::Range, self};
+use fds_toolbox_core::formats::{self, arr_meta::Range};
 use std::fmt::Debug;
 
 type BoxCoordIter<'a> = Box<dyn Iterator<Item = (f32, f32)> + 'a>;
@@ -45,7 +45,10 @@ impl<Iter: Iterator<Item = (f32, f32)>> Plot2DData<Iter> {
         Self::from_fn_iter(|| data.into_iter(), || data.into_iter())
     }
 
-    pub fn from_fn_iter<'a, RIter: Iterator<Item = (f32, f32)>>(range_data: impl Fn() -> RIter, data: impl FnOnce() -> Iter) -> Option<Self> {
+    pub fn from_fn_iter<'a, RIter: Iterator<Item = (f32, f32)>>(
+        range_data: impl Fn() -> RIter,
+        data: impl FnOnce() -> Iter,
+    ) -> Option<Self> {
         // TODO: This iterates twice for no good reason, as long as the compiler isn't smart enough to optimize it away anyways
         let x_range = Range::from_iter_val(range_data().map(|(x, _)| x))?;
         let y_range = Range::from_iter_val(range_data().map(|(_, y)| y))?;
@@ -53,7 +56,8 @@ impl<Iter: Iterator<Item = (f32, f32)>> Plot2DData<Iter> {
     }
 
     pub fn boxed<'a>(self) -> Plot2DDataBoxed<'a>
-        where Iter: 'a
+    where
+        Iter: 'a,
     {
         Plot2DData {
             data: Box::new(self.data),
@@ -64,12 +68,18 @@ impl<Iter: Iterator<Item = (f32, f32)>> Plot2DData<Iter> {
 }
 
 impl<'a> Plot2DDataBoxed<'a> {
-    pub fn from_iter_box<Iter: Iterator<Item = (f32, f32)> + 'a>(data: impl IntoIterator<IntoIter = Iter> + Copy) -> Option<Self> {
+    pub fn from_iter_box<Iter: Iterator<Item = (f32, f32)> + 'a>(
+        data: impl IntoIterator<IntoIter = Iter> + Copy,
+    ) -> Option<Self> {
         Self::from_fn_iter_box(|| data.into_iter())
     }
 
-    pub fn from_fn_iter_box<Iter: Iterator<Item = (f32, f32)> + 'a>(data: impl Fn() -> Iter) -> Option<Self> {
-        Self::from_fn_iter(&data, || Box::new(data()) as Box<dyn Iterator<Item = (f32, f32)>>)
+    pub fn from_fn_iter_box<Iter: Iterator<Item = (f32, f32)> + 'a>(
+        data: impl Fn() -> Iter,
+    ) -> Option<Self> {
+        Self::from_fn_iter(&data, || {
+            Box::new(data()) as Box<dyn Iterator<Item = (f32, f32)>>
+        })
     }
 }
 

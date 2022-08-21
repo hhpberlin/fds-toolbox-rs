@@ -90,8 +90,6 @@ impl<
         }
         Some(range)
     }
-
-
 }
 
 impl<N> Range<N> {
@@ -124,37 +122,39 @@ impl<N> Range<N> {
 }
 
 impl<N: PartialOrd + Copy> Range<N> {
-    pub fn expand(&self, new: N) -> Self
-    {
+    pub fn expand(&self, new: N) -> Self {
         Self::new(
             if self.min < new { self.min } else { new },
             if self.max > new { self.max } else { new },
         )
     }
 
-    pub fn max(&self, new: Range<N>) -> Self
-    {
+    pub fn max(&self, new: Range<N>) -> Self {
         Self::new(
-            if self.min < new.min { self.min } else { new.min },
-            if self.max > new.max { self.max } else { new.max },
+            if self.min < new.min {
+                self.min
+            } else {
+                new.min
+            },
+            if self.max > new.max {
+                self.max
+            } else {
+                new.max
+            },
         )
     }
 
     pub fn from_iter_val(iter: impl IntoIterator<Item = N>) -> Option<Range<N>> {
-        iter.into_iter().fold(None, |acc, n| {
-            match acc {
-                Some(acc) => Some(acc.expand(n)),
-                None => Some(Range::new(n, n)),
-            }
+        iter.into_iter().fold(None, |acc, n| match acc {
+            Some(acc) => Some(acc.expand(n)),
+            None => Some(Range::new(n, n)),
         })
     }
 
     pub fn from_iter_range(iter: impl IntoIterator<Item = Range<N>>) -> Option<Range<N>> {
-        iter.into_iter().fold(None, |acc, range| {
-            match acc {
-                Some(acc) => Some(acc.max(range)),
-                None => Some(range),
-            }
+        iter.into_iter().fold(None, |acc, range| match acc {
+            Some(acc) => Some(acc.max(range)),
+            None => Some(range),
         })
     }
 }

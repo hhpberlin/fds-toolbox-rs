@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use fds_toolbox_core::formats::{arr_meta::Range, csv::devc::Device};
+use fds_toolbox_core::formats::{arr_meta::Range};
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size,
@@ -30,7 +30,11 @@ impl Chart<ChartMessage> for Plot2D {
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
         // TODO: Avoid alloc by reusing iterator?
-        let data = self.data.iter().map(|x| x.plot_data()).filter_map(|x| x).collect::<Vec<_>>(); 
+        let data = self
+            .data
+            .iter()
+            .filter_map(|x| x.plot_data())
+            .collect::<Vec<_>>();
 
         let x_range = Range::from_iter_range(data.iter().map(|x| x.x_range));
         let y_range = Range::from_iter_range(data.iter().map(|x| x.y_range));
@@ -49,17 +53,13 @@ impl Chart<ChartMessage> for Plot2D {
 
         let color = Palette99::pick(4).mix(0.9);
 
-        for data in data.into_iter() {
+        for data in data {
             chart
-                .draw_series(LineSeries::new(
-                    data.data,
-                    color.stroke_width(2),
-                ))
+                .draw_series(LineSeries::new(data.data, color.stroke_width(2)))
                 // .label("y = x^2")
                 // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
                 .expect("failed to draw chart data");
         }
-
 
         // chart
         //     .configure_series_labels()
@@ -71,14 +71,14 @@ impl Chart<ChartMessage> for Plot2D {
 }
 
 impl Plot2D {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             cache: Cache::default(),
             data: Vec::new(),
         }
     }
 
-    pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
+    #[must_use] pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
         Self {
             cache: Cache::new(),
             data: vec![plt],

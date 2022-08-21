@@ -1,5 +1,8 @@
 #![warn(clippy::pedantic)]
 
+use std::fmt::Debug;
+
+
 use std::sync::Arc;
 
 use fds_toolbox_core::formats::csv::devc::Devices;
@@ -51,18 +54,24 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
-            Box::new(self.data.simulations[0]
-                            .devc
-                            .get_device("T_B05")
-                            .unwrap().store_static().unwrap()),
-        )));
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
-            Box::new(self.data.simulations[0]
-                            .devc
-                            .get_device("AST_1OG_Glaswand_N2")
-                            .unwrap().store_static().unwrap()),
-        )));
+        self.tabs
+            .push(FdsToolboxTab::Overview(PlotTab::new(Box::new(
+                self.data.simulations[0]
+                    .devc
+                    .get_device("T_B05")
+                    .unwrap()
+                    .store_static()
+                    .unwrap(),
+            ))));
+        self.tabs
+            .push(FdsToolboxTab::Overview(PlotTab::new(Box::new(
+                self.data.simulations[0]
+                    .devc
+                    .get_device("AST_1OG_Glaswand_N2")
+                    .unwrap()
+                    .store_static()
+                    .unwrap(),
+            ))));
     }
 }
 

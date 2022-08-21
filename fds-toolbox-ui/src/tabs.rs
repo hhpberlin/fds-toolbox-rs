@@ -1,6 +1,6 @@
 use iced::{Command, Element};
 
-use crate::{FdsToolboxData, plot_2d::plot_tab::PlotTab};
+use crate::{plot_2d::plot_tab::PlotTab, FdsToolboxData};
 
 pub trait Tab<Model> {
     type Message;
