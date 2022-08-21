@@ -30,6 +30,10 @@ pub struct Device<'a> {
     pub times: &'a [Time],
 }
 
+// pub struct DeviceArc {
+
+// }
+
 #[derive(Error, Debug)]
 pub enum DevicesParsingError {
     #[error("Missing units header (first line)")]

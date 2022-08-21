@@ -1,7 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
 use uom::si::f32::{Power, Time};
 
-use crate::geom::geom::Point3;
+use crate::geom::Point3;
 
 pub struct FdsOut {
     job_id: String,

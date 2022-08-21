@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use fds_toolbox_core::formats::{arr_meta::Range};
+use fds_toolbox_core::formats::arr_meta::Range;
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size,
@@ -71,14 +71,16 @@ impl Chart<ChartMessage> for Plot2D {
 }
 
 impl Plot2D {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             cache: Cache::default(),
             data: Vec::new(),
         }
     }
 
-    #[must_use] pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
+    #[must_use]
+    pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
         Self {
             cache: Cache::new(),
             data: vec![plt],
@@ -90,5 +92,11 @@ impl Plot2D {
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
+    }
+}
+
+impl Default for Plot2D {
+    fn default() -> Self {
+        Self::new()
     }
 }

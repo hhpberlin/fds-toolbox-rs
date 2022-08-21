@@ -13,7 +13,8 @@ pub struct PlotTab {
 }
 
 impl PlotTab {
-    #[must_use] pub fn new(plt: Box<dyn Plottable2D>) -> Self {
+    #[must_use]
+    pub fn new(plt: Box<dyn Plottable2D>) -> Self {
         Self {
             chart: Plot2D::from_single_plottable(plt),
         }

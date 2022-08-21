@@ -1,7 +1,6 @@
-#![warn(clippy::pedantic)]
+// #![warn(clippy::pedantic)]
 
 use std::fmt::Debug;
-
 
 use std::sync::Arc;
 
@@ -24,6 +23,7 @@ mod select_list;
 
 // use sidebar::Sidebar;
 
+//
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
 }
@@ -31,8 +31,9 @@ pub fn main() -> iced::Result {
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
-    data: Arc<FdsToolboxData>,
+    data: FdsToolboxData,
     // sidebar: Sidebar,
+    // data: Store,
 }
 
 #[derive(Debug)]
@@ -84,14 +85,14 @@ impl Application for FdsToolbox {
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
-            data: Arc::new(FdsToolboxData {
+            data: FdsToolboxData {
                 simulations: vec![Simulation {
                     devc: Devices::from_reader(
                         include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
                     )
                     .unwrap(),
                 }],
-            }),
+            },
             // sidebar: Sidebar::new(),
         };
         Self::open_some_tabs(&mut this);

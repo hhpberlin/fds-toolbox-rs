@@ -170,9 +170,9 @@ impl<N: PartialOrd + Copy> Range<N> {
 // impl<N: PartialOrd + Copy, I: Iterator<Item = Range<N>>> I {}
 // }
 
-impl<N> Into<std::ops::Range<N>> for Range<N> {
-    fn into(self) -> std::ops::Range<N> {
-        self.into_range()
+impl<N> From<Range<N>> for std::ops::Range<N> {
+    fn from(range: Range<N>) -> Self {
+        range.into_range()
     }
 }
 
