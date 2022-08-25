@@ -30,9 +30,9 @@ pub struct Device<'a> {
     pub times: &'a [Time],
 }
 
-// pub struct DeviceArc {
-
-// }
+impl Device<'_> {
+    
+}
 
 #[derive(Error, Debug)]
 pub enum DevicesParsingError {

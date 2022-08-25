@@ -10,3 +10,7 @@ pub mod smv;
 pub struct Simulation {
     pub devc: Devices,
 }
+
+pub enum SimulationID {
+    Device,
+}
