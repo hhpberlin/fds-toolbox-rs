@@ -28,6 +28,21 @@ pub struct HRRStep {
     mass_flow_rate_total: MassRate,
 }
 
+pub enum HRRStepDataType {
+    HeatReleaseRate,
+    QRadi,
+    QConv,
+    QCond,
+    QDiff,
+    QPres,
+    QPart,
+    QGeom,
+    QEnth,
+    QTotal,
+    MassFlowRateFuel,
+    MassFlowRateTotal,
+}
+
 #[derive(Error, Debug)]
 pub enum HRRStepsParseError {
     #[error("Missing units header (first line)")]
@@ -193,6 +208,33 @@ impl HRRStep {
         }
 
         Ok(steps)
+    }
+
+    pub fn get_data(
+        elems: &[Self],
+        data_type: HRRStepDataType,
+        // TODO: We can have a little heap allocation, as a treat 
+    ) -> Box<dyn Iterator<Item = (Time, f32)> + '_> {
+        match data_type {
+            HRRStepDataType::HeatReleaseRate => {
+                Box::new(elems.iter().map(|x| (x.time, x.heat_release_rate.value)))
+            }
+            HRRStepDataType::QRadi => Box::new(elems.iter().map(|x| (x.time, x.q_radi.value))),
+            HRRStepDataType::QConv => Box::new(elems.iter().map(|x| (x.time, x.q_conv.value))),
+            HRRStepDataType::QCond => Box::new(elems.iter().map(|x| (x.time, x.q_cond.value))),
+            HRRStepDataType::QDiff => Box::new(elems.iter().map(|x| (x.time, x.q_diff.value))),
+            HRRStepDataType::QPres => Box::new(elems.iter().map(|x| (x.time, x.q_pres.value))),
+            HRRStepDataType::QPart => Box::new(elems.iter().map(|x| (x.time, x.q_part.value))),
+            HRRStepDataType::QGeom => Box::new(elems.iter().map(|x| (x.time, x.q_geom.value))),
+            HRRStepDataType::QEnth => Box::new(elems.iter().map(|x| (x.time, x.q_enth.value))),
+            HRRStepDataType::QTotal => Box::new(elems.iter().map(|x| (x.time, x.q_total.value))),
+            HRRStepDataType::MassFlowRateFuel => {
+                Box::new(elems.iter().map(|x| (x.time, x.mass_flow_rate_fuel.value)))
+            }
+            HRRStepDataType::MassFlowRateTotal => {
+                Box::new(elems.iter().map(|x| (x.time, x.mass_flow_rate_total.value)))
+            }
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::formats::arr_meta::ArrayStats;
+use crate::common::arr_meta::ArrayStats;
 
 // TODO: Use nd-array instead?
 
@@ -30,9 +30,7 @@ pub struct Device<'a> {
     pub times: &'a [Time],
 }
 
-impl Device<'_> {
-    
-}
+impl Device<'_> {}
 
 #[derive(Error, Debug)]
 pub enum DevicesParsingError {
