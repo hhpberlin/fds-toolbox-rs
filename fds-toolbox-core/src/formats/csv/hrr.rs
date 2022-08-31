@@ -213,7 +213,7 @@ impl HRRStep {
     pub fn get_data(
         elems: &[Self],
         data_type: HRRStepDataType,
-        // TODO: We can have a little heap allocation, as a treat 
+        // TODO: We can have a little heap allocation, as a treat
     ) -> Box<dyn Iterator<Item = (Time, f32)> + '_> {
         match data_type {
             HRRStepDataType::HeatReleaseRate => {

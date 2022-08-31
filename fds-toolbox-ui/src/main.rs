@@ -2,8 +2,6 @@
 
 use std::fmt::Debug;
 
-use std::sync::Arc;
-
 use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::Simulation;
 

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use fds_toolbox_core::formats::arr_meta::Range;
+use fds_toolbox_core::common::range::Range;
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size,

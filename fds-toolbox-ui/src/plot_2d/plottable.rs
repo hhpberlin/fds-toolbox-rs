@@ -1,5 +1,6 @@
-use fds_toolbox_core::formats::{self, arr_meta::Range};
 use std::fmt::Debug;
+
+use fds_toolbox_core::{common::range::Range, formats};
 
 type BoxCoordIter<'a> = Box<dyn Iterator<Item = (f32, f32)> + 'a>;
 type Plot2DDataBoxed<'a> = Plot2DData<BoxCoordIter<'a>>;
@@ -84,13 +85,13 @@ impl<'a> Plot2DDataBoxed<'a> {
 }
 
 impl Plottable2D for Vec<(f32, f32)> {
-    fn plot_data<'a>(&'a self) -> Option<Plot2DDataBoxed<'a>> {
+    fn plot_data(&self) -> Option<Plot2DDataBoxed<'_>> {
         Plot2DDataBoxed::from_fn_iter_box(|| self.iter().copied())
     }
 }
 
 impl Plottable2D for formats::csv::devc::Device<'_> {
-    fn plot_data<'a>(&'a self) -> Option<Plot2DDataBoxed<'a>> {
+    fn plot_data(&self) -> Option<Plot2DDataBoxed<'_>> {
         Plot2DDataBoxed::from_fn_iter_box(|| self.iter_f32())
     }
 }

@@ -1,8 +1,6 @@
-use std::ops::{Add, Div, Mul, Sub};
-
 use serde::{Deserialize, Serialize};
 
-use super::{range::Range, arr_meta::ArrayStats};
+use super::{arr_meta::ArrayStats, range::Range};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ArrayStats2D<Time, Num, NumDivisible = Num> {
@@ -25,14 +23,14 @@ impl<T, N, M> ArrayStats2D<T, N, M> {
     }
 }
 
-trait FnExt<Iter: Iterator>: Fn() -> Iter {}
-impl<Iter: Iterator, F: Fn() -> Iter> FnExt<Iter> for F {}
+// trait FnExt<Iter: Iterator>: Fn() -> Iter {}
+// impl<Iter: Iterator, F: Fn() -> Iter> FnExt<Iter> for F {}
 
-impl<Iter: Iterator, F: FnExt<Iter>> IntoIterator for &F {
-    fn into_iter(self) -> Self {
-        self()
-    }
-}
+// impl<Iter: Iterator, F: FnExt<Iter>> IntoIterator for &F {
+//     fn into_iter(self) -> Self {
+//         self()
+//     }
+// }
 
 // impl<T: PartialOrd + Copy, N, M> FromIterator<(T, N)> for ArrayStats2D<T, N, M> {
 //     fn from_iter<I: IntoIterator<Item = (T, N)>>(iter: I) -> Self {

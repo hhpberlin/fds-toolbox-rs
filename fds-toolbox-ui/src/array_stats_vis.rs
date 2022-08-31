@@ -1,4 +1,4 @@
-use fds_toolbox_core::formats::arr_meta::{ArrayStats, Range};
+use fds_toolbox_core::common::{arr_meta::ArrayStats, range::Range};
 use iced::{
     canvas::{LineCap, Path, Stroke},
     pure::{
@@ -66,8 +66,8 @@ impl<Message> Program<Message> for ArrayStatsVis<'_> {
             // dbg!(bounds);
 
             let range = Path::rectangle(
-                Point::new(map(self.stats.min), 0.0),
-                Size::new(map(self.stats.max), h),
+                Point::new(map(self.stats.range.min), 0.0),
+                Size::new(map(self.stats.range.max), h),
             );
             frame.fill(&range, Color::from_rgb8(0x66, 0x66, 0x66));
 

@@ -12,7 +12,6 @@ pub struct ArrayStats<Num, NumDivisible = Num> {
     pub std_dev: NumDivisible,
 }
 
-
 impl<N: Default, M: Default> Default for ArrayStats<N, M> {
     fn default() -> Self {
         Self {
@@ -63,8 +62,7 @@ impl<
         // TODO: This NaNs for negatives
         let std_dev = sqrt(variance);
         Some(Self {
-            range: Range { min,
-            max, },
+            range: Range { min, max },
             mean,
             variance,
             std_dev,
