@@ -1,5 +1,7 @@
 // TODO: Re-enable and fix the following clippy lints:
 // #![warn(clippy::pedantic)]
+
+// TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
 
 use std::fmt::Debug;

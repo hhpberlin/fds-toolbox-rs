@@ -1,3 +1,4 @@
+// TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
 
 pub mod common;
