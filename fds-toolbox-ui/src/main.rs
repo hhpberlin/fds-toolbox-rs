@@ -4,8 +4,9 @@
 use std::fmt::Debug;
 
 use fds_toolbox_core::formats::csv::devc::Devices;
-use fds_toolbox_core::formats::Simulation;
 
+use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
+use fds_toolbox_core::formats::simulations::{Simulations, GlobalTimeSeriesIdx};
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
@@ -29,14 +30,9 @@ pub fn main() -> iced::Result {
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
-    data: FdsToolboxData,
+    data: Simulations,
     // sidebar: Sidebar,
     // data: Store,
-}
-
-#[derive(Debug)]
-pub struct FdsToolboxData {
-    simulations: Vec<Simulation>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -53,24 +49,9 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        self.tabs
-            .push(FdsToolboxTab::Overview(PlotTab::new(Box::new(
-                self.data.simulations[0]
-                    .devc
-                    .get_device("T_B05")
-                    .unwrap()
-                    .store_static()
-                    .unwrap(),
-            ))));
-        self.tabs
-            .push(FdsToolboxTab::Overview(PlotTab::new(Box::new(
-                self.data.simulations[0]
-                    .devc
-                    .get_device("AST_1OG_Glaswand_N2")
-                    .unwrap()
-                    .store_static()
-                    .unwrap(),
-            ))));
+        
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("T_B05").unwrap()))])));
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("AST_1OG_Glaswand_N2").unwrap()))])));
     }
 }
 
@@ -83,14 +64,13 @@ impl Application for FdsToolbox {
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
-            data: FdsToolboxData {
-                simulations: vec![Simulation {
+            data: Simulations::new(vec![Simulation {
                     devc: Devices::from_reader(
                         include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
                     )
                     .unwrap(),
                 }],
-            },
+            ),
             // sidebar: Sidebar::new(),
         };
         Self::open_some_tabs(&mut this);
@@ -126,7 +106,7 @@ impl Application for FdsToolbox {
                 .fold(
                     TabBar::new(self.active_tab, Message::TabSelected),
                     |tab_bar, tab| {
-                        let tab_label = <FdsToolboxTab as Tab<FdsToolboxData>>::title(tab);
+                        let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
                         tab_bar.push(TabLabel::Text(tab_label))
                     },
                 )

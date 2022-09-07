@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use fds_toolbox_core::common::range::Range;
+use fds_toolbox_core::common::{range::Range, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size,
@@ -8,22 +8,24 @@ use iced::{
 use plotters::prelude::*;
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
-use super::plottable::Plottable2D;
-// use uom::si::f32::Time;
-
 #[derive(Debug, Clone, Copy)]
 pub enum ChartMessage {}
 
 #[derive(Debug)]
-pub struct Plot2D {
+pub struct Plot2D<Id> {
     cache: Cache,
-    data: Vec<Box<dyn Plottable2D>>,
+    ids: Vec<Id>,
 }
 
-impl Chart<ChartMessage> for Plot2D {
+struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
+    data: &'a Plot2D<Id>,
+    source: &'a Source,
+}
+
+impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage> for Plot2DInstance<'_, Id, Source> {
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-        self.cache.draw(bounds, draw_fn)
+        self.data.cache.draw(bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
@@ -32,12 +34,13 @@ impl Chart<ChartMessage> for Plot2D {
         // TODO: Avoid alloc by reusing iterator?
         let data = self
             .data
+            .ids
             .iter()
-            .filter_map(|x| x.plot_data())
+            .filter_map(|id| self.source.get_time_series(*id))
             .collect::<Vec<_>>();
 
-        let x_range = Range::from_iter_range(data.iter().map(|x| x.x_range));
-        let y_range = Range::from_iter_range(data.iter().map(|x| x.y_range));
+        let x_range = Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range));
+        let y_range = Range::from_iter_range(data.iter().map(|x| x.values.stats.range));
 
         let (x_range, y_range) = match (x_range, y_range) {
             (Some(x_range), Some(y_range)) => (x_range, y_range),
@@ -55,7 +58,7 @@ impl Chart<ChartMessage> for Plot2D {
 
         for data in data {
             chart
-                .draw_series(LineSeries::new(data.data, color.stroke_width(2)))
+                .draw_series(LineSeries::new(data.iter(), color.stroke_width(2)))
                 // .label("y = x^2")
                 // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
                 .expect("failed to draw chart data");
@@ -70,33 +73,24 @@ impl Chart<ChartMessage> for Plot2D {
     }
 }
 
-impl Plot2D {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            cache: Cache::default(),
-            data: Vec::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn from_single_plottable(plt: Box<dyn Plottable2D>) -> Self {
+impl<Id: Copy> Plot2D<Id> {
+    pub fn new(data: Vec<Id>) -> Self {
         Self {
             cache: Cache::new(),
-            data: vec![plt],
+            ids: data,
         }
     }
 
-    pub fn view(&mut self) -> Element<ChartMessage> {
-        ChartWidget::new(self)
+    pub fn view<'a, Source: TimeSeriesViewSource<Id>>(&'a mut self, source: &'a Source) -> Element<'a, ChartMessage> {
+        ChartWidget::new(Plot2DInstance { data: self, source })
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
     }
 }
 
-impl Default for Plot2D {
+impl<Id: Copy> Default for Plot2D<Id> {
     fn default() -> Self {
-        Self::new()
+        Self::new(Vec::new())
     }
 }

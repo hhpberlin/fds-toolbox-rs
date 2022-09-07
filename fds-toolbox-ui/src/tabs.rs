@@ -1,6 +1,6 @@
 use iced::{Command, Element};
 
-use crate::{plot_2d::plot_tab::PlotTab, FdsToolboxData};
+use crate::{plot_2d::plot_tab::PlotTab, Simulations};
 
 pub trait Tab<Model> {
     type Message;
@@ -8,7 +8,7 @@ pub trait Tab<Model> {
     fn title(&self) -> String;
 
     fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message>;
-    fn view(&mut self, model: &Model) -> Element<'_, Self::Message>;
+    fn view<'a>(&'a mut self, model: &'a Model) -> Element<'a, Self::Message>;
 }
 
 // TODO: This is very boilerplate-y
@@ -20,10 +20,10 @@ pub enum FdsToolboxTab {
 
 #[derive(Debug, Clone, Copy)]
 pub enum FdsToolboxTabMessage {
-    Overview(<PlotTab as Tab<FdsToolboxData>>::Message),
+    Overview(<PlotTab as Tab<Simulations>>::Message),
 }
 
-impl Tab<FdsToolboxData> for FdsToolboxTab {
+impl Tab<Simulations> for FdsToolboxTab {
     type Message = FdsToolboxTabMessage;
 
     fn title(&self) -> String {
@@ -34,7 +34,7 @@ impl Tab<FdsToolboxData> for FdsToolboxTab {
 
     fn update(
         &mut self,
-        model: &mut FdsToolboxData,
+        model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
         match (self, message) {
@@ -48,7 +48,7 @@ impl Tab<FdsToolboxData> for FdsToolboxTab {
         }
     }
 
-    fn view(&mut self, model: &FdsToolboxData) -> Element<'_, Self::Message> {
+    fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
         match self {
             FdsToolboxTab::Overview(tab) => tab.view(model).map(FdsToolboxTabMessage::Overview),
         }

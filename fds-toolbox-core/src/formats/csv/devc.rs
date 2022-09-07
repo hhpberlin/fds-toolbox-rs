@@ -17,7 +17,7 @@ pub struct Devices {
     devices_by_name: HashMap<String, DeviceIdx>,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct DeviceIdx(usize);
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -185,18 +185,22 @@ impl Devices {
     // }
 
     pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
-        let idx = self.devices_by_name.get(name)?;
-        self.get_device_by_idx(*idx)
+        let idx = self.get_device_idx_by_name(name)?;
+        self.get_device_by_idx(idx)
     }
 
     pub fn get_device_by_idx(&self, name: DeviceIdx) -> Option<&DeviceReadings> {
         self.devices.get(name.0)
     }
+
+    pub fn get_device_idx_by_name(&self, name: &str) -> Option<DeviceIdx> {
+        self.devices_by_name.get(name).copied()
+    }
 }
 
 impl TimeSeriesViewSource<DeviceIdx> for Devices {
-    fn get_time_series(&self, param: DeviceIdx) -> Option<TimeSeriesView> {
-        self.get_device_by_idx(param)
+    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeriesView> {
+        self.get_device_by_idx(id)
             .map(|x| x.view(self.time_in_seconds.view()))
     }
 }

@@ -52,6 +52,10 @@ impl<'a> SeriesView<'a> {
     pub fn new(data: ArrayView1<'a, f32>, stats: ArrayStats<f32>) -> Self {
         Self { data, stats }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = f32> + '_ {
+        self.data.iter().copied()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,6 +64,34 @@ pub struct TimeSeries {
     values: Series,
     unit: String,
     name: String,
+}
+
+impl TimeSeries {
+    pub fn new(name: String, unit: String, time_in_seconds: Series, values: Series) -> Self {
+        assert_eq!(time_in_seconds.data.len(), values.data.len());
+        Self {
+            name,
+            unit,
+            time_in_seconds,
+            values,
+        }
+    }
+
+    pub fn view(&self) -> TimeSeriesView {
+        TimeSeriesView {
+            name: self.name.borrow(),
+            unit: self.unit.borrow(),
+            time_in_seconds: self.time_in_seconds.view(),
+            values: self.values.view(),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
+        self.time_in_seconds
+            .iter()
+            .zip(self.values.iter())
+            .map(|(t, v)| (t, v))
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -85,29 +117,27 @@ impl<'a> TimeSeriesView<'a> {
             name,
         }
     }
-}
 
-pub trait TimeSeriesViewSource<T> {
-    fn get_time_series(&self, param: T) -> Option<TimeSeriesView>;
-}
-
-impl TimeSeries {
-    pub fn new(name: String, unit: String, time_in_seconds: Series, values: Series) -> Self {
-        assert_eq!(time_in_seconds.data.len(), values.data.len());
-        Self {
-            name,
-            unit,
-            time_in_seconds,
-            values,
-        }
-    }
-
-    pub fn view(&self) -> TimeSeriesView {
-        TimeSeriesView {
-            name: self.name.borrow(),
-            unit: self.unit.borrow(),
-            time_in_seconds: self.time_in_seconds.view(),
-            values: self.values.view(),
-        }
+    pub fn iter(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
+        self.time_in_seconds
+            .iter()
+            .zip(self.values.iter())
+            .map(|(t, v)| (t, v))
     }
 }
+
+pub trait TimeSeriesViewSource<Id> {
+    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView>;
+}
+
+impl TimeSeriesViewSource<()> for TimeSeries {
+    fn get_time_series(&self, _: ()) -> Option<TimeSeriesView> {
+        Some(self.view())
+    }
+}
+
+// impl<SourceId: From<Id>, Id, Source: TimeSeriesViewSource<SourceId>> TimeSeriesViewSource<Id> for Source {
+//     fn get_time_series(&self, id: Id) -> Option<TimeSeriesView> {
+//         self.get_time_series(id.into())
+//     }
+// }

@@ -1,48 +1,47 @@
+use std::sync::Arc;
+
+use fds_toolbox_core::formats::simulations::GlobalTimeSeriesIdx;
 use iced::{Command, Element};
 
-use crate::{tabs::Tab, FdsToolboxData};
+use crate::{tabs::Tab, Simulations};
 
 use super::{
     plot::{ChartMessage, Plot2D},
-    plottable::Plottable2D,
 };
 
 #[derive(Debug)]
 pub struct PlotTab {
-    chart: Plot2D,
+    chart: Plot2D<GlobalTimeSeriesIdx>,
 }
 
 impl PlotTab {
-    #[must_use]
-    pub fn new(plt: Box<dyn Plottable2D>) -> Self {
+    pub fn new(idx: Vec<GlobalTimeSeriesIdx>) -> Self {
         Self {
-            chart: Plot2D::from_single_plottable(plt),
+            chart: Plot2D::new(idx),
         }
     }
 }
 
-impl Tab<FdsToolboxData> for PlotTab {
+impl Tab<Simulations> for PlotTab {
     type Message = ChartMessage;
 
     fn title(&self) -> String {
-        "Overview".to_string()
+        let str = "Plot 2D".to_string();
+        // for idx in &self.chart.idx {
+        //     str.push_str(&idx.to_string());
+        // }
+        str
     }
 
     fn update(
         &mut self,
-        _model: &mut FdsToolboxData,
+        _model: &mut Simulations,
         _message: Self::Message,
     ) -> Command<Self::Message> {
         Command::none()
     }
 
-    fn view<'a, 'b>(&'a mut self, _model: &'b FdsToolboxData) -> Element<'_, Self::Message> {
-        // let devc = &model.simulations[0].devc;
-        // Text::new("Overview").size(20).into()
-
-        // let values = devc.get_device("Abluft_1").unwrap();
-        // let mogus: () = MyChart::from_(values);
-
-        self.chart.view()
+    fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
+        self.chart.view(model)
     }
 }
