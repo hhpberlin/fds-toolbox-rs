@@ -1,13 +1,9 @@
-use std::sync::Arc;
-
 use fds_toolbox_core::formats::simulations::GlobalTimeSeriesIdx;
 use iced::{Command, Element};
 
 use crate::{tabs::Tab, Simulations};
 
-use super::{
-    plot::{ChartMessage, Plot2D},
-};
+use super::plot::{ChartMessage, Plot2D};
 
 #[derive(Debug)]
 pub struct PlotTab {
@@ -26,11 +22,10 @@ impl Tab<Simulations> for PlotTab {
     type Message = ChartMessage;
 
     fn title(&self) -> String {
-        let str = "Plot 2D".to_string();
-        // for idx in &self.chart.idx {
-        //     str.push_str(&idx.to_string());
-        // }
-        str
+        // TODO: Give a more descriptive name
+        //       Maybe list the names of the selected time series?
+        // Sub-TODO: Ellispisize long names? Here or generally?
+        "Plot 2D".to_string()
     }
 
     fn update(

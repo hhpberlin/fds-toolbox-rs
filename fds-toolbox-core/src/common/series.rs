@@ -135,9 +135,3 @@ impl TimeSeriesViewSource<()> for TimeSeries {
         Some(self.view())
     }
 }
-
-// impl<SourceId: From<Id>, Id, Source: TimeSeriesViewSource<SourceId>> TimeSeriesViewSource<Id> for Source {
-//     fn get_time_series(&self, id: Id) -> Option<TimeSeriesView> {
-//         self.get_time_series(id.into())
-//     }
-// }

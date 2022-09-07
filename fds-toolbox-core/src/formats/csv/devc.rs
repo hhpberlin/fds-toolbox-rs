@@ -4,11 +4,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::common::{
-    series::{Series, SeriesView, TimeSeriesView, TimeSeriesViewSource},
-};
+use crate::common::series::{Series, SeriesView, TimeSeriesView, TimeSeriesViewSource};
 
-// TODO: Use nd-array instead?
+// TODO: Use 2d-array instead?
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
@@ -151,12 +149,10 @@ impl Devices {
         let devices = units
             .into_iter()
             .zip(devices.into_iter())
-            .map(|((unit, name), values)| {
-                DeviceReadings {
-                    name: name.to_string(),
-                    unit: unit.to_string(),
-                    values: Series::from_vec(values),
-                }
+            .map(|((unit, name), values)| DeviceReadings {
+                name: name.to_string(),
+                unit: unit.to_string(),
+                values: Series::from_vec(values),
             })
             .collect::<Vec<_>>();
 
@@ -174,15 +170,6 @@ impl Devices {
             devices_by_name,
         })
     }
-
-    // pub fn get_device(&self, name: &str) -> Option<Device> {
-    //     let readings = self.devices.get_key_value(name);
-    //     readings.map(|(name, readings)| Device {
-    //         name,
-    //         readings,
-    //         times: &self.times,
-    //     })
-    // }
 
     pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
         let idx = self.get_device_idx_by_name(name)?;
@@ -220,18 +207,16 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            devices
-                .time_in_seconds
-                .iter()
-                .collect::<Vec<_>>(),
-            [0.0e0]
-        );
+        assert_eq!(devices.time_in_seconds.iter().collect::<Vec<_>>(), [0.0e0]);
         assert_eq!(devices.devices.len(), 3);
 
         assert_eq!(devices.get_device_by_name("Zuluft_1").unwrap().unit, "m3/s");
         assert_eq!(devices.get_device_by_name("Abluft_1").unwrap().unit, "C");
         assert_eq!(devices.get_device_by_name("T_B01").unwrap().unit, "1/m");
+
+        // TODO: Check names properly
+        // The reason this is not done yet is that the names are not stored
+        // in the same order as in the source file, but instead in a HashMap.
 
         // assert_eq!(devices.devices[0].name, "Zuluft_1");
         // assert_eq!(devices.devices[1].name, "Abluft_1");

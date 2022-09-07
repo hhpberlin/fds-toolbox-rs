@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use crate::common::series::{TimeSeriesViewSource, TimeSeriesView};
+use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
 
 use super::simulation::{Simulation, TimeSeriesIdx};
 
@@ -10,13 +10,17 @@ pub struct Simulations {
 }
 
 impl Simulations {
-    pub fn new(simulations: Vec<Simulation>) -> Self { Self { simulations } }
+    pub fn new(simulations: Vec<Simulation>) -> Self {
+        Self { simulations }
+    }
 }
 
 impl Index<usize> for Simulations {
     type Output = Simulation;
 
-    fn index(&self, index: usize) -> &Self::Output { &self.simulations[index] }
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.simulations[index]
+    }
 }
 
 impl TimeSeriesViewSource<GlobalTimeSeriesIdx> for Simulations {

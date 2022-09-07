@@ -22,7 +22,9 @@ struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
     source: &'a Source,
 }
 
-impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage> for Plot2DInstance<'_, Id, Source> {
+impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
+    for Plot2DInstance<'_, Id, Source>
+{
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
         self.data.cache.draw(bounds, draw_fn)
@@ -59,10 +61,13 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage> for Plot2DI
         for data in data {
             chart
                 .draw_series(LineSeries::new(data.iter(), color.stroke_width(2)))
+                // TODO: Set labels
                 // .label("y = x^2")
                 // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
                 .expect("failed to draw chart data");
         }
+
+        // TODO: Draw labels
 
         // chart
         //     .configure_series_labels()
@@ -81,7 +86,10 @@ impl<Id: Copy> Plot2D<Id> {
         }
     }
 
-    pub fn view<'a, Source: TimeSeriesViewSource<Id>>(&'a mut self, source: &'a Source) -> Element<'a, ChartMessage> {
+    pub fn view<'a, Source: TimeSeriesViewSource<Id>>(
+        &'a mut self,
+        source: &'a Source,
+    ) -> Element<'a, ChartMessage> {
         ChartWidget::new(Plot2DInstance { data: self, source })
             .width(Length::Fill)
             .height(Length::Fill)

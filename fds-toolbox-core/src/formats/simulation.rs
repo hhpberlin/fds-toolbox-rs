@@ -1,6 +1,6 @@
-use crate::common::series::{TimeSeriesViewSource, TimeSeriesView};
+use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
 
-use super::csv::devc::{Devices, DeviceIdx};
+use super::csv::devc::{DeviceIdx, Devices};
 
 #[derive(Debug)]
 pub struct Simulation {
@@ -18,10 +18,6 @@ impl TimeSeriesViewSource<TimeSeriesIdx> for Simulation {
 pub enum SimulationData2D<'a> {
     Device(&'a str),
 }
-
-// pub enum Idx {
-
-// }
 
 #[derive(Debug, Clone, Copy)]
 pub enum TimeSeriesIdx {

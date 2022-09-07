@@ -1,4 +1,4 @@
-use fds_toolbox_core::common::{arr_meta::ArrayStats, range::Range};
+use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     canvas::{LineCap, Path, Stroke},
     pure::{
@@ -14,7 +14,6 @@ use iced::{
 #[derive(Debug)]
 pub struct ArrayStatsVis<'a> {
     stats: &'a ArrayStats<f32>,
-    range: &'a Range<f32>,
     cache: &'a Cache,
 }
 
@@ -23,13 +22,6 @@ impl ArrayStatsVis<'_> {
         Canvas::new(self).into()
     }
 }
-
-// #[derive(Debug)]
-// struct ArrayStatsVis<'a> {
-//     stats: &'a ArrayStats<f32>,
-//     range: Range<f32>,
-//     cache: &'a Cache,
-// }
 
 impl<Message> Program<Message> for ArrayStatsVis<'_> {
     type State = ();
@@ -55,7 +47,7 @@ impl<Message> Program<Message> for ArrayStatsVis<'_> {
             // frame.fill(&background, Color::TRANSPARENT);
 
             let map = move |s| {
-                let res = self.range.map(s) * w;
+                let res = self.stats.range.map(s) * w;
                 // if !res.is_finite() || res.is_nan() { return vec![]; } // Guard against divisions by very small numbers
                 if !res.is_finite() || res.is_nan() {
                     0.0

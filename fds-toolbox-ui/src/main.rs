@@ -1,3 +1,4 @@
+// TODO: Re-enable and fix the following clippy lints:
 // #![warn(clippy::pedantic)]
 #![allow(dead_code)]
 
@@ -6,7 +7,7 @@ use std::fmt::Debug;
 use fds_toolbox_core::formats::csv::devc::Devices;
 
 use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
-use fds_toolbox_core::formats::simulations::{Simulations, GlobalTimeSeriesIdx};
+use fds_toolbox_core::formats::simulations::{GlobalTimeSeriesIdx, Simulations};
 use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
@@ -18,11 +19,7 @@ pub mod tabs;
 
 mod array_stats_vis;
 mod select_list;
-// mod sidebar;
 
-// use sidebar::Sidebar;
-
-//
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings::default())
 }
@@ -31,16 +28,18 @@ struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     data: Simulations,
-    // sidebar: Sidebar,
-    // data: Store,
+    // TODO: Store using fancy lazy_data structs
+    // store: Store,
 }
 
+// There will be future messages not relating to tabs, so this is only temporary
+// TODO: Add those messages and remove this
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy)]
 enum Message {
     TabSelected(usize),
     TabClosed(usize),
     TabMessage(FdsToolboxTabMessage),
-    // SidebarMessage(sidebar::SidebarMessage),
 }
 
 impl FdsToolbox {
@@ -49,9 +48,23 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("T_B05").unwrap()))])));
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("AST_1OG_Glaswand_N2").unwrap()))])));
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
+            GlobalTimeSeriesIdx(
+                0,
+                TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("T_B05").unwrap()),
+            ),
+        ])));
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
+            GlobalTimeSeriesIdx(
+                0,
+                TimeSeriesIdx::Device(
+                    self.data[0]
+                        .devc
+                        .get_device_idx_by_name("AST_1OG_Glaswand_N2")
+                        .unwrap(),
+                ),
+            ),
+        ])));
     }
 }
 
@@ -65,13 +78,11 @@ impl Application for FdsToolbox {
             active_tab: 0,
             tabs: vec![],
             data: Simulations::new(vec![Simulation {
-                    devc: Devices::from_reader(
-                        include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
-                    )
-                    .unwrap(),
-                }],
-            ),
-            // sidebar: Sidebar::new(),
+                devc: Devices::from_reader(
+                    include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
+                )
+                .unwrap(),
+            }]),
         };
         Self::open_some_tabs(&mut this);
         (this, Command::none())
@@ -88,16 +99,11 @@ impl Application for FdsToolbox {
                 self.tabs.remove(tab);
             }
             Message::TabMessage(_) => todo!(),
-            // Message::SidebarMessage(message) => match message {
-            //     sidebar::SidebarMessage::DevcSelected => todo!(),
-            // },
         }
         Command::none()
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
-        // let sidebar = self.sidebar.view_sidebar(&self.data);
-
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
             _ => self
@@ -124,7 +130,6 @@ impl Application for FdsToolbox {
         };
 
         Row::new()
-            // .push(sidebar.map(Message::SidebarMessage))
             .push(
                 Column::new().push(tab_bar).push(
                     Container::new(content.map(Message::TabMessage))

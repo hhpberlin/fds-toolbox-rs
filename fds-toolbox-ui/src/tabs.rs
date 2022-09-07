@@ -41,10 +41,6 @@ impl Tab<Simulations> for FdsToolboxTab {
             (FdsToolboxTab::Overview(tab), FdsToolboxTabMessage::Overview(msg)) => {
                 tab.update(model, msg).map(FdsToolboxTabMessage::Overview)
             }
-            _ => {
-                // TODO: Log error
-                Command::none()
-            }
         }
     }
 
