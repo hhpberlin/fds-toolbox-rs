@@ -10,7 +10,6 @@ use iced::widget::{Column, Text};
 use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
 use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
-use plot_2d::plottable::Plottable2D;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;

@@ -1,23 +1,23 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Mul, Sub};
 
 use serde::{Deserialize, Serialize};
 
 use super::range::Range;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ArrayStats<Num, NumDivisible = Num> {
+pub struct ArrayStats<Num, NumDivisible = Num, NumSq = Num> {
     pub range: Range<Num>,
     pub mean: NumDivisible,
-    pub variance: NumDivisible,
+    pub variance: NumSq,
     pub std_dev: NumDivisible,
 }
 
-impl<N: Default, M: Default> Default for ArrayStats<N, M> {
+impl<N: Default, M: Default, S: Default> Default for ArrayStats<N, M, S> {
     fn default() -> Self {
         Self {
             range: Range::default(),
             mean: M::default(),
-            variance: M::default(),
+            variance: S::default(),
             std_dev: M::default(),
         }
     }
@@ -25,13 +25,15 @@ impl<N: Default, M: Default> Default for ArrayStats<N, M> {
 
 impl<
         N: PartialOrd + Copy,
-        M: Add<Output = M> + Sub<Output = M> + Div<Output = M> + Mul<Output = M> + From<N> + Copy,
-    > ArrayStats<N, M>
+        M: Add<Output = M> + Sub<Output = M> + Mul<Output = S> + From<N> + Copy,
+        S: Add<Output = S> + Sub<Output = S> + Copy,
+    > ArrayStats<N, M, S>
 {
     pub fn new(
         mut data: impl Iterator<Item = N>,
         div: fn(M, usize) -> M,
-        sqrt: fn(M) -> M,
+        div_sq: fn(S, usize) -> S,
+        sqrt: fn(S) -> M,
     ) -> Option<Self> {
         let first = match data.next() {
             Some(value) => value,
@@ -57,7 +59,7 @@ impl<
             count += 1;
         }
         let mean = div(sum, count);
-        let variance = (div(sum_sq, count)) - (mean * mean);
+        let variance = (div_sq(sum_sq, count)) - (mean * mean);
         // TODO: Implement using Welford's algorithm
         // TODO: This NaNs for negatives
         let std_dev = sqrt(variance);
@@ -84,12 +86,18 @@ impl<
 
 impl ArrayStats<f32> {
     pub fn new_f32(data: impl Iterator<Item = f32>) -> Option<Self> {
-        Self::new(data, |a, b| a / b as f32, |a| a.sqrt())
+        Self::new(data, |a, b| a / b as f32, |a, b| a / b as f32, |a| a.sqrt())
     }
 }
 
-impl ArrayStats<u8, f32> {
+// impl ArrayStats<Time, Time, Time> {
+//     pub fn new_time_f32(data: impl Iterator<Item = Time>) -> Option<Self> {
+//         Self::new(data, |a, b| a / b, |a, b| a / b, |a| a.sqrt())l
+//     }
+// }
+
+impl ArrayStats<u8, f32, f32> {
     pub fn new_u8(data: impl Iterator<Item = u8>) -> Option<Self> {
-        Self::new(data, |a, b| a / b as f32, |a| a.sqrt())
+        Self::new(data, |a, b| a / b as f32, |a, b| a / b as f32, |a| a.sqrt())
     }
 }

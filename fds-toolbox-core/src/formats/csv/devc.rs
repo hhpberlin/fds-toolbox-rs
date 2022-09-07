@@ -1,36 +1,37 @@
 use std::{collections::HashMap, io::Read, num::ParseFloatError, str::FromStr};
 
-use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::common::arr_meta::ArrayStats;
+use crate::common::{
+    series::{Series, SeriesView, TimeSeriesView, TimeSeriesViewSource},
+};
 
 // TODO: Use nd-array instead?
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
-    pub times: Vec<Time>,
-    pub devices: HashMap<String, DeviceReadings>,
+    pub time_in_seconds: Series,
+    devices: Vec<DeviceReadings>,
+    devices_by_name: HashMap<String, DeviceIdx>,
 }
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct DeviceIdx(usize);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceReadings {
     pub unit: String,
-    // pub name: String,
-    pub values: Array1<f32>,
-    pub stats: ArrayStats<f32>,
+    pub name: String,
+    pub values: Series,
 }
 
-#[derive(Debug)]
-pub struct Device<'a> {
-    pub name: &'a str,
-    pub readings: &'a DeviceReadings,
-    pub times: &'a [Time],
+impl DeviceReadings {
+    pub fn view<'a>(&'a self, time_in_seconds: SeriesView<'a>) -> TimeSeriesView<'a> {
+        TimeSeriesView::new(time_in_seconds, self.values.view(), &self.unit, &self.name)
+    }
 }
-
-impl Device<'_> {}
 
 #[derive(Error, Debug)]
 pub enum DevicesParsingError {
@@ -99,6 +100,7 @@ impl Devices {
                 s.push_str(val);
                 Time::from_str(&s)
                     .map_err(|x| DevicesParsingError::InvalidTimeUnit(x, val.to_string()))?
+                    .value
             }
             None => return Err(DevicesParsingError::MissingTimeUnit),
         };
@@ -150,81 +152,57 @@ impl Devices {
             .into_iter()
             .zip(devices.into_iter())
             .map(|((unit, name), values)| {
-                let meta = ArrayStats::new_f32(values.iter().copied()).unwrap_or_default();
-                (
-                    name.to_string(),
-                    DeviceReadings {
-                        unit: unit.to_string(),
-                        values: Array1::from_vec(values),
-                        stats: meta,
-                    },
-                )
+                DeviceReadings {
+                    name: name.to_string(),
+                    unit: unit.to_string(),
+                    values: Series::from_vec(values),
+                }
             })
+            .collect::<Vec<_>>();
+
+        let devices_by_name = devices
+            .iter()
+            .enumerate()
+            .map(|(i, x)| (x.name.clone(), DeviceIdx(i)))
             .collect::<HashMap<_, _>>();
 
-        Ok(Devices { times, devices })
-    }
+        let times = Series::from_vec(times);
 
-    pub fn get_device(&self, name: &str) -> Option<Device> {
-        let readings = self.devices.get_key_value(name);
-        readings.map(|(name, readings)| Device {
-            name,
-            readings,
-            times: &self.times,
+        Ok(Devices {
+            time_in_seconds: times,
+            devices,
+            devices_by_name,
         })
     }
-}
 
-impl<'a> Device<'a> {
-    pub fn iter(&'a self) -> impl Iterator<Item = (Time, f32)> + 'a {
-        self.times
-            .iter()
-            .copied()
-            .zip(self.readings.values.iter().copied())
+    // pub fn get_device(&self, name: &str) -> Option<Device> {
+    //     let readings = self.devices.get_key_value(name);
+    //     readings.map(|(name, readings)| Device {
+    //         name,
+    //         readings,
+    //         times: &self.times,
+    //     })
+    // }
+
+    pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
+        let idx = self.devices_by_name.get(name)?;
+        self.get_device_by_idx(*idx)
     }
 
-    pub fn iter_f32(&'a self) -> impl Iterator<Item = (f32, f32)> + 'a {
-        self.times
-            .iter()
-            .map(|x| x.value)
-            .zip(self.readings.values.iter().copied())
-        // self.iter().map(|(t, v)| (t.value, v))
+    pub fn get_device_by_idx(&self, name: DeviceIdx) -> Option<&DeviceReadings> {
+        self.devices.get(name.0)
     }
 }
 
-// pub struct IntoIter<'a>(&'a Device<'a>);
-
-// impl IntoIterator for IntoIter<'_> {
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.0.iter().next()
-//     }
-// }
-
-// impl<'a> IntoIterator for &'a Device<'a> {
-//     type Item = (f32, f32);
-//     // type IntoIter = std::iter::Zip<std::slice::Iter<'a, Time>, std::slice::Iter<'a, f32>>;
-//     type IntoIter = impl Iterator<Item = (f32, f32)> + 'a;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.iter()
-//     }
-// }
-
-impl<'a, 'b> IntoIterator for &'a Device<'b> {
-    type Item = (f32, f32);
-    // type IntoIter = std::iter::Zip<std::slice::Iter<'a, Time>, std::slice::Iter<'a, f32>>;
-    // TODO: Tracking https://github.com/rust-lang/rust/issues/63063 to avoid alloc
-    type IntoIter = Box<dyn Iterator<Item = (f32, f32)> + 'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(self.iter_f32())
+impl TimeSeriesViewSource<DeviceIdx> for Devices {
+    fn get_time_series(&self, param: DeviceIdx) -> Option<TimeSeriesView> {
+        self.get_device_by_idx(param)
+            .map(|x| x.view(self.time_in_seconds.view()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use uom::si::time::{hour, second};
-
     use super::*;
 
     #[test]
@@ -240,35 +218,31 @@ mod tests {
 
         assert_eq!(
             devices
-                .times
+                .time_in_seconds
                 .iter()
-                .map(|x| x.get::<second>())
                 .collect::<Vec<_>>(),
             [0.0e0]
         );
         assert_eq!(devices.devices.len(), 3);
 
-        assert_eq!(
-            devices.get_device("Zuluft_1").unwrap().readings.unit,
-            "m3/s"
-        );
-        assert_eq!(devices.get_device("Abluft_1").unwrap().readings.unit, "C");
-        assert_eq!(devices.get_device("T_B01").unwrap().readings.unit, "1/m");
+        assert_eq!(devices.get_device_by_name("Zuluft_1").unwrap().unit, "m3/s");
+        assert_eq!(devices.get_device_by_name("Abluft_1").unwrap().unit, "C");
+        assert_eq!(devices.get_device_by_name("T_B01").unwrap().unit, "1/m");
 
         // assert_eq!(devices.devices[0].name, "Zuluft_1");
         // assert_eq!(devices.devices[1].name, "Abluft_1");
         // assert_eq!(devices.devices[2].name, "T_B01");
 
         assert_eq!(
-            devices.get_device("Zuluft_1").unwrap().readings.values[0],
+            devices.get_device_by_name("Zuluft_1").unwrap().values[0],
             1.2e3
         );
         assert_eq!(
-            devices.get_device("Abluft_1").unwrap().readings.values[0],
+            devices.get_device_by_name("Abluft_1").unwrap().values[0],
             -2.3e-2
         );
         assert_eq!(
-            devices.get_device("T_B01").unwrap().readings.values[0],
+            devices.get_device_by_name("T_B01").unwrap().values[0],
             4.1e-12
         );
     }
@@ -282,7 +256,7 @@ mod tests {
             .as_bytes(),
         )
         .unwrap();
-        assert_eq!(devices.times[0].get::<hour>(), 1.0);
+        assert_eq!(devices.time_in_seconds[0], 3600.0);
     }
 
     #[test]
