@@ -2,8 +2,8 @@
 resolver = "2"
 members = [
     "fds-toolbox-core",
-    "fds-toolbox-ui",
+    "fds-toolbox-ui/iced",
 ]
 
-[profile.release]
-lto = true
+# [profile.release]
+# lto = true

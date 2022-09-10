@@ -14,4 +14,4 @@ enum_dispatch = "0.3"
 
 im = "15.1"
 
-fds-toolbox-core = { path = "../fds-toolbox-core" }
+fds-toolbox-core = { path = "../../fds-toolbox-core" }

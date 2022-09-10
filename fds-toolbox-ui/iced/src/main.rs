@@ -81,7 +81,7 @@ impl Application for FdsToolbox {
             tabs: vec![],
             data: Simulations::new(vec![Simulation {
                 devc: Devices::from_reader(
-                    include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
+                    include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
                 .unwrap(),
             }]),
