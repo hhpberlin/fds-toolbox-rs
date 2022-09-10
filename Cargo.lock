@@ -4279,6 +4279,8 @@ dependencies = [
 name = "slint"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
+ "plotters",
  "slint 0.2.5",
  "slint-build",
 ]
