@@ -1,4 +1,4 @@
-use std::ops::{Div, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 use serde::{Deserialize, Serialize};
 
@@ -23,16 +23,31 @@ impl<N: Default> Default for Range<N> {
     }
 }
 
-impl<N: Sub + Copy> Range<N>
-where
-    <N as Sub>::Output: Div<<N as Sub>::Output>,
-{
+impl<N: Sub<Output = N> + Div<Output = N> + Copy> Range<N> {
     pub fn width(&self) -> <N as Sub>::Output {
         self.max - self.min
     }
 
     pub fn map(&self, value: N) -> <<N as Sub>::Output as Div>::Output {
         (value - self.min) / self.width()
+    }
+
+    // pub fn unmap(&self, value: N) -> <<N as Sub>::Output as Div>::Output {
+    //     (value + self.min) / self.width()
+    // }
+
+    pub fn zoom(&mut self, center: N, factor: N)
+    where
+        N: Mul<Output = N> + Add<Output = N> + PartialOrd,
+    {
+        let width = self.width();
+        let new_width = width / factor;
+        let offset = (width - new_width) * self.map(center);
+        self.min = self.min + offset;
+        self.max = self.max - offset;
+        if self.min > self.max {
+            (self.min, self.max) = (self.max, self.min);
+        }
     }
 }
 

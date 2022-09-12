@@ -4,7 +4,7 @@ use std::sync::{Mutex, RwLock};
 
 use fds_toolbox_core::formats::simulations::Simulations;
 use plotters::prelude::*;
-use slint::{SharedPixelBuffer, Rgb8Pixel};
+use slint::{Rgb8Pixel, SharedPixelBuffer};
 
 struct State {
     shared_pixel_buffer: SharedPixelBuffer<Rgb8Pixel>,

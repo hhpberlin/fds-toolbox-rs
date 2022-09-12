@@ -9,12 +9,16 @@ use plotters::prelude::*;
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
-pub enum ChartMessage {}
+pub enum ChartMessage {
+    Zoom { center: (f32, f32), factor: f32 },
+}
 
 #[derive(Debug)]
 pub struct Plot2D<Id> {
     cache: Cache,
     ids: Vec<Id>,
+    pub x_range: Range<f32>,
+    pub y_range: Range<f32>,
 }
 
 struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
@@ -41,14 +45,17 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
             .filter_map(|id| self.source.get_time_series(*id))
             .collect::<Vec<_>>();
 
-        let x_range = Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range));
-        let y_range = Range::from_iter_range(data.iter().map(|x| x.values.stats.range));
+        // let x_range = self.data.x_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range)));
+        // let y_range = self.data.y_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.values.stats.range)));
 
-        let (x_range, y_range) = match (x_range, y_range) {
-            (Some(x_range), Some(y_range)) => (x_range, y_range),
-            // _ => return,
-            _ => (Range::new(0.0, 1.0), Range::new(0.0, 1.0)),
-        };
+        // let (x_range, y_range) = match (x_range, y_range) {
+        //     (Some(x_range), Some(y_range)) => (x_range, y_range),
+        //     // _ => return,
+        //     _ => (Range::new(0.0, 1.0), Range::new(0.0, 1.0)),
+        // };
+
+        let x_range = self.data.x_range;
+        let y_range = self.data.y_range;
 
         let mut chart = chart
             .build_cartesian_2d(x_range.into_range(), y_range.into_range())
@@ -83,6 +90,8 @@ impl<Id: Copy> Plot2D<Id> {
         Self {
             cache: Cache::new(),
             ids: data,
+            x_range: Range::new(0.0, 100.0),
+            y_range: Range::new(0.0, 100.0),
         }
     }
 
@@ -93,7 +102,35 @@ impl<Id: Copy> Plot2D<Id> {
         ChartWidget::new(Plot2DInstance { data: self, source })
             .width(Length::Fill)
             .height(Length::Fill)
+            .on_mouse_event(Box::new(|e, p| {
+                match e {
+                    iced::mouse::Event::CursorEntered => None,
+                    iced::mouse::Event::CursorLeft => None,
+                    iced::mouse::Event::CursorMoved { position: _ } => None,
+                    iced::mouse::Event::ButtonPressed(_) => None,
+                    iced::mouse::Event::ButtonReleased(_) => None,
+                    iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
+                        // TODO: Actually calculate the center instead of this bullshit
+                        center: (p.x, p.y),
+                        // center: (self.x_range.map(p.x), p.y),
+                        factor: match delta {
+                            // TODO: Treat line and pixel scroll differently
+                            // TODO: Use a better zoom factor
+                            // TODO: Look at x scroll
+                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / 50.0).exp(),
+                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / 50.0).exp(),
+                        },
+                    }),
+                }
+            }))
             .into()
+    }
+
+    pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
+        self.cache.clear();
+        let (cx, cy) = center;
+        self.x_range.zoom(cx, factor);
+        self.y_range.zoom(cy, factor);
     }
 }
 

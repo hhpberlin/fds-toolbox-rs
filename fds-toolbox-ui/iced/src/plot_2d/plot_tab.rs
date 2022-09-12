@@ -31,8 +31,15 @@ impl Tab<Simulations> for PlotTab {
     fn update(
         &mut self,
         _model: &mut Simulations,
-        _message: Self::Message,
+        message: Self::Message,
     ) -> Command<Self::Message> {
+        match message {
+            ChartMessage::Zoom { center, factor } => {
+                self.chart.zoom(center, factor);
+                dbg!(self.chart.x_range);
+                dbg!(self.chart.y_range);
+            }
+        }
         Command::none()
     }
 

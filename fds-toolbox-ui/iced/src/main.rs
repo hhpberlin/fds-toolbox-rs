@@ -29,7 +29,7 @@ pub fn main() -> iced::Result {
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
-    data: Simulations,
+    simulations: Simulations,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
 }
@@ -53,14 +53,19 @@ impl FdsToolbox {
         self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
             GlobalTimeSeriesIdx(
                 0,
-                TimeSeriesIdx::Device(self.data[0].devc.get_device_idx_by_name("T_B05").unwrap()),
+                TimeSeriesIdx::Device(
+                    self.simulations[0]
+                        .devc
+                        .get_device_idx_by_name("T_B05")
+                        .unwrap(),
+                ),
             ),
         ])));
         self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
             GlobalTimeSeriesIdx(
                 0,
                 TimeSeriesIdx::Device(
-                    self.data[0]
+                    self.simulations[0]
                         .devc
                         .get_device_idx_by_name("AST_1OG_Glaswand_N2")
                         .unwrap(),
@@ -79,7 +84,7 @@ impl Application for FdsToolbox {
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
-            data: Simulations::new(vec![Simulation {
+            simulations: Simulations::new(vec![Simulation {
                 devc: Devices::from_reader(
                     include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
@@ -100,7 +105,16 @@ impl Application for FdsToolbox {
             Message::TabClosed(tab) => {
                 self.tabs.remove(tab);
             }
-            Message::TabMessage(_) => todo!(),
+            // We can't actually use self.active_tab() here because of the borrow checker :(
+            Message::TabMessage(msg) => match self.tabs.get_mut(self.active_tab) {
+                Some(tab) => {
+                    return tab
+                        .update(&mut self.simulations, msg)
+                        .map(Message::TabMessage)
+                }
+                None => panic!("No active tab"), // TODO: Log error instead of panicking
+            },
+            // _ => {},
         }
         Command::none()
     }
@@ -127,7 +141,7 @@ impl Application for FdsToolbox {
         };
 
         let content = match self.tabs.get_mut(self.active_tab) {
-            Some(tab) => tab.view(&self.data),
+            Some(tab) => tab.view(&self.simulations),
             None => Text::new("No tabs open").into(),
         };
 
