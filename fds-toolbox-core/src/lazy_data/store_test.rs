@@ -2,7 +2,7 @@
 mod tests {
 
     use crate::lazy_data::{
-        index::Store,
+        store::Store,
         remote::test_remote::TestRemote,
         serialization::{CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor},
     };
