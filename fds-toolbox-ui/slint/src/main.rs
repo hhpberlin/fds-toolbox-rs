@@ -1,9 +1,31 @@
 slint::include_modules!();
 
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
+use fds_toolbox_core::formats::simulations::Simulations;
 use plotters::prelude::*;
 use slint::{SharedPixelBuffer, Rgb8Pixel};
+
+struct State {
+    shared_pixel_buffer: SharedPixelBuffer<Rgb8Pixel>,
+    // plotters_backend: BitMapBackend<'static>,
+    simulations: Simulations,
+}
+
+impl State {
+    fn new() -> Self {
+        let shared_pixel_buffer = SharedPixelBuffer::new(800, 600);
+        // let plotters_backend = BitMapBackend::with_buffer(
+        //     shared_pixel_buffer.make_mut_bytes(),
+        //     (shared_pixel_buffer.width(), shared_pixel_buffer.height()),
+        // );
+        Self {
+            shared_pixel_buffer,
+            // plotters_backend,
+            simulations: Simulations::empty(),
+        }
+    }
+}
 
 fn main() {
     let ui = AppWindow::new();
@@ -15,7 +37,7 @@ fn main() {
 }
 
 lazy_static::lazy_static! {
-    static ref BUFFER: Mutex<SharedPixelBuffer<Rgb8Pixel>> = Mutex::new(SharedPixelBuffer::new(640, 480));
+    static ref STATE: RwLock<State> = RwLock::new(State::new());
 }
 
 fn pdf(x: f64, y: f64, a: f64) -> f64 {

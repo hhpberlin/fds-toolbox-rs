@@ -10,6 +10,10 @@ pub struct Simulations {
 }
 
 impl Simulations {
+    pub fn empty() -> Self {
+        Self { simulations: vec![] }
+    }
+
     pub fn new(simulations: Vec<Simulation>) -> Self {
         Self { simulations }
     }

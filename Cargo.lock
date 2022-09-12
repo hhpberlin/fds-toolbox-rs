@@ -4279,6 +4279,7 @@ dependencies = [
 name = "slint"
 version = "0.1.0"
 dependencies = [
+ "fds-toolbox-core",
  "lazy_static",
  "plotters",
  "slint 0.2.5",
