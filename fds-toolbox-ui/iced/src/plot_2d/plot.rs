@@ -1,11 +1,11 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, cell::RefCell};
 
 use fds_toolbox_core::common::{range::Range, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
-    Element, Length, Size, Point,
+    Element, Length, Size, Point, Command,
 };
-use plotters::{prelude::*, coord::ReverseCoordTranslate};
+use plotters::{prelude::*, coord::{ReverseCoordTranslate, types::RangedCoordf32}, chart::ChartState};
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
@@ -14,13 +14,17 @@ pub enum ChartMessage {
     Hover { position: Point },
 }
 
-#[derive(Debug)]
+type Cart2D = Cartesian2d<RangedCoordf32, RangedCoordf32>;
+
+// #[derive(Debug)]
 pub struct Plot2D<Id> {
     cache: Cache,
     ids: Vec<Id>,
-    pub x_range: Range<f32>,
-    pub y_range: Range<f32>,
-    pub hovered_point: Option<(f32, f32)>,
+    x_range: Range<f32>,
+    y_range: Range<f32>,
+    hovered_point: Option<(f32, f32)>,
+    // Needs to be modified inside build_chart, which only receives a &self
+    chart_state: RefCell<Option<ChartState<Cart2D>>>,
 }
 
 struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
@@ -39,13 +43,13 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
+        //TODO
         // TODO: Avoid alloc by reusing iterator?
         let data = self
             .data
             .ids
             .iter()
-            .filter_map(|id| self.source.get_time_series(*id))
-            .collect::<Vec<_>>();
+            .filter_map(|id| self.source.get_time_series(*id));
 
         // let x_range = self.data.x_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range)));
         // let y_range = self.data.y_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.values.stats.range)));
@@ -76,31 +80,32 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
                 .expect("failed to draw chart data");
         }
 
-        // chart.draw_series(PointSeries::of_element(
-        //     data.first().iter(),
-        //     5,
-        //     color.filled(),
-        //     &|coord, size, style| {
-        //         EmptyElement::at(coord) + Circle::new((0, 0), size, style)
-        //     },
-        // ));
-
         let hover = match self.data.hovered_point {
             Some((x, y)) => chart.as_coord_spec().reverse_translate((x as i32, y as i32)),
             _ => None,
         };
 
-        chart.draw_series(PointSeries::of_element(
-            hover.iter().copied(),
-            5,
-            ShapeStyle::from(&RED).filled(),
-            &|coord, size, style| {
-                EmptyElement::at(coord)
-                    + Circle::new((0, 0), size, style)
-                    + Text::new(format!("{:?}", coord), (0, 15), ("sans-serif", 15))
-            },
-        )).unwrap();
-
+        if let Some((x, y)) = hover {
+            // let (chart_x_range, chart_y_range) = chart.plotting_area().get_pixel_range();
+            
+            chart.draw_series(PointSeries::of_element(
+                hover.iter().copied(),
+                5,
+                ShapeStyle::from(&RED).filled(),
+                &|(x, y), size, style| {
+                    EmptyElement::at((x, y))
+                        + Circle::new((0, 0), size, style)
+                        // MAX/2 to avoid overflow
+                        // TODO: Find a better way to do this
+                        // + PathElement::new([(chart_x_range.start - x as i32, 0), (chart_x_range.end - x as i32, 0)], style.clone())
+                        // + PathElement::new([(0, i32::MIN/2), (0, i32::MAX/2)], style.clone())
+                        + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
+                },
+            )).unwrap();
+    
+            chart.draw_series(LineSeries::new([(x_range.min, y), (x_range.max, y)], RED.stroke_width(1))).unwrap();
+            chart.draw_series(LineSeries::new([(x, y_range.min), (x, y_range.max)], RED.stroke_width(1))).unwrap();
+        }
         // TODO: Draw labels
 
         // chart
@@ -109,6 +114,8 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     .border_style(&BLACK)
         //     .draw()
         //     .expect("failed to draw chart labels");
+
+        self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
     }
 }
 
@@ -120,7 +127,21 @@ impl<Id: Copy> Plot2D<Id> {
             x_range: Range::new(0.0, 100.0),
             y_range: Range::new(0.0, 100.0),
             hovered_point: None,
+            chart_state: RefCell::new(None),
         }
+    }
+
+    pub fn update(&mut self, message: ChartMessage) -> Command<ChartMessage> {
+        match message {
+            ChartMessage::Zoom { center, factor } => {
+                self.zoom((center.x, center.y), factor);
+                // dbg!(self.chart.x_range);
+                // dbg!(self.chart.y_range);
+            }
+            ChartMessage::Hover { position } => self.hovered_point = Some((position.x, position.y)),
+        }
+        self.invalidate();
+        Command::none()
     }
 
     pub fn view<'a, Source: TimeSeriesViewSource<Id>>(
@@ -155,6 +176,7 @@ impl<Id: Copy> Plot2D<Id> {
     }
 
     pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
+        dbg!(center);
         let (cx, cy) = center;
         self.x_range.zoom(cx, factor);
         self.y_range.zoom(cy, factor);
