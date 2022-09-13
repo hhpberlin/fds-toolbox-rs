@@ -5,7 +5,7 @@ use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size, Point,
 };
-use plotters::prelude::*;
+use plotters::{prelude::*, coord::ReverseCoordTranslate};
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
@@ -85,8 +85,10 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     },
         // ));
 
-        // TODO: Translate coordinates to chart coordinates
-        let hover = self.data.hovered_point.map(|x| x);
+        let hover = match self.data.hovered_point {
+            Some((x, y)) => chart.as_coord_spec().reverse_translate((x as i32, y as i32)),
+            _ => None,
+        };
 
         chart.draw_series(PointSeries::of_element(
             hover.iter().copied(),
@@ -132,7 +134,7 @@ impl<Id: Copy> Plot2D<Id> {
                 match e {
                     iced::mouse::Event::CursorEntered => None,
                     iced::mouse::Event::CursorLeft => None,
-                    iced::mouse::Event::CursorMoved { position } => { Some(ChartMessage::Hover { position }) },
+                    iced::mouse::Event::CursorMoved { position: _ } => { Some(ChartMessage::Hover { position: p }) },
                     iced::mouse::Event::ButtonPressed(_) => None,
                     iced::mouse::Event::ButtonReleased(_) => None,
                     iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
