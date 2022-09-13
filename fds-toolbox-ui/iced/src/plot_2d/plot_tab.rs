@@ -33,13 +33,16 @@ impl Tab<Simulations> for PlotTab {
         _model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
+        dbg!(message);
         match message {
             ChartMessage::Zoom { center, factor } => {
-                self.chart.zoom(center, factor);
+                self.chart.zoom((center.x, center.y), factor);
                 dbg!(self.chart.x_range);
                 dbg!(self.chart.y_range);
             }
+            ChartMessage::Hover { position } => self.chart.hovered_point = Some((position.x, position.y)),
         }
+        self.chart.invalidate();
         Command::none()
     }
 

@@ -3,14 +3,15 @@ use std::fmt::Debug;
 use fds_toolbox_core::common::{range::Range, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
-    Element, Length, Size,
+    Element, Length, Size, Point,
 };
 use plotters::prelude::*;
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ChartMessage {
-    Zoom { center: (f32, f32), factor: f32 },
+    Zoom { center: Point, factor: f32 },
+    Hover { position: Point },
 }
 
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub struct Plot2D<Id> {
     ids: Vec<Id>,
     pub x_range: Range<f32>,
     pub y_range: Range<f32>,
+    pub hovered_point: Option<(f32, f32)>,
 }
 
 struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
@@ -74,6 +76,29 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
                 .expect("failed to draw chart data");
         }
 
+        // chart.draw_series(PointSeries::of_element(
+        //     data.first().iter(),
+        //     5,
+        //     color.filled(),
+        //     &|coord, size, style| {
+        //         EmptyElement::at(coord) + Circle::new((0, 0), size, style)
+        //     },
+        // ));
+
+        // TODO: Translate coordinates to chart coordinates
+        let hover = self.data.hovered_point.map(|x| x);
+
+        chart.draw_series(PointSeries::of_element(
+            hover.iter().copied(),
+            5,
+            ShapeStyle::from(&RED).filled(),
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+                    + Text::new(format!("{:?}", coord), (0, 15), ("sans-serif", 15))
+            },
+        )).unwrap();
+
         // TODO: Draw labels
 
         // chart
@@ -92,6 +117,7 @@ impl<Id: Copy> Plot2D<Id> {
             ids: data,
             x_range: Range::new(0.0, 100.0),
             y_range: Range::new(0.0, 100.0),
+            hovered_point: None,
         }
     }
 
@@ -106,12 +132,12 @@ impl<Id: Copy> Plot2D<Id> {
                 match e {
                     iced::mouse::Event::CursorEntered => None,
                     iced::mouse::Event::CursorLeft => None,
-                    iced::mouse::Event::CursorMoved { position: _ } => None,
+                    iced::mouse::Event::CursorMoved { position } => { Some(ChartMessage::Hover { position }) },
                     iced::mouse::Event::ButtonPressed(_) => None,
                     iced::mouse::Event::ButtonReleased(_) => None,
                     iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
                         // TODO: Actually calculate the center instead of this bullshit
-                        center: (p.x, p.y),
+                        center: p,
                         // center: (self.x_range.map(p.x), p.y),
                         factor: match delta {
                             // TODO: Treat line and pixel scroll differently
@@ -127,10 +153,13 @@ impl<Id: Copy> Plot2D<Id> {
     }
 
     pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
-        self.cache.clear();
         let (cx, cy) = center;
         self.x_range.zoom(cx, factor);
         self.y_range.zoom(cy, factor);
+    }
+
+    pub fn invalidate(&mut self) {
+        self.cache.clear();
     }
 }
 
