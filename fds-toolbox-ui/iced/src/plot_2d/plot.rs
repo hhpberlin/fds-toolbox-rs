@@ -5,18 +5,23 @@ use iced::{
     canvas::{Cache, Frame, Geometry},
     Element, Length, Size, Point, Command,
 };
-use plotters::{prelude::*, coord::{ReverseCoordTranslate, types::RangedCoordf32}, chart::ChartState};
+use plotters::{prelude::*, coord::{ReverseCoordTranslate, types::RangedCoordf32}};
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ChartMessage {
-    Zoom { center: Point, factor: f32 },
+    Zoom { center: Position, factor: f32 },
     Hover { position: Point },
 }
 
-type Cart2D = Cartesian2d<RangedCoordf32, RangedCoordf32>;
+#[derive(Debug, Clone, Copy)]
+pub enum Position {
+    Screen(Point),
+    Data((f32, f32)),
+}
 
-// #[derive(Debug)]
+type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
+
 pub struct Plot2D<Id> {
     cache: Cache,
     ids: Vec<Id>,
@@ -24,7 +29,21 @@ pub struct Plot2D<Id> {
     y_range: Range<f32>,
     hovered_point: Option<(f32, f32)>,
     // Needs to be modified inside build_chart, which only receives a &self
-    chart_state: RefCell<Option<ChartState<Cart2D>>>,
+    // chart_state: RefCell<Option<ChartState<Cart2D>>>,
+    coord_spec: RefCell<Option<Cartesian2df32>>,
+}
+
+impl<Id: Debug> Debug for Plot2D<Id> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Plot2D")
+        .field("cache", &self.cache)
+        .field("ids", &self.ids)
+        .field("x_range", &self.x_range)
+        .field("y_range", &self.y_range)
+        .field("hovered_point", &self.hovered_point)
+        // .field("coord_spec", &self.coord_spec)
+        .finish()
+    }
 }
 
 struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
@@ -115,7 +134,8 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     .draw()
         //     .expect("failed to draw chart labels");
 
-        self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
+        // self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
+        self.data.coord_spec.borrow_mut().replace(chart.as_coord_spec().clone());
     }
 }
 
@@ -127,14 +147,24 @@ impl<Id: Copy> Plot2D<Id> {
             x_range: Range::new(0.0, 100.0),
             y_range: Range::new(0.0, 100.0),
             hovered_point: None,
-            chart_state: RefCell::new(None),
+            coord_spec: RefCell::new(None),
         }
+    }
+
+    pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
+        dbg!(center);
+        let (cx, cy) = center;
+        self.x_range.zoom(cx, factor);
+        self.y_range.zoom(cy, factor);
     }
 
     pub fn update(&mut self, message: ChartMessage) -> Command<ChartMessage> {
         match message {
             ChartMessage::Zoom { center, factor } => {
-                self.zoom((center.x, center.y), factor);
+                let pos = self.coord_spec.borrow().as_ref()
+                    .and_then(|x| center.into_data_coords(x))
+                    .unwrap_or_else(|| (self.x_range.center(), self.y_range.center()));
+                self.zoom(pos, factor);
                 // dbg!(self.chart.x_range);
                 // dbg!(self.chart.y_range);
             }
@@ -160,26 +190,20 @@ impl<Id: Copy> Plot2D<Id> {
                     iced::mouse::Event::ButtonReleased(_) => None,
                     iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
                         // TODO: Actually calculate the center instead of this bullshit
-                        center: p,
+                        // center: self.chart_state.borrow().unwrap().,
                         // center: (self.x_range.map(p.x), p.y),
+                        center: Position::Screen(p),
                         factor: match delta {
                             // TODO: Treat line and pixel scroll differently
                             // TODO: Use a better zoom factor
                             // TODO: Look at x scroll
-                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / 50.0).exp(),
-                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / 50.0).exp(),
+                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / -30.0).exp(),
+                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -30.0).exp(),
                         },
                     }),
                 }
             }))
             .into()
-    }
-
-    pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
-        dbg!(center);
-        let (cx, cy) = center;
-        self.x_range.zoom(cx, factor);
-        self.y_range.zoom(cy, factor);
     }
 
     pub fn invalidate(&mut self) {
@@ -190,5 +214,16 @@ impl<Id: Copy> Plot2D<Id> {
 impl<Id: Copy> Default for Plot2D<Id> {
     fn default() -> Self {
         Self::new(Vec::new())
+    }
+}
+
+impl Position {
+    pub fn into_data_coords(self, coord_spec: &Cartesian2df32) -> Option<(f32, f32)> {
+        match self {
+            Position::Data(p) => Some(p),
+            Position::Screen(p) => {
+                coord_spec.reverse_translate((p.x as i32, p.y as i32))
+            }
+        }
     }
 }

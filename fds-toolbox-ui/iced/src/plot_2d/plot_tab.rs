@@ -5,7 +5,7 @@ use crate::{tabs::Tab, Simulations};
 
 use super::plot::{ChartMessage, Plot2D};
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct PlotTab {
     chart: Plot2D<GlobalTimeSeriesIdx>,
 }
