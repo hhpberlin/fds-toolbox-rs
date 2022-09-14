@@ -29,7 +29,8 @@ impl<N: Sub<Output = N> + Div<Output = N> + Copy> Range<N> {
     }
 
     pub fn center(&self) -> <N as Div>::Output
-        where N: Add<Output = N> + From<u8>
+    where
+        N: Add<Output = N> + From<u8>,
     {
         (self.max + self.min) / N::from(2)
     }
@@ -44,7 +45,7 @@ impl<N: Sub<Output = N> + Div<Output = N> + Copy> Range<N> {
 
     pub fn zoom(&mut self, center: N, factor: N)
     where
-        N: Mul<Output = N> + Add<Output = N> + PartialOrd
+        N: Mul<Output = N> + Add<Output = N> + PartialOrd,
     {
         self.min = center + (self.min - center) * factor;
         self.max = center + (self.max - center) * factor;

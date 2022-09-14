@@ -2,9 +2,9 @@
 mod tests {
 
     use crate::lazy_data::{
-        store::Store,
         remote::test_remote::TestRemote,
         serialization::{CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor},
+        store::Store,
     };
 
     type Data = String;

@@ -1,11 +1,14 @@
-use std::{fmt::Debug, cell::RefCell};
+use std::{cell::RefCell, fmt::Debug};
 
 use fds_toolbox_core::common::{range::Range, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
-    Element, Length, Size, Point, Command,
+    Command, Element, Length, Point, Size,
 };
-use plotters::{prelude::*, coord::{ReverseCoordTranslate, types::RangedCoordf32}};
+use plotters::{
+    coord::{types::RangedCoordf32, ReverseCoordTranslate},
+    prelude::*,
+};
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
@@ -36,13 +39,13 @@ pub struct Plot2D<Id> {
 impl<Id: Debug> Debug for Plot2D<Id> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Plot2D")
-        .field("cache", &self.cache)
-        .field("ids", &self.ids)
-        .field("x_range", &self.x_range)
-        .field("y_range", &self.y_range)
-        .field("hovered_point", &self.hovered_point)
-        // .field("coord_spec", &self.coord_spec)
-        .finish()
+            .field("cache", &self.cache)
+            .field("ids", &self.ids)
+            .field("x_range", &self.x_range)
+            .field("y_range", &self.y_range)
+            .field("hovered_point", &self.hovered_point)
+            // .field("coord_spec", &self.coord_spec)
+            .finish()
     }
 }
 
@@ -68,7 +71,7 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
             .data
             .ids
             .iter()
-            .filter_map(|id| self.source.get_time_series(*id));
+            .filter_map(|id| self.source.get_time_series(*id).map(|x| (id, x)));
 
         // let x_range = self.data.x_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range)));
         // let y_range = self.data.y_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.values.stats.range)));
@@ -90,40 +93,81 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
 
         let color = Palette99::pick(4).mix(0.9);
 
-        for data in data {
+        let hover_screen = self.data.hovered_point.map(|(x, y)| (x as i32, y as i32));
+        let mut closest: Option<ClosestPoint<Id>> = None;
+
+        for (id, data) in data {
             chart
                 .draw_series(LineSeries::new(data.iter(), color.stroke_width(2)))
                 // TODO: Set labels
                 // .label("y = x^2")
                 // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
                 .expect("failed to draw chart data");
+
+            if let Some(hover_screen) = hover_screen {
+                closest =
+                    closest
+                        .into_iter()
+                        .chain(data.iter().map(|x| {
+                            ClosestPoint::get(*id, x, hover_screen, chart.as_coord_spec())
+                        }))
+                        .fold(None, |a, b| match a {
+                            None => Some(b),
+                            Some(a) => Some(if a.distance_screen_sq < b.distance_screen_sq {
+                                a
+                            } else {
+                                b
+                            }),
+                        });
+            }
         }
 
-        let hover = match self.data.hovered_point {
-            Some((x, y)) => chart.as_coord_spec().reverse_translate((x as i32, y as i32)),
+        let hover = match hover_screen {
+            Some(coord) => chart.as_coord_spec().reverse_translate(coord),
             _ => None,
+        };
+
+        let hover = match closest {
+            Some(ClosestPoint {
+                point,
+                distance_screen_sq: d,
+                ..
+            }) if d < 50.0_f32.powi(2) => Some(point),
+            _ => hover,
         };
 
         if let Some((x, y)) = hover {
             // let (chart_x_range, chart_y_range) = chart.plotting_area().get_pixel_range();
-            
-            chart.draw_series(PointSeries::of_element(
-                hover.iter().copied(),
-                5,
-                ShapeStyle::from(&RED).filled(),
-                &|(x, y), size, style| {
-                    EmptyElement::at((x, y))
+
+            chart
+                .draw_series(PointSeries::of_element(
+                    hover.iter().copied(),
+                    5,
+                    ShapeStyle::from(&RED).filled(),
+                    &|(x, y), size, style| {
+                        EmptyElement::at((x, y))
                         + Circle::new((0, 0), size, style)
                         // MAX/2 to avoid overflow
                         // TODO: Find a better way to do this
                         // + PathElement::new([(chart_x_range.start - x as i32, 0), (chart_x_range.end - x as i32, 0)], style.clone())
                         // + PathElement::new([(0, i32::MIN/2), (0, i32::MAX/2)], style.clone())
                         + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
-                },
-            )).unwrap();
-    
-            chart.draw_series(LineSeries::new([(x_range.min, y), (x_range.max, y)], RED.stroke_width(1))).unwrap();
-            chart.draw_series(LineSeries::new([(x, y_range.min), (x, y_range.max)], RED.stroke_width(1))).unwrap();
+                    },
+                ))
+                .unwrap();
+
+            chart
+                .draw_series(LineSeries::new(
+                    [(x_range.min, y), (x_range.max, y)],
+                    RED.stroke_width(1),
+                ))
+                .unwrap();
+            chart
+                .draw_series(LineSeries::new(
+                    [(x, y_range.min), (x, y_range.max)],
+                    RED.stroke_width(1),
+                ))
+                .unwrap();
         }
         // TODO: Draw labels
 
@@ -135,7 +179,37 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     .expect("failed to draw chart labels");
 
         // self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
-        self.data.coord_spec.borrow_mut().replace(chart.as_coord_spec().clone());
+        self.data
+            .coord_spec
+            .borrow_mut()
+            .replace(chart.as_coord_spec().clone());
+    }
+}
+
+struct ClosestPoint<Id> {
+    id: Id,
+    point: (f32, f32),
+    point_screen: (i32, i32),
+    distance_screen_sq: f32,
+}
+
+impl<Id> ClosestPoint<Id> {
+    fn get(
+        id: Id,
+        point: (f32, f32),
+        hover_screen: (i32, i32),
+        coord_spec: &Cartesian2df32,
+    ) -> Self {
+        let point_screen = coord_spec.translate(&point);
+        let distance_screen_sq = (point_screen.0 as f32 - hover_screen.0 as f32).powi(2)
+            + (point_screen.1 as f32 - hover_screen.1 as f32).powi(2);
+
+        Self {
+            id,
+            point,
+            point_screen,
+            distance_screen_sq,
+        }
     }
 }
 
@@ -161,7 +235,10 @@ impl<Id: Copy> Plot2D<Id> {
     pub fn update(&mut self, message: ChartMessage) -> Command<ChartMessage> {
         match message {
             ChartMessage::Zoom { center, factor } => {
-                let pos = self.coord_spec.borrow().as_ref()
+                let pos = self
+                    .coord_spec
+                    .borrow()
+                    .as_ref()
                     .and_then(|x| center.into_data_coords(x))
                     .unwrap_or_else(|| (self.x_range.center(), self.y_range.center()));
                 self.zoom(pos, factor);
@@ -185,7 +262,9 @@ impl<Id: Copy> Plot2D<Id> {
                 match e {
                     iced::mouse::Event::CursorEntered => None,
                     iced::mouse::Event::CursorLeft => None,
-                    iced::mouse::Event::CursorMoved { position: _ } => { Some(ChartMessage::Hover { position: p }) },
+                    iced::mouse::Event::CursorMoved { position: _ } => {
+                        Some(ChartMessage::Hover { position: p })
+                    }
                     iced::mouse::Event::ButtonPressed(_) => None,
                     iced::mouse::Event::ButtonReleased(_) => None,
                     iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
@@ -221,9 +300,7 @@ impl Position {
     pub fn into_data_coords(self, coord_spec: &Cartesian2df32) -> Option<(f32, f32)> {
         match self {
             Position::Data(p) => Some(p),
-            Position::Screen(p) => {
-                coord_spec.reverse_translate((p.x as i32, p.y as i32))
-            }
+            Position::Screen(p) => coord_spec.reverse_translate((p.x as i32, p.y as i32)),
         }
     }
 }
