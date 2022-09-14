@@ -197,8 +197,8 @@ impl<Id: Copy> Plot2D<Id> {
                             // TODO: Treat line and pixel scroll differently
                             // TODO: Use a better zoom factor
                             // TODO: Look at x scroll
-                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / -30.0).exp(),
-                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -30.0).exp(),
+                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
+                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
                         },
                     }),
                 }
