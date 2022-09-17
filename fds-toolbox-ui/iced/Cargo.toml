@@ -1,5 +1,5 @@
 [package]
-name = "fds-toolbox-ui"
+name = "fds-toolbox-ui-iced"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,8 +10,6 @@ iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_
 plotters = "0.3"
 plotters-iced = "0.3"
 
-enum_dispatch = "0.3"
-
-im = "15.1"
+makima_spline = "1.1"
 
 fds-toolbox-core = { path = "../../fds-toolbox-core" }
