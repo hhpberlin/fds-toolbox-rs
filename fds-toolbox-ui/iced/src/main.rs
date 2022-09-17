@@ -23,7 +23,10 @@ mod array_stats_vis;
 mod select_list;
 
 pub fn main() -> iced::Result {
-    FdsToolbox::run(Settings::default())
+    FdsToolbox::run(Settings {
+        antialiasing: true,
+        ..Settings::default()
+    })
 }
 
 struct FdsToolbox {
