@@ -15,6 +15,7 @@ use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 pub enum ChartMessage {
     Zoom { center: Position, factor: f32 },
     Hover { position: Point },
+    Mouse { down: bool },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,10 +31,11 @@ pub struct Plot2D<Id> {
     ids: Vec<Id>,
     x_range: Range<f32>,
     y_range: Range<f32>,
-    hovered_point: Option<(f32, f32)>,
+    hovered_point: Option<Point>,
     // Needs to be modified inside build_chart, which only receives a &self
     // chart_state: RefCell<Option<ChartState<Cart2D>>>,
     coord_spec: RefCell<Option<Cartesian2df32>>,
+    mouse_down: bool,
 }
 
 impl<Id: Debug> Debug for Plot2D<Id> {
@@ -45,6 +47,7 @@ impl<Id: Debug> Debug for Plot2D<Id> {
             .field("y_range", &self.y_range)
             .field("hovered_point", &self.hovered_point)
             // .field("coord_spec", &self.coord_spec)
+            .field("mouse_down", &self.mouse_down)
             .finish()
     }
 }
@@ -93,7 +96,7 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
 
         let color = Palette99::pick(4).mix(0.9);
 
-        let hover_screen = self.data.hovered_point.map(|(x, y)| (x as i32, y as i32));
+        let hover_screen = self.data.hovered_point.map(|point| (point.x as i32, point.y as i32));
         let mut closest: Option<ClosestPoint<Id>> = None;
 
         for (id, data) in data {
@@ -222,32 +225,64 @@ impl<Id: Copy> Plot2D<Id> {
             y_range: Range::new(0.0, 100.0),
             hovered_point: None,
             coord_spec: RefCell::new(None),
+            mouse_down: false,
         }
     }
 
     pub fn zoom(&mut self, center: (f32, f32), factor: f32) {
-        dbg!(center);
+        // dbg!(center);
         let (cx, cy) = center;
         self.x_range.zoom(cx, factor);
         self.y_range.zoom(cy, factor);
     }
 
+    pub fn pan(&mut self, delta: (f32, f32)) {
+        let (dx, dy) = delta;
+        self.x_range.pan(dx);
+        self.y_range.pan(dy);
+    }
+
+    fn map_pos_to_coord(&self, screen: Position) -> Option<(f32, f32)> {
+        self.coord_spec
+            .borrow()
+            .as_ref()
+            .and_then(|x| screen.into_data_coords(x))     
+    }
+
+    fn map_screen_to_coord(&self, screen: Point) -> Option<(f32, f32)> {
+        self.coord_spec
+            .borrow()
+            .as_ref()
+            .and_then(|x| x.reverse_translate((screen.x as i32, screen.y as i32)))
+    }
+
     pub fn update(&mut self, message: ChartMessage) -> Command<ChartMessage> {
         match message {
             ChartMessage::Zoom { center, factor } => {
-                let pos = self
-                    .coord_spec
-                    .borrow()
-                    .as_ref()
-                    .and_then(|x| center.into_data_coords(x))
+                self.invalidate();
+                let pos = self.map_pos_to_coord(center)
                     .unwrap_or_else(|| (self.x_range.center(), self.y_range.center()));
                 self.zoom(pos, factor);
-                // dbg!(self.chart.x_range);
-                // dbg!(self.chart.y_range);
             }
-            ChartMessage::Hover { position } => self.hovered_point = Some((position.x, position.y)),
+            ChartMessage::Hover { position } => {
+                self.invalidate();
+                let previous = self.hovered_point;
+                self.hovered_point = Some(position);
+                
+                if self.mouse_down {
+                    let previous = previous.and_then(|x| self.map_screen_to_coord(x));
+                    let current = self.hovered_point.and_then(|x| self.map_screen_to_coord(x));
+
+                    if let (Some(previous), Some(current)) = (previous, current) {
+                        let delta = (previous.0 - current.0, previous.1 - current.1);
+                        self.pan(delta);
+                    }
+                }
+            },
+            ChartMessage::Mouse { down } => {
+                self.mouse_down = down;
+            },
         }
-        self.invalidate();
         Command::none()
     }
 
@@ -260,11 +295,13 @@ impl<Id: Copy> Plot2D<Id> {
             .height(Length::Fill)
             .on_mouse_event(Box::new(|e, p| {
                 match e {
-                    iced::mouse::Event::CursorEntered => None,
-                    iced::mouse::Event::CursorLeft => None,
+                    iced::mouse::Event::CursorEntered => Some(ChartMessage::Mouse { down: false }),
+                    iced::mouse::Event::CursorLeft => Some(ChartMessage::Mouse { down: false }),
                     iced::mouse::Event::CursorMoved { position: _ } => {
                         Some(ChartMessage::Hover { position: p })
                     }
+                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => Some(ChartMessage::Mouse { down: true }),
+                    iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => Some(ChartMessage::Mouse { down: false }),
                     iced::mouse::Event::ButtonPressed(_) => None,
                     iced::mouse::Event::ButtonReleased(_) => None,
                     iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {

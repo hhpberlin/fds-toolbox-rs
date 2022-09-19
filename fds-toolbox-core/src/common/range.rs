@@ -53,6 +53,14 @@ impl<N: Sub<Output = N> + Div<Output = N> + Copy> Range<N> {
             (self.min, self.max) = (self.max, self.min);
         }
     }
+
+    pub fn pan(&mut self, delta: N)
+    where
+        N: Add<Output = N>,
+    {
+        self.min = self.min + delta;
+        self.max = self.max + delta;
+    }
 }
 
 impl<N> Range<N> {
