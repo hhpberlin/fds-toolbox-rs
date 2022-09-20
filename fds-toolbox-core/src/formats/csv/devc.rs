@@ -15,7 +15,7 @@ pub struct Devices {
     devices_by_name: HashMap<String, DeviceIdx>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DeviceIdx(usize);
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -182,6 +182,18 @@ impl Devices {
 
     pub fn get_device_idx_by_name(&self, name: &str) -> Option<DeviceIdx> {
         self.devices_by_name.get(name).copied()
+    }
+
+    pub fn iter_device_named_ids(&self) -> impl Iterator<Item = (&str, DeviceIdx)> {
+        self.devices_by_name.iter().map(|(k, v)| (k.as_str(), *v))
+    }
+
+    pub fn iter_devices(&self) -> impl Iterator<Item = &DeviceReadings> {
+        self.devices.iter()
+    }
+
+    pub fn enumerate_devices(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
+        self.devices.iter().enumerate().map(|(i, x)| (DeviceIdx(i), x))
     }
 }
 

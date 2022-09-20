@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
 
 use super::csv::devc::{DeviceIdx, Devices};
@@ -19,7 +21,7 @@ pub enum SimulationData2D<'a> {
     Device(&'a str),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TimeSeriesIdx {
     Device(DeviceIdx),
 }

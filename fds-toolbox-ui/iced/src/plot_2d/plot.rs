@@ -12,7 +12,7 @@ use plotters::{
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 #[derive(Debug, Clone, Copy)]
-pub enum ChartMessage {
+pub enum Message {
     Zoom { center: Position, factor: f32 },
     Hover { position: Point },
     Mouse { down: bool },
@@ -26,9 +26,8 @@ pub enum Position {
 
 type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 
-pub struct Plot2D<Id> {
+pub struct Plot2DState {
     cache: Cache,
-    ids: Vec<Id>,
     x_range: Range<f32>,
     y_range: Range<f32>,
     hovered_point: Option<Point>,
@@ -38,11 +37,10 @@ pub struct Plot2D<Id> {
     mouse_down: bool,
 }
 
-impl<Id: Debug> Debug for Plot2D<Id> {
+impl Debug for Plot2DState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Plot2D")
             .field("cache", &self.cache)
-            .field("ids", &self.ids)
             .field("x_range", &self.x_range)
             .field("y_range", &self.y_range)
             .field("hovered_point", &self.hovered_point)
@@ -52,17 +50,19 @@ impl<Id: Debug> Debug for Plot2D<Id> {
     }
 }
 
-struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>> {
-    data: &'a Plot2D<Id>,
+struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>>
+{
+    state: &'a Plot2DState,
+    ids: &'a IdSrc,
     source: &'a Source,
 }
 
-impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
-    for Plot2DInstance<'_, Id, Source>
+impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Chart<Message>
+    for Plot2DInstance<'a, Id, Source, IdSrc>
 {
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-        self.data.cache.draw(bounds, draw_fn)
+        self.state.cache.draw(bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
@@ -71,10 +71,9 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //TODO
         // TODO: Avoid alloc by reusing iterator?
         let data = self
-            .data
             .ids
-            .iter()
-            .filter_map(|id| self.source.get_time_series(*id).map(|x| (id, x)));
+            .iter_ids()
+            .filter_map(|id| self.source.get_time_series(id).map(|x| (id, x)));
 
         // let x_range = self.data.x_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range)));
         // let y_range = self.data.y_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.values.stats.range)));
@@ -85,8 +84,8 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     _ => (Range::new(0.0, 1.0), Range::new(0.0, 1.0)),
         // };
 
-        let x_range = self.data.x_range;
-        let y_range = self.data.y_range;
+        let x_range = self.state.x_range;
+        let y_range = self.state.y_range;
 
         let mut chart = chart
             .build_cartesian_2d(x_range.into_range(), y_range.into_range())
@@ -96,7 +95,7 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
 
         let color = Palette99::pick(4).mix(0.9);
 
-        let hover_screen = self.data.hovered_point.map(|point| (point.x as i32, point.y as i32));
+        let hover_screen = self.state.hovered_point.map(|point| (point.x as i32, point.y as i32));
         let mut closest: Option<ClosestPoint<Id>> = None;
 
         for (id, data) in data {
@@ -112,7 +111,7 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
                     closest
                         .into_iter()
                         .chain(data.iter().map(|x| {
-                            ClosestPoint::get(*id, x, hover_screen, chart.as_coord_spec())
+                            ClosestPoint::get(id, x, hover_screen, chart.as_coord_spec())
                         }))
                         .fold(None, |a, b| match a {
                             None => Some(b),
@@ -182,7 +181,7 @@ impl<Id: Copy, Source: TimeSeriesViewSource<Id>> Chart<ChartMessage>
         //     .expect("failed to draw chart labels");
 
         // self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
-        self.data
+        self.state
             .coord_spec
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
@@ -216,11 +215,10 @@ impl<Id> ClosestPoint<Id> {
     }
 }
 
-impl<Id: Copy> Plot2D<Id> {
-    pub fn new(data: Vec<Id>) -> Self {
+impl Plot2DState {
+    pub fn new() -> Self {
         Self {
             cache: Cache::new(),
-            ids: data,
             x_range: Range::new(0.0, 100.0),
             y_range: Range::new(0.0, 100.0),
             hovered_point: None,
@@ -256,15 +254,15 @@ impl<Id: Copy> Plot2D<Id> {
             .and_then(|x| x.reverse_translate((screen.x as i32, screen.y as i32)))
     }
 
-    pub fn update(&mut self, message: ChartMessage) -> Command<ChartMessage> {
+    pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            ChartMessage::Zoom { center, factor } => {
+            Message::Zoom { center, factor } => {
                 self.invalidate();
                 let pos = self.map_pos_to_coord(center)
                     .unwrap_or_else(|| (self.x_range.center(), self.y_range.center()));
                 self.zoom(pos, factor);
             }
-            ChartMessage::Hover { position } => {
+            Message::Hover { position } => {
                 self.invalidate();
                 let previous = self.hovered_point;
                 self.hovered_point = Some(position);
@@ -279,32 +277,34 @@ impl<Id: Copy> Plot2D<Id> {
                     }
                 }
             },
-            ChartMessage::Mouse { down } => {
+            Message::Mouse { down } => {
                 self.mouse_down = down;
             },
         }
         Command::none()
     }
 
-    pub fn view<'a, Source: TimeSeriesViewSource<Id>>(
-        &'a mut self,
+    pub fn view<'a, Id: Copy + 'a, Source: TimeSeriesViewSource<Id>>(
+        &'a self,
         source: &'a Source,
-    ) -> Element<'a, ChartMessage> {
-        ChartWidget::new(Plot2DInstance { data: self, source })
+        ids: &'a (impl IdSource<Id = Id> + 'a),
+    ) -> Element<'a, Message> 
+    {
+        ChartWidget::new(Plot2DInstance { state: self, source, ids })
             .width(Length::Fill)
             .height(Length::Fill)
             .on_mouse_event(Box::new(|e, p| {
                 match e {
-                    iced::mouse::Event::CursorEntered => Some(ChartMessage::Mouse { down: false }),
-                    iced::mouse::Event::CursorLeft => Some(ChartMessage::Mouse { down: false }),
+                    iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
+                    iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
                     iced::mouse::Event::CursorMoved { position: _ } => {
-                        Some(ChartMessage::Hover { position: p })
+                        Some(Message::Hover { position: p })
                     }
-                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => Some(ChartMessage::Mouse { down: true }),
-                    iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => Some(ChartMessage::Mouse { down: false }),
+                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => Some(Message::Mouse { down: true }),
+                    iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => Some(Message::Mouse { down: false }),
                     iced::mouse::Event::ButtonPressed(_) => None,
                     iced::mouse::Event::ButtonReleased(_) => None,
-                    iced::mouse::Event::WheelScrolled { delta } => Some(ChartMessage::Zoom {
+                    iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
                         // TODO: Actually calculate the center instead of this bullshit
                         // center: self.chart_state.borrow().unwrap().,
                         // center: (self.x_range.map(p.x), p.y),
@@ -327,9 +327,9 @@ impl<Id: Copy> Plot2D<Id> {
     }
 }
 
-impl<Id: Copy> Default for Plot2D<Id> {
+impl Default for Plot2DState {
     fn default() -> Self {
-        Self::new(Vec::new())
+        Self::new()
     }
 }
 
@@ -340,4 +340,10 @@ impl Position {
             Position::Screen(p) => coord_spec.reverse_translate((p.x as i32, p.y as i32)),
         }
     }
+}
+
+pub trait IdSource {
+    type Id;
+    // TODO: Remove dynamic dispatch when GATs are stable
+    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_>;
 }

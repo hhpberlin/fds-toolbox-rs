@@ -1,12 +1,14 @@
 use std::ops::Index;
 
+use serde::{Serialize, Deserialize};
+
 use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
 
 use super::simulation::{Simulation, TimeSeriesIdx};
 
 #[derive(Debug)]
 pub struct Simulations {
-    simulations: Vec<Simulation>,
+    pub simulations: Vec<Simulation>,
 }
 
 impl Simulations {
@@ -37,5 +39,5 @@ impl TimeSeriesViewSource<GlobalTimeSeriesIdx> for Simulations {
 }
 
 // TODO: Should this have public fields or be an opaque type instantiated by Simulations?
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GlobalTimeSeriesIdx(pub usize, pub TimeSeriesIdx);
