@@ -193,7 +193,10 @@ impl Devices {
     }
 
     pub fn enumerate_devices(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
-        self.devices.iter().enumerate().map(|(i, x)| (DeviceIdx(i), x))
+        self.devices
+            .iter()
+            .enumerate()
+            .map(|(i, x)| (DeviceIdx(i), x))
     }
 }
 

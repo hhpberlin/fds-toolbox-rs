@@ -50,8 +50,7 @@ impl Debug for Plot2DState {
     }
 }
 
-struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>>
-{
+struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> {
     state: &'a Plot2DState,
     ids: &'a IdSrc,
     source: &'a Source,
@@ -95,7 +94,10 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
         let color = Palette99::pick(4).mix(0.9);
 
-        let hover_screen = self.state.hovered_point.map(|point| (point.x as i32, point.y as i32));
+        let hover_screen = self
+            .state
+            .hovered_point
+            .map(|point| (point.x as i32, point.y as i32));
         let mut closest: Option<ClosestPoint<Id>> = None;
 
         for (id, data) in data {
@@ -107,20 +109,20 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
                 .expect("failed to draw chart data");
 
             if let Some(hover_screen) = hover_screen {
-                closest =
-                    closest
-                        .into_iter()
-                        .chain(data.iter().map(|x| {
-                            ClosestPoint::get(id, x, hover_screen, chart.as_coord_spec())
-                        }))
-                        .fold(None, |a, b| match a {
-                            None => Some(b),
-                            Some(a) => Some(if a.distance_screen_sq < b.distance_screen_sq {
-                                a
-                            } else {
-                                b
-                            }),
-                        });
+                closest = closest
+                    .into_iter()
+                    .chain(
+                        data.iter()
+                            .map(|x| ClosestPoint::get(id, x, hover_screen, chart.as_coord_spec())),
+                    )
+                    .fold(None, |a, b| match a {
+                        None => Some(b),
+                        Some(a) => Some(if a.distance_screen_sq < b.distance_screen_sq {
+                            a
+                        } else {
+                            b
+                        }),
+                    });
             }
         }
 
@@ -244,7 +246,7 @@ impl Plot2DState {
         self.coord_spec
             .borrow()
             .as_ref()
-            .and_then(|x| screen.into_data_coords(x))     
+            .and_then(|x| screen.into_data_coords(x))
     }
 
     fn map_screen_to_coord(&self, screen: Point) -> Option<(f32, f32)> {
@@ -258,7 +260,8 @@ impl Plot2DState {
         match message {
             Message::Zoom { center, factor } => {
                 self.invalidate();
-                let pos = self.map_pos_to_coord(center)
+                let pos = self
+                    .map_pos_to_coord(center)
                     .unwrap_or_else(|| (self.x_range.center(), self.y_range.center()));
                 self.zoom(pos, factor);
             }
@@ -266,7 +269,7 @@ impl Plot2DState {
                 self.invalidate();
                 let previous = self.hovered_point;
                 self.hovered_point = Some(position);
-                
+
                 if self.mouse_down {
                     let previous = previous.and_then(|x| self.map_screen_to_coord(x));
                     let current = self.hovered_point.and_then(|x| self.map_screen_to_coord(x));
@@ -276,10 +279,10 @@ impl Plot2DState {
                         self.pan(delta);
                     }
                 }
-            },
+            }
             Message::Mouse { down } => {
                 self.mouse_down = down;
-            },
+            }
         }
         Command::none()
     }
@@ -288,38 +291,45 @@ impl Plot2DState {
         &'a self,
         source: &'a Source,
         ids: &'a (impl IdSource<Id = Id> + 'a),
-    ) -> Element<'a, Message> 
-    {
-        ChartWidget::new(Plot2DInstance { state: self, source, ids })
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .on_mouse_event(Box::new(|e, p| {
-                match e {
-                    iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
-                    iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
-                    iced::mouse::Event::CursorMoved { position: _ } => {
-                        Some(Message::Hover { position: p })
-                    }
-                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => Some(Message::Mouse { down: true }),
-                    iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => Some(Message::Mouse { down: false }),
-                    iced::mouse::Event::ButtonPressed(_) => None,
-                    iced::mouse::Event::ButtonReleased(_) => None,
-                    iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
-                        // TODO: Actually calculate the center instead of this bullshit
-                        // center: self.chart_state.borrow().unwrap().,
-                        // center: (self.x_range.map(p.x), p.y),
-                        center: Position::Screen(p),
-                        factor: match delta {
-                            // TODO: Treat line and pixel scroll differently
-                            // TODO: Use a better zoom factor
-                            // TODO: Look at x scroll
-                            iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
-                            iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
-                        },
-                    }),
+    ) -> Element<'a, Message> {
+        ChartWidget::new(Plot2DInstance {
+            state: self,
+            source,
+            ids,
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .on_mouse_event(Box::new(|e, p| {
+            match e {
+                iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
+                iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
+                iced::mouse::Event::CursorMoved { position: _ } => {
+                    Some(Message::Hover { position: p })
                 }
-            }))
-            .into()
+                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+                    Some(Message::Mouse { down: true })
+                }
+                iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                    Some(Message::Mouse { down: false })
+                }
+                iced::mouse::Event::ButtonPressed(_) => None,
+                iced::mouse::Event::ButtonReleased(_) => None,
+                iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
+                    // TODO: Actually calculate the center instead of this bullshit
+                    // center: self.chart_state.borrow().unwrap().,
+                    // center: (self.x_range.map(p.x), p.y),
+                    center: Position::Screen(p),
+                    factor: match delta {
+                        // TODO: Treat line and pixel scroll differently
+                        // TODO: Use a better zoom factor
+                        // TODO: Look at x scroll
+                        iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
+                        iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
+                    },
+                }),
+            }
+        }))
+        .into()
     }
 
     pub fn invalidate(&mut self) {

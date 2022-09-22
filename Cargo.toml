@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "fds-toolbox-core",
     "fds-toolbox-ui/iced",
+    "fds-toolbox-ui/druid",
 ]
 
 # [profile.release]

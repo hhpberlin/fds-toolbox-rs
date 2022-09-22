@@ -1,11 +1,11 @@
-use std::{collections::{HashSet}, iter::{FromIterator}};
+use std::{collections::HashSet, iter::FromIterator};
 
-use fds_toolbox_core::formats::{simulations::GlobalTimeSeriesIdx, simulation::TimeSeriesIdx};
-use iced::{Command, Element, Row, Column, Scrollable, scrollable};
+use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
+use iced::{scrollable, Column, Command, Element, Row, Scrollable};
 
 use crate::{tabs::Tab, Simulations};
 
-use super::plot::{Plot2DState, IdSource};
+use super::plot::{IdSource, Plot2DState};
 
 #[derive(Debug)]
 pub struct PlotTab {
@@ -30,36 +30,37 @@ impl PlotTab {
         }
     }
 
-    fn view_sidebar<'a>(set: &'a HashSet<GlobalTimeSeriesIdx>, scroll: &'a mut scrollable::State, model: &'a Simulations) -> Element<'a, Message>  {
+    fn view_sidebar<'a>(
+        set: &'a HashSet<GlobalTimeSeriesIdx>,
+        scroll: &'a mut scrollable::State,
+        model: &'a Simulations,
+    ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
 
-        for (idx, device) in model.simulations.iter().flat_map(|x| x.devc.enumerate_devices()) {
+        for (idx, device) in model
+            .simulations
+            .iter()
+            .flat_map(|x| x.devc.enumerate_devices())
+        {
             // TODO: This does not work with multiple simulations
             let global_idx = GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(idx));
 
             sidebar = sidebar.push(
-                Row::new()
-                    .push(
-                        iced::Checkbox::new(
-                            set.contains(&global_idx),
-                            format!("{} ({})", device.name, device.unit),
-                            move |checked| {
-                                if checked {
-                                    Message::Add(global_idx)
-                                } else {
-                                    Message::Remove(global_idx)
-                                }
-                            },
-                        )
-                    )
-                    // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
-                );
+                Row::new().push(iced::Checkbox::new(
+                    set.contains(&global_idx),
+                    format!("{} ({})", device.name, device.unit),
+                    move |checked| {
+                        if checked {
+                            Message::Add(global_idx)
+                        } else {
+                            Message::Remove(global_idx)
+                        }
+                    },
+                )), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+            );
         }
 
-        
-        Scrollable::new(scroll)
-            .push(sidebar)
-            .into()
+        Scrollable::new(scroll).push(sidebar).into()
     }
 }
 
@@ -95,7 +96,11 @@ impl Tab<Simulations> for PlotTab {
 
     fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
         Row::new()
-            .push(Self::view_sidebar(&self.selected, &mut self.scrollable, model))
+            .push(Self::view_sidebar(
+                &self.selected,
+                &mut self.scrollable,
+                model,
+            ))
             .push(self.chart.view(model, &self.selected).map(Message::Plot))
             .into()
     }
