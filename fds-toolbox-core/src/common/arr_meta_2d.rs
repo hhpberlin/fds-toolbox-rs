@@ -1,24 +1,24 @@
 use serde::{Deserialize, Serialize};
 
-use super::{arr_meta::ArrayStats, range::Range};
+use super::{arr_meta::ArrayStats, range::RangeIncl};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ArrayStats2D<Time, Num, NumDivisible = Num> {
-    pub time_range: Range<Time>,
+    pub time_range: RangeIncl<Time>,
     pub stats: ArrayStats<Num, NumDivisible>,
 }
 
 impl<T: Default, N: Default, M: Default> Default for ArrayStats2D<T, N, M> {
     fn default() -> Self {
         Self {
-            time_range: Range::default(),
+            time_range: RangeIncl::default(),
             stats: ArrayStats::default(),
         }
     }
 }
 
 impl<T, N, M> ArrayStats2D<T, N, M> {
-    fn new(time_range: Range<T>, stats: ArrayStats<N, M>) -> Self {
+    fn new(time_range: RangeIncl<T>, stats: ArrayStats<N, M>) -> Self {
         Self { time_range, stats }
     }
 }

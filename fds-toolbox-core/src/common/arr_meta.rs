@@ -2,11 +2,11 @@ use std::ops::{Add, Mul, Sub};
 
 use serde::{Deserialize, Serialize};
 
-use super::range::Range;
+use super::range::RangeIncl;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ArrayStats<Num, NumDivisible = Num, NumSq = Num> {
-    pub range: Range<Num>,
+    pub range: RangeIncl<Num>,
     pub mean: NumDivisible,
     pub variance: NumSq,
     pub std_dev: NumDivisible,
@@ -15,7 +15,7 @@ pub struct ArrayStats<Num, NumDivisible = Num, NumSq = Num> {
 impl<N: Default, M: Default, S: Default> Default for ArrayStats<N, M, S> {
     fn default() -> Self {
         Self {
-            range: Range::default(),
+            range: RangeIncl::default(),
             mean: M::default(),
             variance: S::default(),
             std_dev: M::default(),
@@ -64,14 +64,14 @@ impl<
         // TODO: This NaNs for negatives
         let std_dev = sqrt(variance);
         Some(Self {
-            range: Range { min, max },
+            range: RangeIncl { min, max },
             mean,
             variance,
             std_dev,
         })
     }
 
-    pub fn bounds(mut iter: impl Iterator<Item = Self>) -> Option<Range<N>> {
+    pub fn bounds(mut iter: impl Iterator<Item = Self>) -> Option<RangeIncl<N>> {
         let first = match iter.next() {
             Some(value) => value,
             None => return None,

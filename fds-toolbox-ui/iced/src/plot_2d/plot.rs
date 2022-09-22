@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Debug};
 
-use fds_toolbox_core::common::{range::Range, series::TimeSeriesViewSource};
+use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
     Command, Element, Length, Point, Size,
@@ -28,8 +28,8 @@ type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 
 pub struct Plot2DState {
     cache: Cache,
-    x_range: Range<f32>,
-    y_range: Range<f32>,
+    x_range: RangeIncl<f32>,
+    y_range: RangeIncl<f32>,
     hovered_point: Option<Point>,
     // Needs to be modified inside build_chart, which only receives a &self
     // chart_state: RefCell<Option<ChartState<Cart2D>>>,
@@ -221,8 +221,8 @@ impl Plot2DState {
     pub fn new() -> Self {
         Self {
             cache: Cache::new(),
-            x_range: Range::new(0.0, 100.0),
-            y_range: Range::new(0.0, 100.0),
+            x_range: RangeIncl::new(0.0, 100.0),
+            y_range: RangeIncl::new(0.0, 100.0),
             hovered_point: None,
             coord_spec: RefCell::new(None),
             mouse_down: false,
