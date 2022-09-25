@@ -28,7 +28,7 @@ struct FdsToolboxApp {
 }
 
 impl FdsToolboxApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
@@ -59,7 +59,7 @@ impl FdsToolboxApp {
 }
 
 impl eframe::App for FdsToolboxApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(Layout::left_to_right(Align::LEFT), |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
@@ -108,13 +108,17 @@ impl eframe::App for FdsToolboxApp {
 
                 let plot = Plot::new("2d_plot").legend(Legend::default());
                 plot.show(ui, |plot_ui| {
-                    for series in self.ids.iter().filter_map(|id| self.simulations.get_time_series(*id)) {
-                        plot_ui.line(Line::new(PlotPoints::from_iter(
-                            series
-                                .iter()
-                                .map(|(x, y)| [x as f64, y as f64]),
-                        ))
-                        .name(format!("{} ({})", series.name, series.unit)));
+                    for series in self
+                        .ids
+                        .iter()
+                        .filter_map(|id| self.simulations.get_time_series(*id))
+                    {
+                        plot_ui.line(
+                            Line::new(PlotPoints::from_iter(
+                                series.iter().map(|(x, y)| [x as f64, y as f64]),
+                            ))
+                            .name(format!("{} ({})", series.name, series.unit)),
+                        );
                     }
                 });
 
