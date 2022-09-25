@@ -128,6 +128,10 @@ impl<'a> TimeSeriesView<'a> {
 
 pub trait TimeSeriesViewSource<Id> {
     fn get_time_series(&self, id: Id) -> Option<TimeSeriesView>;
+
+    // fn get_time_series_iter(&self, ids: impl Iterator<Item = Id>) -> impl Iterator<Item = TimeSeriesView> {
+    //     ids.filter_map(move |id| self.get_time_series(id))
+    // }
 }
 
 impl TimeSeriesViewSource<()> for TimeSeries {

@@ -1097,6 +1097,9 @@ name = "fds-toolbux-ui-druid"
 version = "0.1.0"
 dependencies = [
  "druid",
+ "fds-toolbox-core",
+ "plotters",
+ "plotters-druid",
 ]
 
 [[package]]
@@ -2813,6 +2816,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "plotters-druid"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63e2502542fd74836d67fe1b4e02759fcd01dac5d0114f9a055b5f570fdea003"
+dependencies = [
+ "druid",
+ "plotters",
+ "plotters-piet",
+]
+
+[[package]]
 name = "plotters-iced"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2824,6 +2838,16 @@ dependencies = [
  "libc",
  "num-traits",
  "plotters",
+ "plotters-backend",
+]
+
+[[package]]
+name = "plotters-piet"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10f316529603668367353c3315924e88f51713407d03af9bd4d9abd9dc7f9d1d"
+dependencies = [
+ "piet-common",
  "plotters-backend",
 ]
 

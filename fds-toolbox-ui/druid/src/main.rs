@@ -1,6 +1,10 @@
+mod tab;
+mod state;
+mod plot_2d;
+
 use druid::widget::{Button, Flex, Label};
 use druid::{
-    theme, AppLauncher, Color, LocalizedString, PlatformError, Widget, WidgetExt, WindowDesc,
+    AppLauncher, LocalizedString, PlatformError, Widget, WidgetExt, WindowDesc,
 };
 
 fn main() -> Result<(), PlatformError> {
@@ -9,16 +13,18 @@ fn main() -> Result<(), PlatformError> {
     AppLauncher::with_window(main_window)
         .use_simple_logger()
         .configure_env(|env, _| {
-            env.get_all().for_each(|(k, v)| {
-                println!("{}: {:?}", k, v);
-            });
+            // env.get_all().for_each(|(k, v)| {
+            //     println!("{}: {:?}", k, v);
+            // });
 
-            env.set(
-                theme::WINDOW_BACKGROUND_COLOR,
-                Color::rgb8(0x2e, 0x34, 0x36),
-            );
-            env.set(theme::BUTTON_BORDER_RADIUS, 5);
-            env.set(theme::BUTTON_BORDER_WIDTH, 0);
+            // env.set(
+            //     theme::WINDOW_BACKGROUND_COLOR,
+            //     Color::rgb8(0x2e, 0x34, 0x36),
+            // );
+            // env.set(theme::BUTTON_BORDER_RADIUS, 5);
+            // env.set(theme::BUTTON_BORDER_WIDTH, 0);
+            // env.set(theme::BUTTON_DARK, Color::rgb8(0x4c, 0x56, 0x5a));
+            // env.set(theme::BUTTON_LIGHT, Color::rgb8(0xfc, 0x56, 0x5a));
             // env.set(theme::BUTTON_DARK, 0);
         })
         .launch(data)
