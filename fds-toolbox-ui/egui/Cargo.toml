@@ -9,4 +9,7 @@ edition = "2021"
 egui = "0.19"
 eframe = "0.19"
 
+# We'll need our own spline library probably
+# makima_spline = "1.1"
+
 fds-toolbox-core = { path = "../../fds-toolbox-core" }
