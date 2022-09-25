@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 egui = "0.19"
-eframe = "0.19"
+eframe = { version = "0.19", features = ["dark-light"] }
 
 # We'll need our own spline library probably
 # makima_spline = "1.1"
