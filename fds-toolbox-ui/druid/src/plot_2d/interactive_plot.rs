@@ -10,10 +10,10 @@ type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 #[derive(Clone)]
 pub struct PlotState {
     // Coordinates in data space, not screen space
-    cursor_position: Option<(f32, f32)>,
-    x_range: RangeIncl<f32>,
-    y_range: RangeIncl<f32>,
-    coord_spec: Option<Cartesian2df32>,
+    pub cursor_position: Option<(f32, f32)>,
+    pub x_range: RangeIncl<f32>,
+    pub y_range: RangeIncl<f32>,
+    pub coord_spec: Option<Cartesian2df32>,
 }
 
 impl Data for PlotState {

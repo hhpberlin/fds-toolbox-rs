@@ -42,7 +42,7 @@ impl Index<usize> for Series {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct SeriesView<'a> {
     pub data: ArrayView1<'a, f32>,
     pub stats: ArrayStats<f32>, // TODO: Should we borrow this instead?
@@ -94,7 +94,7 @@ impl TimeSeries {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimeSeriesView<'a> {
     pub time_in_seconds: SeriesView<'a>,
     pub values: SeriesView<'a>,
@@ -125,6 +125,14 @@ impl<'a> TimeSeriesView<'a> {
             .map(|(t, v)| (t, v))
     }
 }
+
+// impl<'a> IntoIterator<Item = (f32, f32)> for TimeSeriesView<'a> {
+//     type IntoIter = impl Iterator<Item = (f32, f32)>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
 
 pub trait TimeSeriesViewSource<Id> {
     fn get_time_series(&self, id: Id) -> Option<TimeSeriesView>;
