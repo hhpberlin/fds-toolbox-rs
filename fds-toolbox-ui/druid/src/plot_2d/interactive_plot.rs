@@ -1,11 +1,34 @@
+use std::rc::Rc;
+
 use druid::{Data, Widget};
-use fds_toolbox_core::common::range::RangeIncl;
-use plotters::{prelude::Cartesian2d, coord::{types::RangedCoordf32, ReverseCoordTranslate}};
+use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesView};
+use plotters::{
+    coord::{types::RangedCoordf32, ReverseCoordTranslate},
+    prelude::{Cartesian2d, ChartBuilder},
+    series::LineSeries,
+    style::RED,
+};
 use plotters_druid::Plot;
 
-pub struct InteractivePlot<T: Data>(Plot<(T, PlotState)>);
+pub struct InteractivePlot<T: Data> {
+    plot: Plot<(T, PlotState, DataSource<T>)>,
+    state: PlotState,
+    data_source: DataSource<T>,
+}
+
+// pub struct InteractivePlotData<T: Data> {
+//     pub data: T,
+//     pub state: PlotState,
+//     pub data_source: DataSource<T>,
+// }
 
 type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
+
+#[derive(Clone, Data)]
+pub struct DataSource<T>(pub Rc<dyn for<'a> Fn(&'a T) -> MultiSeriesView<'a> + 'static>);
+
+// #[derive(Clone)]
+pub struct MultiSeriesView<'a>(pub Box<dyn Iterator<Item = TimeSeriesView<'a>> + 'a>);
 
 #[derive(Clone)]
 pub struct PlotState {
@@ -51,24 +74,64 @@ impl PlotState {
 }
 
 impl<T: Data> InteractivePlot<T> {
-    pub fn new(plot: Plot<(T, PlotState)>) -> Self {
-        Self(plot)
+    pub fn new(data_source: DataSource<T>) -> Self {
+        Self {
+            state: PlotState::new(),
+            data_source,
+            plot: Plot::<(T, PlotState, DataSource<T>)>::new(|(width, height), (data, plot_state, data_source), root| {
+                let data = data_source.0(data);
+
+                let mut chart = ChartBuilder::on(&root)
+                    .margin(5)
+                    .x_label_area_size(30)
+                    .y_label_area_size(30)
+                    .build_cartesian_2d(
+                        plot_state.x_range.into_range(),
+                        plot_state.y_range.into_range(),
+                    )
+                    .unwrap();
+
+                chart.configure_mesh().draw().unwrap();
+
+                for series in data.0 {
+                    chart
+                        .draw_series(LineSeries::new(series.iter(), RED))
+                        .unwrap();
+                }
+
+                // self.plot_state.coord_spec = Some(*chart.as_coord_spec());
+            }),
+        }
     }
+
+    // pub fn new(plot: Plot<(T, PlotState)>) -> Self {
+    //     Self { plot, state: PlotState::new(), data_source: Box::new(|_| MultiSeriesView(Box::new(std::iter::empty()))) }
+    // }
 
     // pub fn new(f: impl Fn((u32, u32), &T, &DrawingArea<PietBackend, Shift>) + 'static) {
     //     Self::new(Plot::new(f))
     // }
 }
 
-impl<T: Data> Widget<(T, PlotState)> for InteractivePlot<T> {
-    fn event(&mut self, ctx: &mut druid::EventCtx, event: &druid::Event, data: &mut (T, PlotState), env: &druid::Env) {
-        let (plot_data, plot_state) = data;
-
-        fn cursor_pos_from_event(state: &mut PlotState, mouse_event: &druid::MouseEvent) -> Option<(f32, f32)> {
+impl<T: Data> Widget<T> for InteractivePlot<T> {
+    fn event(
+        &mut self,
+        ctx: &mut druid::EventCtx,
+        event: &druid::Event,
+        data: &mut T,
+        env: &druid::Env,
+    ) {
+        fn cursor_pos_from_event(
+            state: &mut PlotState,
+            mouse_event: &druid::MouseEvent,
+        ) -> Option<(f32, f32)> {
             convert_cursor_pos(state, (mouse_event.pos.x as i32, mouse_event.pos.y as i32))
         }
 
-        fn convert_cursor_pos(state: &mut PlotState, cursor_pos_screen: (i32, i32)) -> Option<(f32, f32)> {
+        fn convert_cursor_pos(
+            state: &mut PlotState,
+            cursor_pos_screen: (i32, i32),
+        ) -> Option<(f32, f32)> {
             let coord_spec = match state.coord_spec.as_ref() {
                 Some(coord_spec) => coord_spec,
                 None => return None,
@@ -78,39 +141,62 @@ impl<T: Data> Widget<(T, PlotState)> for InteractivePlot<T> {
         // self.0.
         match event {
             druid::Event::MouseMove(mouse_event) => {
-                if let Some(cursor_pos_coord) = cursor_pos_from_event(plot_state, mouse_event) {
-                    plot_state.cursor_position = Some(cursor_pos_coord);
+                if let Some(cursor_pos_coord) = cursor_pos_from_event(&mut self.state, mouse_event)
+                {
+                    self.state.cursor_position = Some(cursor_pos_coord);
                     if mouse_event.buttons.contains(druid::MouseButton::Left) {
-                        plot_state.pan((cursor_pos_coord.0 - mouse_event.pos.x as f32, cursor_pos_coord.1 - mouse_event.pos.y as f32));
+                        self.state.pan((
+                            cursor_pos_coord.0 - mouse_event.pos.x as f32,
+                            cursor_pos_coord.1 - mouse_event.pos.y as f32,
+                        ));
                     }
                     // TODO: Box-Zoom
                 }
-            },
+            }
             druid::Event::Wheel(mouse_event) => {
-                if let Some(cursor_pos_coord) = cursor_pos_from_event(plot_state, mouse_event) {
+                if let Some(cursor_pos_coord) = cursor_pos_from_event(&mut self.state, mouse_event)
+                {
                     let fac = if mouse_event.mods.shift() { 10.0 } else { 30.0 }; // TODO: Make configurable
 
-                    plot_state.zoom(cursor_pos_coord, (mouse_event.wheel_delta.y as f32).exp() * fac);
+                    self.state.zoom(
+                        cursor_pos_coord,
+                        (mouse_event.wheel_delta.y as f32).exp() * fac,
+                    );
                 }
-            },
+            }
             _ => {}
         }
-        self.0.event(ctx, event, data, env)
+        self.plot.event(ctx, event, &mut (data.clone(), self.state.clone(), self.data_source.clone()), env)
     }
 
-    fn lifecycle(&mut self, ctx: &mut druid::LifeCycleCtx, event: &druid::LifeCycle, data: &(T, PlotState), env: &druid::Env) {
-        self.0.lifecycle(ctx, event, data, env)
+    fn lifecycle(
+        &mut self,
+        ctx: &mut druid::LifeCycleCtx,
+        event: &druid::LifeCycle,
+        data: &T,
+        env: &druid::Env,
+    ) {
+        self.plot.lifecycle(ctx, event, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
     }
 
-    fn update(&mut self, ctx: &mut druid::UpdateCtx, old_data: &(T, PlotState), data: &(T, PlotState), env: &druid::Env) {
-        self.0.update(ctx, old_data, data, env)
+    fn update(&mut self, ctx: &mut druid::UpdateCtx, old_data: &T, data: &T, env: &druid::Env) {
+        if data.same(old_data) { return; }
+
+        self.plot
+            .update(ctx, &(old_data.clone(), self.state.clone(), self.data_source.clone()), &(data.clone(), self.state.clone(), self.data_source.clone()), env)
     }
 
-    fn layout(&mut self, ctx: &mut druid::LayoutCtx, bc: &druid::BoxConstraints, data: &(T, PlotState), env: &druid::Env) -> druid::Size {
-        self.0.layout(ctx, bc, data, env)
+    fn layout(
+        &mut self,
+        ctx: &mut druid::LayoutCtx,
+        bc: &druid::BoxConstraints,
+        data: &T,
+        env: &druid::Env,
+    ) -> druid::Size {
+        self.plot.layout(ctx, bc, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
     }
 
-    fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &(T, PlotState), env: &druid::Env) {
-        self.0.paint(ctx, data, env)
+    fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &T, env: &druid::Env) {
+        self.plot.paint(ctx, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
     }
 }

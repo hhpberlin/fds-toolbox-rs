@@ -1,11 +1,9 @@
-mod tab;
-mod state;
 mod plot_2d;
+mod state;
+mod tab;
 
 use druid::widget::{Button, Flex, Label};
-use druid::{
-    AppLauncher, LocalizedString, PlatformError, Widget, WidgetExt, WindowDesc,
-};
+use druid::{AppLauncher, LocalizedString, PlatformError, Widget, WidgetExt, WindowDesc};
 
 fn main() -> Result<(), PlatformError> {
     let main_window = WindowDesc::new(ui_builder);
