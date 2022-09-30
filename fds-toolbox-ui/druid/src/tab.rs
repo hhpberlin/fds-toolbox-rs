@@ -7,5 +7,5 @@ where
     type Data;
 
     fn title(&self) -> String;
-    fn build_widget(&mut self) -> Box<dyn Widget<(Self, T)>>;
+    fn build_widget(&mut self) -> Box<dyn Widget<(Self::Data, T)>>;
 }

@@ -1,46 +1,54 @@
 use std::{collections::HashSet, rc::Rc};
 
-use druid::{widget::Scroll, Data, Lens, Widget, WidgetExt};
+use druid::{Data, Lens, Widget};
 use fds_toolbox_core::{
-    common::series::{TimeSeriesView, TimeSeriesViewSource},
+    common::series::{TimeSeriesViewSource},
     formats::simulations::GlobalTimeSeriesIdx,
 };
-use plotters::{prelude::ChartBuilder, series::LineSeries, style::RED};
-use plotters_druid::Plot;
 
-use crate::{state::FdsToolboxApp, tab::Tab};
 
-use super::interactive_plot::{InteractivePlot, MultiSeriesView, PlotState, DataSource};
 
-#[derive(Clone, Lens)]
-struct Plot2DTab {
-    selected: HashSet<GlobalTimeSeriesIdx>,
-}
+use crate::{state::{FdsToolboxApp, FdsToolboxData}, tab::Tab};
 
-impl Data for Plot2DTab {
-    fn same(&self, other: &Self) -> bool {
-        self.selected.eq(&other.selected)
-    }
+use super::interactive_plot::{InteractivePlot, MultiSeriesView, DataSource};
+
+pub struct Plot2DTab {
+    // selected: HashSet<GlobalTimeSeriesIdx>,
 }
 
 impl Plot2DTab {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            selected: HashSet::new(),
+            // selected: HashSet::new(),
             // plot_state: PlotState::new(),
         }
     }
 }
 
-impl Tab<FdsToolboxApp> for Plot2DTab {
-    type Data = Plot2DTab;
+#[derive(Clone, Lens)]
+pub struct Plot2DTabData {
+    pub selected: HashSet<GlobalTimeSeriesIdx>,
+}
+
+impl Plot2DTabData {
+    pub fn new(selected: HashSet<GlobalTimeSeriesIdx>) -> Self { Self { selected } }
+}
+
+impl Data for Plot2DTabData {
+    fn same(&self, other: &Self) -> bool {
+        self.selected.eq(&other.selected)
+    }
+}
+
+impl Tab<FdsToolboxData> for Plot2DTab {
+    type Data = Plot2DTabData;
 
     fn title(&self) -> String {
         "Plot 2D".to_string()
     }
 
-    fn build_widget(&mut self) -> Box<dyn Widget<(Self, FdsToolboxApp)>> {
-        Box::new(InteractivePlot::new(DataSource(Rc::new(|(tab, data): &(Self, FdsToolboxApp)| {
+    fn build_widget(&mut self) -> Box<dyn Widget<(Plot2DTabData, FdsToolboxData)>> {
+        Box::new(InteractivePlot::new(DataSource(Rc::new(|(tab, data): &(Self::Data, FdsToolboxData)| {
             let iter = tab
                 .selected
                 .iter()

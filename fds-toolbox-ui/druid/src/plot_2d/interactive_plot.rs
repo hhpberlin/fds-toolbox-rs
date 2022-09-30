@@ -78,10 +78,10 @@ impl<T: Data> InteractivePlot<T> {
         Self {
             state: PlotState::new(),
             data_source,
-            plot: Plot::<(T, PlotState, DataSource<T>)>::new(|(width, height), (data, plot_state, data_source), root| {
+            plot: Plot::<(T, PlotState, DataSource<T>)>::new(|(_width, _height), (data, plot_state, data_source), root| {
                 let data = data_source.0(data);
 
-                let mut chart = ChartBuilder::on(&root)
+                let mut chart = ChartBuilder::on(root)
                     .margin(5)
                     .x_label_area_size(30)
                     .y_label_area_size(30)
