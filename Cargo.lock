@@ -1476,6 +1476,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fds-toolbox-ui-druid"
+version = "0.1.0"
+dependencies = [
+ "druid",
+ "fds-toolbox-core",
+ "plotters",
+ "plotters-druid",
+]
+
+[[package]]
 name = "fds-toolbox-ui-egui"
 version = "0.1.0"
 dependencies = [
@@ -1494,16 +1504,6 @@ dependencies = [
  "makima_spline",
  "plotters",
  "plotters-iced",
-]
-
-[[package]]
-name = "fds-toolbux-ui-druid"
-version = "0.1.0"
-dependencies = [
- "druid",
- "fds-toolbox-core",
- "plotters",
- "plotters-druid",
 ]
 
 [[package]]

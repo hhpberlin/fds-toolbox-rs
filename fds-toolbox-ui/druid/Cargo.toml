@@ -1,5 +1,5 @@
 [package]
-name = "fds-toolbux-ui-druid"
+name = "fds-toolbox-ui-druid"
 version = "0.1.0"
 edition = "2021"
 
