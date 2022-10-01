@@ -28,15 +28,22 @@ fn main() -> Result<(), PlatformError> {
         data: FdsToolboxData {
             simulations: simulations.clone(),
         },
-        tab_data: Plot2DTabData::new(HashSet::from([GlobalTimeSeriesIdx(
-            0,
-            TimeSeriesIdx::Device(
-                simulations.simulations[0]
-                    .devc
-                    .get_device_idx_by_name("T_B05")
-                    .unwrap(),
-            ),
-        )])),
+        tab_data: Plot2DTabData::new(HashSet::from_iter(
+            simulations.simulations[0]
+                .devc
+                .iter_device_named_ids()
+                .map(|x| x.1)
+                .map(|x| GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(x))),
+            //     [GlobalTimeSeriesIdx(
+            //     0,
+            //     TimeSeriesIdx::Device(
+                            // simulations.simulations[0]
+                            //     .devc
+            //             // .get_device_idx_by_name("T_B05")
+            //             // .unwrap(),
+            //     ),
+            // )]
+        )),
     };
 
     AppLauncher::with_window(main_window)
