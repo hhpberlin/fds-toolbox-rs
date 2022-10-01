@@ -5,26 +5,42 @@ pub mod tab;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-use druid::widget::{Button, Flex, Label};
-use druid::{AppLauncher, LocalizedString, PlatformError, Widget, WidgetExt, WindowDesc, Lens};
+
+use druid::{AppLauncher, Lens, PlatformError, Widget, WidgetExt, WindowDesc};
 use fds_toolbox_core::formats::csv::devc::Devices;
-use fds_toolbox_core::formats::simulation::Simulation;
-use fds_toolbox_core::formats::simulations::Simulations;
-use plot_2d::interactive_plot::InteractivePlot;
+use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
+use fds_toolbox_core::formats::simulations::{Simulations, GlobalTimeSeriesIdx};
+
 use plot_2d::plot_tab::{Plot2DTab, Plot2DTabData};
 use state::{FdsToolboxApp, FdsToolboxData};
 use tab::Tab;
 
 fn main() -> Result<(), PlatformError> {
     let main_window = WindowDesc::new(ui_builder);
-    
+
     let simulations = Simulations::new(vec![Simulation {
         devc: Devices::from_reader(
             include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
         )
         .unwrap(),
     }]);
-    let data = FdsToolboxApp { data: FdsToolboxData { simulations: Rc::new(simulations) }, tab_data: Plot2DTabData::new(HashSet::new()) };
+    let simulations = Rc::new(simulations);
+    let data = FdsToolboxApp {
+        data: FdsToolboxData {
+            simulations: simulations.clone(),
+        },
+        tab_data: Plot2DTabData::new(HashSet::from([
+            GlobalTimeSeriesIdx(
+                0,
+                TimeSeriesIdx::Device(
+                    simulations.simulations[0]
+                        .devc
+                        .get_device_idx_by_name("T_B05")
+                        .unwrap(),
+                ),
+            ),
+        ])),
+    };
 
     AppLauncher::with_window(main_window)
         .use_simple_logger()
@@ -71,15 +87,42 @@ impl<T> Lens<T, T> for LensId {
 // }
 
 // TODO: Awesome name
-struct TupleLens<L0, L1>(L0, L1);
+// struct TupleLens<L0, L1>(L0, L1);
 
-impl<T, U0: Clone, L0: Lens<T, U0>, U1: Clone, L1: Lens<T, U1>> Lens<T, (U0, U1)> for TupleLens<L0, L1> {
-    fn with<V, F: FnOnce(&(U0, U1)) -> V>(&self, data: &T, f: F) -> V {
-        self.0.with(&data, |u0| self.1.with(&data, |u1| f(&(u0.clone(), u1.clone()))))
+// impl<T, U0: Clone, L0: Lens<T, U0>, U1: Clone, L1: Lens<T, U1>> Lens<T, (U0, U1)>
+//     for TupleLens<L0, L1>
+// {
+//     fn with<V, F: FnOnce(&(U0, U1)) -> V>(&self, data: &T, f: F) -> V {
+//         self.0.with(&data, |u0| {
+//             self.1.with(&data, |u1| f(&(u0.clone(), u1.clone())))
+//         })
+//     }
+
+//     fn with_mut<V, F: FnOnce(&mut (U0, U1)) -> V>(&self, mut data: &mut T, f: F) -> V {
+//         self.0.with_mut(&mut data, |u0| {
+//             self.1
+//                 .with_mut(&mut data, |u1| f(&mut (u0.clone(), u1.clone())))
+//         })
+//     }
+// }
+
+struct TabLens;
+
+impl Lens<FdsToolboxApp, (Plot2DTabData, FdsToolboxData)> for TabLens {
+    fn with<V, F: FnOnce(&(Plot2DTabData, FdsToolboxData)) -> V>(
+        &self,
+        data: &FdsToolboxApp,
+        f: F,
+    ) -> V {
+        f(&(data.tab_data.clone(), data.data.clone()))
     }
 
-    fn with_mut<V, F: FnOnce(&mut (U0, U1)) -> V>(&self, mut data: &mut T, f: F) -> V {
-        self.0.with_mut(&mut data, |u0| self.1.with_mut(&mut data, |u1| f(&mut (u0.clone(), u1.clone()))))
+    fn with_mut<V, F: FnOnce(&mut (Plot2DTabData, FdsToolboxData)) -> V>(
+        &self,
+        data: &mut FdsToolboxApp,
+        f: F,
+    ) -> V {
+        f(&mut (data.tab_data.clone(), data.data.clone()))
     }
 }
 
@@ -94,6 +137,7 @@ fn ui_builder() -> impl Widget<FdsToolboxApp> {
 
     let mut tab = Plot2DTab::new();
 
-    tab.build_widget().lens(TupleLens(FdsToolboxApp::tab_data, FdsToolboxApp::data))
+    tab.build_widget()
+        .lens(TabLens)
     // Flex::column().with_child(label).with_child(button)
 }

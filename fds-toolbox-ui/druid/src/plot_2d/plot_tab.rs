@@ -2,15 +2,15 @@ use std::{collections::HashSet, rc::Rc};
 
 use druid::{Data, Lens, Widget};
 use fds_toolbox_core::{
-    common::series::{TimeSeriesViewSource},
-    formats::simulations::GlobalTimeSeriesIdx,
+    common::series::TimeSeriesViewSource, formats::simulations::GlobalTimeSeriesIdx,
 };
 
+use crate::{
+    state::{FdsToolboxData},
+    tab::Tab,
+};
 
-
-use crate::{state::{FdsToolboxApp, FdsToolboxData}, tab::Tab};
-
-use super::interactive_plot::{InteractivePlot, MultiSeriesView, DataSource};
+use super::interactive_plot::{DataSource, InteractivePlot, MultiSeriesView};
 
 pub struct Plot2DTab {
     // selected: HashSet<GlobalTimeSeriesIdx>,
@@ -31,7 +31,9 @@ pub struct Plot2DTabData {
 }
 
 impl Plot2DTabData {
-    pub fn new(selected: HashSet<GlobalTimeSeriesIdx>) -> Self { Self { selected } }
+    pub fn new(selected: HashSet<GlobalTimeSeriesIdx>) -> Self {
+        Self { selected }
+    }
 }
 
 impl Data for Plot2DTabData {
@@ -48,13 +50,15 @@ impl Tab<FdsToolboxData> for Plot2DTab {
     }
 
     fn build_widget(&mut self) -> Box<dyn Widget<(Plot2DTabData, FdsToolboxData)>> {
-        Box::new(InteractivePlot::new(DataSource(Rc::new(|(tab, data): &(Self::Data, FdsToolboxData)| {
-            let iter = tab
-                .selected
-                .iter()
-                .filter_map(|idx| data.simulations.get_time_series(*idx));
+        Box::new(InteractivePlot::new(DataSource(Rc::new(
+            |(tab, data): &(Self::Data, FdsToolboxData)| {
+                let iter = tab
+                    .selected
+                    .iter()
+                    .filter_map(|idx| data.simulations.get_time_series(*idx));
 
-            MultiSeriesView(Box::new(iter))
-        })) as _))
+                MultiSeriesView(Box::new(iter))
+            },
+        )) as _))
     }
 }

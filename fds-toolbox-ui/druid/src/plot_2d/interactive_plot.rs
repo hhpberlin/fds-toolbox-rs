@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 
 use druid::{Data, Widget};
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesView};
@@ -36,7 +36,7 @@ pub struct PlotState {
     pub cursor_position: Option<(f32, f32)>,
     pub x_range: RangeIncl<f32>,
     pub y_range: RangeIncl<f32>,
-    pub coord_spec: Option<Cartesian2df32>,
+    pub coord_spec: Rc<RefCell<Option<Cartesian2df32>>>,
 }
 
 impl Data for PlotState {
@@ -58,7 +58,7 @@ impl PlotState {
             cursor_position: None,
             x_range: RangeIncl::new(0.0, 1.0),
             y_range: RangeIncl::new(0.0, 1.0),
-            coord_spec: None,
+            coord_spec: Rc::new(RefCell::new(None)),
         }
     }
 
@@ -78,29 +78,31 @@ impl<T: Data> InteractivePlot<T> {
         Self {
             state: PlotState::new(),
             data_source,
-            plot: Plot::<(T, PlotState, DataSource<T>)>::new(|(_width, _height), (data, plot_state, data_source), root| {
-                let data = data_source.0(data);
+            plot: Plot::<(T, PlotState, DataSource<T>)>::new(
+                |(_width, _height), (data, plot_state, data_source), root| {
+                    let data = data_source.0(data);
 
-                let mut chart = ChartBuilder::on(root)
-                    .margin(5)
-                    .x_label_area_size(30)
-                    .y_label_area_size(30)
-                    .build_cartesian_2d(
-                        plot_state.x_range.into_range(),
-                        plot_state.y_range.into_range(),
-                    )
-                    .unwrap();
-
-                chart.configure_mesh().draw().unwrap();
-
-                for series in data.0 {
-                    chart
-                        .draw_series(LineSeries::new(series.iter(), RED))
+                    let mut chart = ChartBuilder::on(root)
+                        .margin(5)
+                        .x_label_area_size(30)
+                        .y_label_area_size(30)
+                        .build_cartesian_2d(
+                            plot_state.x_range.into_range(),
+                            plot_state.y_range.into_range(),
+                        )
                         .unwrap();
-                }
 
-                // self.plot_state.coord_spec = Some(*chart.as_coord_spec());
-            }),
+                    chart.configure_mesh().draw().unwrap();
+
+                    for series in data.0 {
+                        chart
+                            .draw_series(LineSeries::new(series.iter(), RED))
+                            .unwrap();
+                    }
+
+                    *plot_state.coord_spec.borrow_mut() = Some(chart.as_coord_spec().clone());
+                },
+            ),
         }
     }
 
@@ -132,23 +134,29 @@ impl<T: Data> Widget<T> for InteractivePlot<T> {
             state: &mut PlotState,
             cursor_pos_screen: (i32, i32),
         ) -> Option<(f32, f32)> {
-            let coord_spec = match state.coord_spec.as_ref() {
+            let coord_spec = state.coord_spec.borrow();
+            let coord_spec = match coord_spec.as_ref() {
                 Some(coord_spec) => coord_spec,
                 None => return None,
             };
             coord_spec.reverse_translate(cursor_pos_screen)
         }
+        // println!("Event: {:?}", event);
         // self.0.
         match event {
             druid::Event::MouseMove(mouse_event) => {
                 if let Some(cursor_pos_coord) = cursor_pos_from_event(&mut self.state, mouse_event)
                 {
-                    self.state.cursor_position = Some(cursor_pos_coord);
-                    if mouse_event.buttons.contains(druid::MouseButton::Left) {
-                        self.state.pan((
-                            cursor_pos_coord.0 - mouse_event.pos.x as f32,
-                            cursor_pos_coord.1 - mouse_event.pos.y as f32,
-                        ));
+                    // println!("Cursor Pos: {:?}", cursor_pos_coord);
+                    let prev_cursor_pos_coord = self.state.cursor_position.replace(cursor_pos_coord);
+                    if let Some(prev_cursor_pos_coord) = prev_cursor_pos_coord {
+                        if mouse_event.buttons.contains(druid::MouseButton::Left) {
+                            self.state.pan((
+                                prev_cursor_pos_coord.0 - cursor_pos_coord.0,
+                                prev_cursor_pos_coord.1 - cursor_pos_coord.1,
+                            ));
+                        }
+                        ctx.request_paint();
                     }
                     // TODO: Box-Zoom
                 }
@@ -156,17 +164,25 @@ impl<T: Data> Widget<T> for InteractivePlot<T> {
             druid::Event::Wheel(mouse_event) => {
                 if let Some(cursor_pos_coord) = cursor_pos_from_event(&mut self.state, mouse_event)
                 {
-                    let fac = if mouse_event.mods.shift() { 10.0 } else { 30.0 }; // TODO: Make configurable
-
+                    let fac = if mouse_event.mods.shift() { 1.0 } else { 3.0 }; // TODO: Make configurable
+                    dbg!(mouse_event.wheel_delta);
+                    dbg!((mouse_event.wheel_delta.y as f32 / 120.0).exp());
                     self.state.zoom(
                         cursor_pos_coord,
-                        (mouse_event.wheel_delta.y as f32).exp() * fac,
+                        (mouse_event.wheel_delta.y as f32 / 120.0).exp() * fac,
                     );
+                    // dbg!(self.state.x_range, self.state.y_range);
+                    ctx.request_paint();
                 }
             }
             _ => {}
         }
-        self.plot.event(ctx, event, &mut (data.clone(), self.state.clone(), self.data_source.clone()), env)
+        self.plot.event(
+            ctx,
+            event,
+            &mut (data.clone(), self.state.clone(), self.data_source.clone()),
+            env,
+        )
     }
 
     fn lifecycle(
@@ -176,14 +192,29 @@ impl<T: Data> Widget<T> for InteractivePlot<T> {
         data: &T,
         env: &druid::Env,
     ) {
-        self.plot.lifecycle(ctx, event, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
+        self.plot.lifecycle(
+            ctx,
+            event,
+            &(data.clone(), self.state.clone(), self.data_source.clone()),
+            env,
+        )
     }
 
     fn update(&mut self, ctx: &mut druid::UpdateCtx, old_data: &T, data: &T, env: &druid::Env) {
-        if data.same(old_data) { return; }
+        if data.same(old_data) {
+            return;
+        }
 
-        self.plot
-            .update(ctx, &(old_data.clone(), self.state.clone(), self.data_source.clone()), &(data.clone(), self.state.clone(), self.data_source.clone()), env)
+        self.plot.update(
+            ctx,
+            &(
+                old_data.clone(),
+                self.state.clone(),
+                self.data_source.clone(),
+            ),
+            &(data.clone(), self.state.clone(), self.data_source.clone()),
+            env,
+        )
     }
 
     fn layout(
@@ -193,10 +224,19 @@ impl<T: Data> Widget<T> for InteractivePlot<T> {
         data: &T,
         env: &druid::Env,
     ) -> druid::Size {
-        self.plot.layout(ctx, bc, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
+        self.plot.layout(
+            ctx,
+            bc,
+            &(data.clone(), self.state.clone(), self.data_source.clone()),
+            env,
+        )
     }
 
     fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &T, env: &druid::Env) {
-        self.plot.paint(ctx, &(data.clone(), self.state.clone(), self.data_source.clone()), env)
+        self.plot.paint(
+            ctx,
+            &(data.clone(), self.state.clone(), self.data_source.clone()),
+            env,
+        )
     }
 }
