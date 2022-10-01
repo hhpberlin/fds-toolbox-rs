@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use druid::{Data, Widget};
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesView};
@@ -56,8 +56,8 @@ impl PlotState {
     pub fn new() -> Self {
         Self {
             cursor_position: None,
-            x_range: RangeIncl::new(0.0, 1.0),
-            y_range: RangeIncl::new(0.0, 1.0),
+            x_range: RangeIncl::new(0.0, 100.0),
+            y_range: RangeIncl::new(0.0, 100.0),
             coord_spec: Rc::new(RefCell::new(None)),
         }
     }
@@ -70,6 +70,12 @@ impl PlotState {
     pub fn pan(&mut self, delta: (f32, f32)) {
         self.x_range.pan(delta.0);
         self.y_range.pan(delta.1);
+    }
+}
+
+impl Default for PlotState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -148,7 +154,8 @@ impl<T: Data> Widget<T> for InteractivePlot<T> {
                 if let Some(cursor_pos_coord) = cursor_pos_from_event(&mut self.state, mouse_event)
                 {
                     // println!("Cursor Pos: {:?}", cursor_pos_coord);
-                    let prev_cursor_pos_coord = self.state.cursor_position.replace(cursor_pos_coord);
+                    let prev_cursor_pos_coord =
+                        self.state.cursor_position.replace(cursor_pos_coord);
                     if let Some(prev_cursor_pos_coord) = prev_cursor_pos_coord {
                         if mouse_event.buttons.contains(druid::MouseButton::Left) {
                             self.state.pan((

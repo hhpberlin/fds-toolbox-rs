@@ -5,11 +5,10 @@ pub mod tab;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-
 use druid::{AppLauncher, Lens, PlatformError, Widget, WidgetExt, WindowDesc};
 use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
-use fds_toolbox_core::formats::simulations::{Simulations, GlobalTimeSeriesIdx};
+use fds_toolbox_core::formats::simulations::{GlobalTimeSeriesIdx, Simulations};
 
 use plot_2d::plot_tab::{Plot2DTab, Plot2DTabData};
 use state::{FdsToolboxApp, FdsToolboxData};
@@ -29,17 +28,15 @@ fn main() -> Result<(), PlatformError> {
         data: FdsToolboxData {
             simulations: simulations.clone(),
         },
-        tab_data: Plot2DTabData::new(HashSet::from([
-            GlobalTimeSeriesIdx(
-                0,
-                TimeSeriesIdx::Device(
-                    simulations.simulations[0]
-                        .devc
-                        .get_device_idx_by_name("T_B05")
-                        .unwrap(),
-                ),
+        tab_data: Plot2DTabData::new(HashSet::from([GlobalTimeSeriesIdx(
+            0,
+            TimeSeriesIdx::Device(
+                simulations.simulations[0]
+                    .devc
+                    .get_device_idx_by_name("T_B05")
+                    .unwrap(),
             ),
-        ])),
+        )])),
     };
 
     AppLauncher::with_window(main_window)
@@ -137,7 +134,6 @@ fn ui_builder() -> impl Widget<FdsToolboxApp> {
 
     let mut tab = Plot2DTab::new();
 
-    tab.build_widget()
-        .lens(TabLens)
+    tab.build_widget().lens(TabLens)
     // Flex::column().with_child(label).with_child(button)
 }

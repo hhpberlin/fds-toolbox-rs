@@ -5,10 +5,7 @@ use fds_toolbox_core::{
     common::series::TimeSeriesViewSource, formats::simulations::GlobalTimeSeriesIdx,
 };
 
-use crate::{
-    state::{FdsToolboxData},
-    tab::Tab,
-};
+use crate::{state::FdsToolboxData, tab::Tab};
 
 use super::interactive_plot::{DataSource, InteractivePlot, MultiSeriesView};
 
@@ -22,6 +19,12 @@ impl Plot2DTab {
             // selected: HashSet::new(),
             // plot_state: PlotState::new(),
         }
+    }
+}
+
+impl Default for Plot2DTab {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
