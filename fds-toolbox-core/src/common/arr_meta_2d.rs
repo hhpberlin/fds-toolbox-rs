@@ -1,11 +1,20 @@
+use std::hash::Hash;
+
 use serde::{Deserialize, Serialize};
 
 use super::{arr_meta::ArrayStats, range::RangeIncl};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArrayStats2D<Time, Num, NumDivisible = Num> {
     pub time_range: RangeIncl<Time>,
     pub stats: ArrayStats<Num, NumDivisible>,
+}
+
+impl Hash for ArrayStats2D<f32, f32> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.time_range.hash(state);
+        self.stats.hash(state);
+    }
 }
 
 impl<T: Default, N: Default, M: Default> Default for ArrayStats2D<T, N, M> {

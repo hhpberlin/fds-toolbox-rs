@@ -1,15 +1,27 @@
-use std::ops::{Add, Mul, Sub};
+use std::{
+    hash::Hash,
+    ops::{Add, Mul, Sub},
+};
 
 use serde::{Deserialize, Serialize};
 
 use super::range::RangeIncl;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArrayStats<Num, NumDivisible = Num, NumSq = Num> {
     pub range: RangeIncl<Num>,
     pub mean: NumDivisible,
     pub variance: NumSq,
     pub std_dev: NumDivisible,
+}
+
+impl Hash for ArrayStats<f32> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.range.hash(state);
+        state.write_u32(self.mean.to_bits());
+        state.write_u32(self.variance.to_bits());
+        state.write_u32(self.std_dev.to_bits());
+    }
 }
 
 impl<N: Default, M: Default, S: Default> Default for ArrayStats<N, M, S> {

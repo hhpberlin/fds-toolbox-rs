@@ -1,11 +1,21 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::{
+    hash::Hash,
+    ops::{Add, Div, Mul, Sub},
+};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RangeIncl<N> {
     pub min: N,
     pub max: N,
+}
+
+impl Hash for RangeIncl<f32> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u32(self.min.to_bits());
+        state.write_u32(self.max.to_bits());
+    }
 }
 
 impl<N> RangeIncl<N> {
