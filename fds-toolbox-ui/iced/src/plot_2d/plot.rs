@@ -1,4 +1,9 @@
-use std::{cell::RefCell, fmt::Debug};
+use std::{
+    cell::RefCell,
+    collections::hash_map::DefaultHasher,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+};
 
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
@@ -64,39 +69,27 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
         self.state.cache.draw(bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, _builder: ChartBuilder<DB>) {}
+    fn build_chart<DB: DrawingBackend>(&self, _chart: ChartBuilder<DB>) {}
 
-    // fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
     fn draw_chart<DB: DrawingBackend>(&self, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
-        //TODO
         // TODO: Avoid alloc by reusing iterator?
         let data = self
             .ids
             .iter_ids()
             .filter_map(|id| self.source.get_time_series(id).map(|x| (id, x)));
 
-        // let x_range = self.data.x_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.time_in_seconds.stats.range)));
-        // let y_range = self.data.y_range.or_else(|| Range::from_iter_range(data.iter().map(|x| x.values.stats.range)));
-
-        // let (x_range, y_range) = match (x_range, y_range) {
-        //     (Some(x_range), Some(y_range)) => (x_range, y_range),
-        //     // _ => return,
-        //     _ => (Range::new(0.0, 1.0), Range::new(0.0, 1.0)),
-        // };
-
-        let x_range = self.state.x_range;
-        let y_range = self.state.y_range;
-
         let mut chart = chart
-            .build_cartesian_2d(x_range.into_range(), y_range.into_range())
+            .build_cartesian_2d(
+                self.state.x_range.into_range(),
+                self.state.y_range.into_range(),
+            )
             .expect("failed to build chart");
 
+        // Draws the grid and axis
         chart.configure_mesh().draw().expect("failed to draw mesh");
-
-        let color = Palette99::pick(4).mix(0.9);
 
         let hover_screen = self
             .state
@@ -104,13 +97,26 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             .map(|point| (point.x as i32, point.y as i32));
         let mut closest: Option<ClosestPoint<Id>> = None;
 
+        // let amogus = Box::new(12) as Box<dyn Hash>;
+        // fn test(t: impl std::hash::Hash) {}
+        // test(12.1);
+
         for (id, data) in data {
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                data.values.stats.hash(&mut hasher);
+                hasher.finish()
+            };
+
             chart
-                .draw_series(LineSeries::new(data.iter(), color.stroke_width(2)))
+                .draw_series(LineSeries::new(
+                    data.iter(),
+                    Palette99::pick(hash as usize).stroke_width(2),
+                ))
                 // TODO: Set labels
-                // .label("y = x^2")
-                // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED))
-                .expect("failed to draw chart data");
+                .expect("failed to draw chart data")
+                .label(format!("{} ({})", data.name, data.unit))
+                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
 
             if let Some(hover_screen) = hover_screen {
                 closest = closest
@@ -130,9 +136,14 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             }
         }
 
+        chart
+            .configure_series_labels()
+            .draw()
+            .expect("failed to draw labels");
+
         let hover = match hover_screen {
             Some(coord) => chart.as_coord_spec().reverse_translate(coord),
-            _ => None,
+            None => None,
         };
 
         let hover = match closest {
@@ -144,8 +155,10 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             _ => hover,
         };
 
+        // Draw cursor crosshair
+
         if let Some((x, y)) = hover {
-            // let (chart_x_range, chart_y_range) = chart.plotting_area().get_pixel_range();
+            // cursor
 
             chart
                 .draw_series(PointSeries::of_element(
@@ -154,25 +167,24 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
                     ShapeStyle::from(&RED).filled(),
                     &|(x, y), size, style| {
                         EmptyElement::at((x, y))
-                        + Circle::new((0, 0), size, style)
-                        // MAX/2 to avoid overflow
-                        // TODO: Find a better way to do this
-                        // + PathElement::new([(chart_x_range.start - x as i32, 0), (chart_x_range.end - x as i32, 0)], style.clone())
-                        // + PathElement::new([(0, i32::MIN/2), (0, i32::MAX/2)], style.clone())
-                        + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
+                            + Circle::new((0, 0), size, style)
+                            + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
                     },
+                ))
+                .unwrap();
+
+            // crosshair
+
+            chart
+                .draw_series(LineSeries::new(
+                    [(self.state.x_range.min, y), (self.state.x_range.max, y)],
+                    RED.stroke_width(1),
                 ))
                 .unwrap();
 
             chart
                 .draw_series(LineSeries::new(
-                    [(x_range.min, y), (x_range.max, y)],
-                    RED.stroke_width(1),
-                ))
-                .unwrap();
-            chart
-                .draw_series(LineSeries::new(
-                    [(x, y_range.min), (x, y_range.max)],
+                    [(x, self.state.y_range.min), (x, self.state.y_range.max)],
                     RED.stroke_width(1),
                 ))
                 .unwrap();
