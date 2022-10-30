@@ -64,10 +64,10 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
         self.state.cache.draw(bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, _builder: ChartBuilder<DB>){}
+    fn build_chart<DB: DrawingBackend>(&self, _builder: ChartBuilder<DB>) {}
 
     // fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
-    fn draw_chart<DB: DrawingBackend>(&self, root: DrawingArea<DB, Shift>){
+    fn draw_chart<DB: DrawingBackend>(&self, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
@@ -192,6 +192,54 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
     }
+
+    fn update(
+        &mut self,
+        event: iced::canvas::Event,
+        bounds: iced::Rectangle,
+        cursor: iced::canvas::Cursor,
+    ) -> (iced::canvas::event::Status, Option<Message>) {
+        let event = match event {
+            iced::canvas::Event::Mouse(m) => m,
+            iced::canvas::Event::Keyboard(_) => {
+                return (iced::canvas::event::Status::Ignored, None)
+            }
+        };
+
+        let p = match cursor.position_in(&bounds) {
+            Some(p) => p,
+            None => return (iced::canvas::event::Status::Ignored, None),
+        };
+
+        let message = match event {
+            iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
+            iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
+            iced::mouse::Event::CursorMoved { position: _ } => Some(Message::Hover { position: p }),
+            iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+                Some(Message::Mouse { down: true })
+            }
+            iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+                Some(Message::Mouse { down: false })
+            }
+            iced::mouse::Event::ButtonPressed(_) => None,
+            iced::mouse::Event::ButtonReleased(_) => None,
+            iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
+                // TODO: Actually calculate the center instead of this bullshit
+                // center: self.chart_state.borrow().unwrap().,
+                // center: (self.x_range.map(p.x), p.y),
+                center: Position::Screen(p),
+                factor: match delta {
+                    // TODO: Treat line and pixel scroll differently
+                    // TODO: Use a better zoom factor
+                    // TODO: Look at x scroll
+                    iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
+                    iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
+                },
+            }),
+        };
+
+        (iced::canvas::event::Status::Captured, message)
+    }
 }
 
 struct ClosestPoint<Id> {
@@ -303,36 +351,6 @@ impl Plot2DState {
         })
         .width(Length::Fill)
         .height(Length::Fill)
-        .on_mouse_event(Box::new(|e, p| {
-            match e {
-                iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
-                iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
-                iced::mouse::Event::CursorMoved { position: _ } => {
-                    Some(Message::Hover { position: p })
-                }
-                iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
-                    Some(Message::Mouse { down: true })
-                }
-                iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
-                    Some(Message::Mouse { down: false })
-                }
-                iced::mouse::Event::ButtonPressed(_) => None,
-                iced::mouse::Event::ButtonReleased(_) => None,
-                iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
-                    // TODO: Actually calculate the center instead of this bullshit
-                    // center: self.chart_state.borrow().unwrap().,
-                    // center: (self.x_range.map(p.x), p.y),
-                    center: Position::Screen(p),
-                    factor: match delta {
-                        // TODO: Treat line and pixel scroll differently
-                        // TODO: Use a better zoom factor
-                        // TODO: Look at x scroll
-                        iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
-                        iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
-                    },
-                }),
-            }
-        }))
         .into()
     }
 

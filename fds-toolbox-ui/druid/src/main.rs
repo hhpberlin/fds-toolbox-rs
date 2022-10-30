@@ -37,8 +37,8 @@ fn main() -> Result<(), PlatformError> {
             //     [GlobalTimeSeriesIdx(
             //     0,
             //     TimeSeriesIdx::Device(
-                            // simulations.simulations[0]
-                            //     .devc
+            // simulations.simulations[0]
+            //     .devc
             //             // .get_device_idx_by_name("T_B05")
             //             // .unwrap(),
             //     ),
