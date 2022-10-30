@@ -6,7 +6,7 @@ use iced::{
     Command, Element, Length, Point, Size,
 };
 use plotters::{
-    coord::{types::RangedCoordf32, ReverseCoordTranslate},
+    coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
     prelude::*,
 };
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
@@ -64,7 +64,11 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
         self.state.cache.draw(bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
+    fn build_chart<DB: DrawingBackend>(&self, _builder: ChartBuilder<DB>){}
+
+    // fn build_chart<DB: DrawingBackend>(&self, mut chart: ChartBuilder<DB>) {
+    fn draw_chart<DB: DrawingBackend>(&self, root: DrawingArea<DB, Shift>){
+        let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
         //TODO
