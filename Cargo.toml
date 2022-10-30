@@ -7,5 +7,6 @@ members = [
     "fds-toolbox-ui/egui",
 ]
 
-# [profile.release]
-# lto = true
+[profile.release]
+debug = 1
+lto = true

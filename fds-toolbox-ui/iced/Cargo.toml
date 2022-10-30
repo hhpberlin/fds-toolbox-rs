@@ -10,6 +10,7 @@ iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_
 plotters = "0.3"
 plotters-iced = "0.3"
 
-makima_spline = "1.1"
+# makima_spline = "1.1"
+tracing = "0.1"
 
 fds-toolbox-core = { path = "../../fds-toolbox-core" }
