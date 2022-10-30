@@ -110,13 +110,17 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
             chart
                 .draw_series(LineSeries::new(
-                    data.iter(),
+                    data.iter()
+                        .skip_while(|(x, y)| *x < self.state.x_range.min)
+                        .take_while(|(x, y)| *x <= self.state.x_range.max)
+                        .map(|(x, y)| (x, y)),
                     color.stroke_width(2),
                 ))
                 .expect("failed to draw chart data")
                 .label(format!("{} ({})", data.name, data.unit))
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)))
-                ;
+                .legend(move |(x, y)| {
+                    PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2))
+                });
 
             if let Some(hover_screen) = hover_screen {
                 closest = closest
