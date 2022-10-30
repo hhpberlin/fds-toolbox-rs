@@ -97,26 +97,26 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             .map(|point| (point.x as i32, point.y as i32));
         let mut closest: Option<ClosestPoint<Id>> = None;
 
-        // let amogus = Box::new(12) as Box<dyn Hash>;
-        // fn test(t: impl std::hash::Hash) {}
-        // test(12.1);
-
         for (id, data) in data {
+            // TODO: This could be better, but it works for now
+            // This is used for assigning unique colors to each series
             let hash = {
                 let mut hasher = DefaultHasher::new();
                 data.values.stats.hash(&mut hasher);
                 hasher.finish()
             };
 
+            let color = Palette99::pick(hash as usize);
+
             chart
                 .draw_series(LineSeries::new(
                     data.iter(),
-                    Palette99::pick(hash as usize).stroke_width(2),
+                    color.stroke_width(2),
                 ))
-                // TODO: Set labels
                 .expect("failed to draw chart data")
                 .label(format!("{} ({})", data.name, data.unit))
-                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)))
+                ;
 
             if let Some(hover_screen) = hover_screen {
                 closest = closest
@@ -135,11 +135,6 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
                     });
             }
         }
-
-        chart
-            .configure_series_labels()
-            .draw()
-            .expect("failed to draw labels");
 
         let hover = match hover_screen {
             Some(coord) => chart.as_coord_spec().reverse_translate(coord),
@@ -189,16 +184,14 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
                 ))
                 .unwrap();
         }
-        // TODO: Draw labels
 
-        // chart
-        //     .configure_series_labels()
-        //     .background_style(&WHITE.mix(0.8))
-        //     .border_style(&BLACK)
-        //     .draw()
-        //     .expect("failed to draw chart labels");
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .draw()
+            .expect("failed to draw chart labels");
 
-        // self.data.chart_state.borrow_mut().replace(chart.into_chart_state());
         self.state
             .coord_spec
             .borrow_mut()
