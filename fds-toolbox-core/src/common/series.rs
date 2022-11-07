@@ -8,7 +8,7 @@ use super::arr_meta::ArrayStats;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Series {
     data: Array1<f32>,
-    stats: ArrayStats<f32>,
+    pub stats: ArrayStats<f32>,
 }
 
 impl Series {
