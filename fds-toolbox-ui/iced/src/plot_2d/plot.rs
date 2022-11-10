@@ -8,7 +8,7 @@ use std::{
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
-    Command, Element, Length, Point, Size,
+    Command, Element, Length, Point, Size, keyboard,
 };
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
@@ -108,14 +108,15 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
             let color = Palette99::pick(hash as usize);
 
+            // TODO: Extrapolate to the edges of the plot
+            let data_iter = data.iter().filter(|(x, _y)| {
+                self.state.x_range.contains(*x) 
+                // TODO: This would cause a flat line between the surrounding points to be drawn
+                // && self.state.y_range.contains(*y)
+            });
+
             chart
-                .draw_series(LineSeries::new(
-                    data.iter()
-                        .skip_while(|(x, y)| *x < self.state.x_range.min)
-                        .take_while(|(x, y)| *x <= self.state.x_range.max)
-                        .map(|(x, y)| (x, y)),
-                    color.stroke_width(2),
-                ))
+                .draw_series(LineSeries::new(data_iter, color.stroke_width(2)))
                 .expect("failed to draw chart data")
                 .label(format!("{} ({})", data.name, data.unit))
                 .legend(move |(x, y)| {
@@ -219,7 +220,7 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             Some(p) => p,
             None => return (iced::canvas::event::Status::Ignored, None),
         };
-
+        
         let message = match event {
             iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
             iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),

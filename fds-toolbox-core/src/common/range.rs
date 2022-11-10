@@ -119,18 +119,11 @@ impl<N: PartialOrd + Copy> RangeIncl<N> {
             None => Some(range),
         })
     }
+
+    pub fn contains(&self, value: N) -> bool {
+        self.min <= value && value <= self.max
+    }
 }
-
-// trait RangeExt<N>: Iterator {
-//     fn expand(&self, new: N) -> Range<N>
-//         where Self::Item == N;
-//     {
-
-//     }
-//     fn max(&self, new: Self) -> Self;
-// }
-// impl<N: PartialOrd + Copy, I: Iterator<Item = Range<N>>> I {}
-// }
 
 impl<N> From<RangeIncl<N>> for std::ops::Range<N> {
     fn from(range: RangeIncl<N>) -> Self {
