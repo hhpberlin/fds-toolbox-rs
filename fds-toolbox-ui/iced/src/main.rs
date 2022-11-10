@@ -75,6 +75,13 @@ impl FdsToolbox {
                 ),
             ),
         ])));
+        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+            self.simulations[0]
+                .devc
+                .iter_device_named_ids()
+                .map(|(_, idx)| GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(idx)))
+                .collect::<Vec<_>>(),
+        )));
     }
 }
 

@@ -57,7 +57,7 @@ impl Debug for Plot2DState {
 
 struct Plot2DInstance<'a, Id, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> {
     state: &'a Plot2DState,
-    ids: &'a IdSrc,
+    ids: IdSrc,
     source: &'a Source,
 }
 
@@ -352,7 +352,7 @@ impl Plot2DState {
     pub fn view<'a, Id: Copy + 'a, Source: TimeSeriesViewSource<Id>>(
         &'a self,
         source: &'a Source,
-        ids: &'a (impl IdSource<Id = Id> + 'a),
+        ids: impl IdSource<Id = Id> + 'a,
     ) -> Element<'a, Message> {
         ChartWidget::new(Plot2DInstance {
             state: self,

@@ -1,9 +1,15 @@
-use std::{collections::HashSet, iter::FromIterator};
+use std::{
+    collections::{HashMap, HashSet},
+    iter::FromIterator,
+};
 
-use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
-use iced::{scrollable, Column, Command, Element, Row, Scrollable};
+use fds_toolbox_core::{
+    common::arr_meta::ArrayStats,
+    formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx},
+};
+use iced::{canvas::Cache, scrollable, Column, Command, Element, Row, Scrollable};
 
-use crate::{tabs::Tab, Simulations};
+use crate::{array_stats_vis::ArrayStatsVis, tabs::Tab, Simulations};
 
 use super::plot::{IdSource, Plot2DState};
 
@@ -11,7 +17,25 @@ use super::plot::{IdSource, Plot2DState};
 pub struct PlotTab {
     chart: Plot2DState,
     scrollable: scrollable::State,
-    selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
+    // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
+    series: HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
+}
+
+#[derive(Debug)]
+pub struct PlotTabSeries {
+    idx: GlobalTimeSeriesIdx,
+    selected: bool,
+    array_stats_vis_cache: Cache,
+}
+
+impl PlotTabSeries {
+    pub fn new(idx: GlobalTimeSeriesIdx) -> Self {
+        Self {
+            idx,
+            selected: false,
+            array_stats_vis_cache: Cache::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -26,12 +50,22 @@ impl PlotTab {
         Self {
             chart: Plot2DState::new(),
             scrollable: scrollable::State::new(),
-            selected: HashSet::from_iter(idx.into_iter()),
+            // selected: HashSet::from_iter(idx.into_iter()),
+            series: idx
+                .into_iter()
+                .map(|idx| PlotTabSeries {
+                    idx,
+                    selected: true,
+                    array_stats_vis_cache: Cache::default(),
+                })
+                .map(|series| (series.idx, series))
+                .collect(),
         }
     }
 
     fn view_sidebar<'a>(
-        set: &'a HashSet<GlobalTimeSeriesIdx>,
+        // set: &'a HashSet<GlobalTimeSeriesIdx>,
+        series: &'a mut HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
         scroll: &'a mut scrollable::State,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
@@ -45,18 +79,30 @@ impl PlotTab {
             // TODO: This does not work with multiple simulations
             let global_idx = GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(idx));
 
+            // let info = series.get(&global_idx);
+            // let info = info.unwrap_or(default)
+
+            let info = series
+                .entry(global_idx)
+                .or_insert_with(|| PlotTabSeries::new(global_idx));
+
             sidebar = sidebar.push(
-                Row::new().push(iced::Checkbox::new(
-                    set.contains(&global_idx),
-                    format!("{} ({})", device.name, device.unit),
-                    move |checked| {
-                        if checked {
-                            Message::Add(global_idx)
-                        } else {
-                            Message::Remove(global_idx)
-                        }
-                    },
-                )), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+                Row::new()
+                    .push(iced::Checkbox::new(
+                        info.selected,
+                        format!("{} ({})", device.name, device.unit),
+                        move |checked| {
+                            if checked {
+                                Message::Add(global_idx)
+                            } else {
+                                Message::Remove(global_idx)
+                            }
+                        },
+                    ))
+                    .push(ArrayStatsVis::new(
+                        &device.values.stats,
+                        &info.array_stats_vis_cache,
+                    ).view()), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
             );
         }
 
@@ -82,12 +128,12 @@ impl Tab<Simulations> for PlotTab {
         match message {
             Message::Plot(msg) => self.chart.update(msg).map(Message::Plot),
             Message::Add(idx) => {
-                self.selected.insert(idx);
+                self.series[&idx].selected = true;
                 self.chart.invalidate();
                 Command::none()
             }
             Message::Remove(idx) => {
-                self.selected.remove(&idx);
+                self.series[&idx].selected = false;
                 self.chart.invalidate();
                 Command::none()
             }
@@ -95,13 +141,14 @@ impl Tab<Simulations> for PlotTab {
     }
 
     fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
+        let ids: Vec<_> = self.series.iter_ids().collect();
         Row::new()
             .push(Self::view_sidebar(
-                &self.selected,
+                &mut self.series,
                 &mut self.scrollable,
                 model,
             ))
-            .push(self.chart.view(model, &self.selected).map(Message::Plot))
+            .push(self.chart.view(model, ids).map(Message::Plot))
             .into()
     }
 }
@@ -111,5 +158,25 @@ impl IdSource for HashSet<GlobalTimeSeriesIdx> {
 
     fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
         Box::new(self.iter().copied())
+    }
+}
+
+impl IdSource for Vec<GlobalTimeSeriesIdx> {
+    type Id = GlobalTimeSeriesIdx;
+
+    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
+        Box::new(self.iter().copied())
+    }
+}
+
+impl IdSource for HashMap<GlobalTimeSeriesIdx, PlotTabSeries> {
+    type Id = GlobalTimeSeriesIdx;
+
+    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
+        Box::new(
+            self.iter()
+                .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
+                .copied(),
+        )
     }
 }
