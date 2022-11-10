@@ -99,10 +99,10 @@ impl PlotTab {
                             }
                         },
                     ))
-                    .push(ArrayStatsVis::new(
-                        &device.values.stats,
-                        &info.array_stats_vis_cache,
-                    ).view()), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+                    .push(
+                        ArrayStatsVis::new(&device.values.stats, &info.array_stats_vis_cache)
+                            .view(),
+                    ), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
             );
         }
 

@@ -8,7 +8,7 @@ use std::{
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
     canvas::{Cache, Frame, Geometry},
-    Command, Element, Length, Point, Size, keyboard,
+    keyboard, Command, Element, Length, Point, Size,
 };
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
@@ -110,7 +110,7 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
             // TODO: Extrapolate to the edges of the plot
             let data_iter = data.iter().filter(|(x, _y)| {
-                self.state.x_range.contains(*x) 
+                self.state.x_range.contains(*x)
                 // TODO: This would cause a flat line between the surrounding points to be drawn
                 // && self.state.y_range.contains(*y)
             });
@@ -220,7 +220,7 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             Some(p) => p,
             None => return (iced::canvas::event::Status::Ignored, None),
         };
-        
+
         let message = match event {
             iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
             iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
