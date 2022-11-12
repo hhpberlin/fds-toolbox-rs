@@ -9,7 +9,7 @@ iced = { version = "0.5", features = ["canvas", "tokio"] }
 
 plotters = "0.3"
 # TODO: Use stable version when it's released
-plotters-iced = { version = "0.4", git = "https://github.com/Joylei/plotters-iced", branch = "next" }
+plotters-iced = { version = "0.4", git = "https://github.com/blenderfreaky/plotters-iced", branch = "next" }
 
 # makima_spline = "1.1"
 tracing = "0.1"
