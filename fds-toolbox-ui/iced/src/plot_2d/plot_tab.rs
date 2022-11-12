@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    iter::FromIterator,
+    iter::FromIterator, cell::RefCell,
 };
 
 use fds_toolbox_core::{
@@ -20,7 +20,7 @@ use super::plot::{IdSource, Plot2DState};
 pub struct PlotTab {
     chart: Plot2DState,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
-    series: HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
+    series: RefCell<HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
 }
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ impl PlotTab {
         Self {
             chart: Plot2DState::new(),
             // selected: HashSet::from_iter(idx.into_iter()),
-            series: idx
+            series: RefCell::new(idx
                 .into_iter()
                 .map(|idx| PlotTabSeries {
                     idx,
@@ -60,13 +60,13 @@ impl PlotTab {
                     array_stats_vis_cache: Cache::default(),
                 })
                 .map(|series| (series.idx, series))
-                .collect(),
+                .collect()),
         }
     }
 
     fn view_sidebar<'a>(
         // set: &'a HashSet<GlobalTimeSeriesIdx>,
-        series: &'a mut HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
+        series: &'a HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
@@ -83,13 +83,19 @@ impl PlotTab {
             // let info = info.unwrap_or(default)
 
             let info = series
-                .entry(global_idx)
-                .or_insert_with(|| PlotTabSeries::new(global_idx));
+                .get(&global_idx);
+                // .entry(global_idx)
+                // .or_insert_with(|| PlotTabSeries::new(global_idx));
+
+            // let info = match info {
+            //     Some(info) => info,
+            //     None => &PlotTabSeries::new(global_idx)
+            // };
 
             sidebar = sidebar.push(row![
                 checkbox(
                     format!("{} ({})", device.name, device.unit),
-                    info.selected,
+                    info.map_or(false, |x| x.selected),
                     move |checked| {
                         if checked {
                             Message::Add(global_idx)
@@ -98,7 +104,7 @@ impl PlotTab {
                         }
                     },
                 ),
-                ArrayStatsVis::new(&device.values.stats, &info.array_stats_vis_cache).view(),
+                ArrayStatsVis::new(&device.values.stats, info.map(|x| &x.array_stats_vis_cache)).view(),
                 // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
             ]);
         }
@@ -125,22 +131,22 @@ impl Tab<Simulations> for PlotTab {
         match message {
             Message::Plot(msg) => self.chart.update(msg).map(Message::Plot),
             Message::Add(idx) => {
-                self.series[&idx].selected = true;
+                self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
                 self.chart.invalidate();
                 Command::none()
             }
             Message::Remove(idx) => {
-                self.series[&idx].selected = false;
+                self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
                 self.chart.invalidate();
                 Command::none()
             }
         }
     }
 
-    fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
-        let ids: Vec<_> = self.series.iter_ids().collect();
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
+        let ids: Vec<_> = self.series.borrow().iter_ids().collect();
         row![
-            Self::view_sidebar(&mut self.series, model,),
+            Self::view_sidebar(&self.series.borrow(), model,),
             self.chart.view(model, ids).map(Message::Plot),
         ]
         .into()

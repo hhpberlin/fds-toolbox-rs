@@ -1,8 +1,7 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     widget::{
-        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke},
-        Canvas,
+        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke, self},
     },
     Color, Element, Point, Size, Theme,
 };
@@ -10,28 +9,25 @@ use iced::{
 #[derive(Debug, Copy, Clone)]
 pub struct ArrayStatsVis<'a> {
     stats: &'a ArrayStats<f32>,
-    cache: &'a Cache,
+    cache: Option<&'a Cache>,
 }
 
 impl<'a> ArrayStatsVis<'a> {
-    // pub fn new(stats: &ArrayStats<f32>) -> Self {
-    //     Self { stats, cache: Cache::new() }
-    // }
-    pub fn new(stats: &'a ArrayStats<f32>, cache: &'a Cache) -> Self {
+    pub fn new(stats: &'a ArrayStats<f32>, cache: Option<&'a Cache>) -> Self {
         Self { stats, cache }
     }
 
     pub fn view<Message: Copy + 'a>(&'a self) -> Element<'a, Message> {
-        Canvas::new(self).into()
+        canvas(self).into()
     }
 }
 
-pub fn view<'a, Message: Copy + 'a>(
-    stats: &'a ArrayStats<f32>,
-    cache: &'a Cache,
-) -> Element<'a, Message> {
-    ArrayStatsVis::new(stats, cache).view()
-}
+// pub fn view<'a, Message: Copy + 'a>(
+//     stats: &'a ArrayStats<f32>,
+//     cache: &'a Cache,
+// ) -> Element<'a, Message> {
+//     ArrayStatsVis::new(stats, cache).view()
+// }
 
 impl<Message> Program<Message> for ArrayStatsVis<'_> {
     type State = ();
@@ -62,7 +58,7 @@ fn draw(
     }
 
     // let mut frame = Frame::new(bounds.size());
-    let vis = data.cache.draw(bounds.size(), |frame| {
+    let vis = data.cache.unwrap_or_else(|| &Cache::new()).draw(bounds.size(), |frame| {
         // let background = Path::rectangle(Point::ORIGIN, frame.size());
         // frame.fill(&background, Color::TRANSPARENT);
 

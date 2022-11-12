@@ -8,7 +8,7 @@ pub trait Tab<Model> {
     fn title(&self) -> String;
 
     fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message>;
-    fn view<'a>(&'a mut self, model: &'a Model) -> Element<'a, Self::Message>;
+    fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message>;
 }
 
 // TODO: This is very boilerplate-y
@@ -44,7 +44,7 @@ impl Tab<Simulations> for FdsToolboxTab {
         }
     }
 
-    fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
         match self {
             FdsToolboxTab::Overview(tab) => tab.view(model).map(FdsToolboxTabMessage::Overview),
         }
