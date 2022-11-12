@@ -1353,7 +1353,6 @@ version = "0.1.0"
 dependencies = [
  "fds-toolbox-core",
  "iced",
- "iced_aw",
  "plotters",
  "plotters-iced",
  "tracing",
@@ -1928,17 +1927,6 @@ dependencies = [
  "iced_wgpu",
  "iced_winit",
  "thiserror",
-]
-
-[[package]]
-name = "iced_aw"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0ba7cca72e5405936b31f104f8f7fcd371450ab170cd936fda051c8ffc3c614"
-dependencies = [
- "iced_graphics 0.3.1",
- "iced_native 0.5.1",
- "iced_style 0.4.0",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use fds_toolbox_core::{
     common::arr_meta::ArrayStats,
     formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx},
 };
-use iced::{canvas::Cache, scrollable, Column, Command, Element, Row, Scrollable};
+use iced::{widget::{canvas::Cache, scrollable, Column, row, checkbox}, Element, Command};
 
 use crate::{array_stats_vis::ArrayStatsVis, tabs::Tab, Simulations};
 
@@ -16,7 +16,6 @@ use super::plot::{IdSource, Plot2DState};
 #[derive(Debug)]
 pub struct PlotTab {
     chart: Plot2DState,
-    scrollable: scrollable::State,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
     series: HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
 }
@@ -49,7 +48,6 @@ impl PlotTab {
     pub fn new(idx: impl IntoIterator<Item = GlobalTimeSeriesIdx>) -> Self {
         Self {
             chart: Plot2DState::new(),
-            scrollable: scrollable::State::new(),
             // selected: HashSet::from_iter(idx.into_iter()),
             series: idx
                 .into_iter()
@@ -66,7 +64,6 @@ impl PlotTab {
     fn view_sidebar<'a>(
         // set: &'a HashSet<GlobalTimeSeriesIdx>,
         series: &'a mut HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
-        scroll: &'a mut scrollable::State,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
@@ -87,10 +84,10 @@ impl PlotTab {
                 .or_insert_with(|| PlotTabSeries::new(global_idx));
 
             sidebar = sidebar.push(
-                Row::new()
-                    .push(iced::Checkbox::new(
-                        info.selected,
+                row![
+                    checkbox(
                         format!("{} ({})", device.name, device.unit),
+                        info.selected,
                         move |checked| {
                             if checked {
                                 Message::Add(global_idx)
@@ -98,15 +95,15 @@ impl PlotTab {
                                 Message::Remove(global_idx)
                             }
                         },
-                    ))
-                    .push(
+                    ),
                         ArrayStatsVis::new(&device.values.stats, &info.array_stats_vis_cache)
                             .view(),
-                    ), // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+                             // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+                ]
             );
         }
 
-        Scrollable::new(scroll).push(sidebar).into()
+        scrollable(sidebar).into()
     }
 }
 
@@ -142,14 +139,13 @@ impl Tab<Simulations> for PlotTab {
 
     fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
         let ids: Vec<_> = self.series.iter_ids().collect();
-        Row::new()
-            .push(Self::view_sidebar(
+        row![
+            Self::view_sidebar(
                 &mut self.series,
-                &mut self.scrollable,
                 model,
-            ))
-            .push(self.chart.view(model, ids).map(Message::Plot))
-            .into()
+            ),
+            self.chart.view(model, ids).map(Message::Plot),
+        ].into()
     }
 }
 

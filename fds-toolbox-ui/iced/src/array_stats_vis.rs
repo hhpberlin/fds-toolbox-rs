@@ -1,17 +1,8 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
-    canvas::{Cache, LineCap, Path, Stroke},
-    pure,
-    // pure::{
-    //     self,
-    //     widget::{
-    //         canvas::{Cache, Program},
-    //         Canvas,
-    //     },
-    // },
     Color,
     Point,
-    Size,
+    Size, widget::{canvas::{Cache, Program, Geometry, Path, Stroke, LineCap}, Canvas}, Element, Theme,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -28,42 +19,26 @@ impl<'a> ArrayStatsVis<'a> {
         Self { stats, cache }
     }
 
-    pub fn view_pure<Message: Copy + 'a>(&'a self) -> pure::Element<'a, Message> {
-        pure::widget::Canvas::new(self).into()
-    }
-
-    // pub fn view_new<'a, Message: Copy + 'static>(
-    //     stats: &'a ArrayStats<f32>,
-    //     cache: &'a Cache,
-    // ) -> iced::Element<'a, Message> {
-    //     ArrayStatsVis { stats, cache }.view()
-    // }
-
-    pub fn view<Message: Copy + 'static>(&'a self) -> iced::Element<'a, Message> {
-        iced::Canvas::new(self).into()
+    pub fn view<Message: Copy + 'a>(&'a self) -> Element<'a, Message> {
+        Canvas::new(self).into()
     }
 }
 
-impl<Message> iced::canvas::Program<Message> for &ArrayStatsVis<'_> {
-    fn draw(
-        &self,
-        bounds: iced::Rectangle,
-        _cursor: iced::canvas::Cursor,
-    ) -> Vec<iced::canvas::Geometry> {
-        draw(self, bounds)
-    }
+pub fn view<'a, Message: Copy + 'a>(stats: &'a ArrayStats<f32>, cache: &'a Cache) -> Element<'a, Message> {
+    ArrayStatsVis::new(stats, cache).view()
 }
 
-impl<Message> pure::widget::canvas::Program<Message> for ArrayStatsVis<'_> {
+impl<Message> Program<Message> for ArrayStatsVis<'_> {
     type State = ();
 
     fn draw(
         &self,
         state: &Self::State,
+        theme: &Theme,
         bounds: iced::Rectangle,
-        cursor: iced::canvas::Cursor,
-    ) -> Vec<iced::canvas::Geometry> {
-        draw(&self, bounds)
+        cursor: iced::widget::canvas::Cursor,
+    ) -> Vec<Geometry> {
+        draw(self, bounds)
     }
 }
 
@@ -71,7 +46,7 @@ fn draw(
     data: &ArrayStatsVis<'_>,
     bounds: iced::Rectangle,
     // _cursor: iced::canvas::Cursor,
-) -> Vec<iced::canvas::Geometry> {
+) -> Vec<Geometry> {
     let Size {
         width: w,
         height: h,
@@ -105,7 +80,6 @@ fn draw(
 
         let mean_stroke = Stroke {
             width: 2.0,
-            color: Color::from_rgb8(0x00, 0x00, 0x00),
             line_cap: LineCap::Round,
             ..Stroke::default()
         };
@@ -115,7 +89,6 @@ fn draw(
 
         let stddev_stroke = Stroke {
             width: 2.0,
-            color: Color::from_rgb8(0xF0, 0x16, 0x16),
             line_cap: LineCap::Round,
             ..Stroke::default()
         };

@@ -7,8 +7,7 @@ use std::{
 
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
-    canvas::{Cache, Frame, Geometry},
-    keyboard, Command, Element, Length, Point, Size,
+    keyboard, Command, Element, Length, Point, Size, widget::canvas::{Cache, Frame, Geometry, Cursor}, event::Status,
 };
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
@@ -205,10 +204,10 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
     fn update(
         &mut self,
-        event: iced::canvas::Event,
+        event: Event,
         bounds: iced::Rectangle,
-        cursor: iced::canvas::Cursor,
-    ) -> (iced::canvas::event::Status, Option<Message>) {
+        cursor: Cursor,
+    ) -> (Status, Option<Message>) {
         let event = match event {
             iced::canvas::Event::Mouse(m) => m,
             iced::canvas::Event::Keyboard(_) => {
@@ -248,7 +247,7 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             }),
         };
 
-        (iced::canvas::event::Status::Captured, message)
+        (Status::Captured, message)
     }
 }
 

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 iced = { version = "0.5", features = ["canvas", "tokio"] }
-iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_bar"] }
+# iced_aw = { version = "0.2", default-features = false, features = ["tabs", "tab_bar"] }
 
 plotters = "0.3"
 plotters-iced = "0.3"
