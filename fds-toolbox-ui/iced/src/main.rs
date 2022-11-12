@@ -129,7 +129,7 @@ impl Application for FdsToolbox {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<'_, Self::Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
             _ => self
@@ -165,5 +165,4 @@ impl Application for FdsToolbox {
             )
             .into()
     }
-
 }
