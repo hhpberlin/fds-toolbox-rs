@@ -1,8 +1,10 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
-    Color,
-    Point,
-    Size, widget::{canvas::{Cache, Program, Geometry, Path, Stroke, LineCap}, Canvas}, Element, Theme,
+    widget::{
+        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke},
+        Canvas,
+    },
+    Color, Element, Point, Size, Theme,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -24,7 +26,10 @@ impl<'a> ArrayStatsVis<'a> {
     }
 }
 
-pub fn view<'a, Message: Copy + 'a>(stats: &'a ArrayStats<f32>, cache: &'a Cache) -> Element<'a, Message> {
+pub fn view<'a, Message: Copy + 'a>(
+    stats: &'a ArrayStats<f32>,
+    cache: &'a Cache,
+) -> Element<'a, Message> {
     ArrayStatsVis::new(stats, cache).view()
 }
 

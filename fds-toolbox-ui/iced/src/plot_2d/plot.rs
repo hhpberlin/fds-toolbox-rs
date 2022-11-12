@@ -7,7 +7,10 @@ use std::{
 
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::{
-    keyboard, Command, Element, Length, Point, Size, widget::canvas::{Cache, Frame, Geometry, Cursor}, event::Status,
+    event::Status,
+    keyboard,
+    widget::canvas::{Cache, Cursor, Frame, Geometry},
+    Command, Element, Length, Point, Size,
 };
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},

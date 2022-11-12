@@ -7,7 +7,10 @@ use fds_toolbox_core::{
     common::arr_meta::ArrayStats,
     formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx},
 };
-use iced::{widget::{canvas::Cache, scrollable, Column, row, checkbox}, Element, Command};
+use iced::{
+    widget::{canvas::Cache, checkbox, row, scrollable, Column},
+    Command, Element,
+};
 
 use crate::{array_stats_vis::ArrayStatsVis, tabs::Tab, Simulations};
 
@@ -83,24 +86,21 @@ impl PlotTab {
                 .entry(global_idx)
                 .or_insert_with(|| PlotTabSeries::new(global_idx));
 
-            sidebar = sidebar.push(
-                row![
-                    checkbox(
-                        format!("{} ({})", device.name, device.unit),
-                        info.selected,
-                        move |checked| {
-                            if checked {
-                                Message::Add(global_idx)
-                            } else {
-                                Message::Remove(global_idx)
-                            }
-                        },
-                    ),
-                        ArrayStatsVis::new(&device.values.stats, &info.array_stats_vis_cache)
-                            .view(),
-                             // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
-                ]
-            );
+            sidebar = sidebar.push(row![
+                checkbox(
+                    format!("{} ({})", device.name, device.unit),
+                    info.selected,
+                    move |checked| {
+                        if checked {
+                            Message::Add(global_idx)
+                        } else {
+                            Message::Remove(global_idx)
+                        }
+                    },
+                ),
+                ArrayStatsVis::new(&device.values.stats, &info.array_stats_vis_cache).view(),
+                // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
+            ]);
         }
 
         scrollable(sidebar).into()
@@ -140,12 +140,10 @@ impl Tab<Simulations> for PlotTab {
     fn view<'a>(&'a mut self, model: &'a Simulations) -> Element<'a, Self::Message> {
         let ids: Vec<_> = self.series.iter_ids().collect();
         row![
-            Self::view_sidebar(
-                &mut self.series,
-                model,
-            ),
+            Self::view_sidebar(&mut self.series, model,),
             self.chart.view(model, ids).map(Message::Plot),
-        ].into()
+        ]
+        .into()
     }
 }
 
