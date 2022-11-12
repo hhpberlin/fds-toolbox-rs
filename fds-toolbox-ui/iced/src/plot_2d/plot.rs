@@ -6,13 +6,13 @@ use std::{
 };
 
 use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
+use iced::widget::canvas::Event;
 use iced::{
     event::Status,
-    keyboard,
+    keyboard, mouse,
     widget::canvas::{Cache, Cursor, Frame, Geometry},
     Command, Element, Length, Point, Size,
 };
-use iced::widget::canvas::Event;
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
     prelude::*,
@@ -207,37 +207,36 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
     }
 
     fn update(
-        &mut self,
+        &self,
+        state: &mut Self::State,
         event: Event,
-        state: Self::State,
         bounds: iced::Rectangle,
         cursor: Cursor,
     ) -> (Status, Option<Message>) {
         let event = match event {
-            iced::canvas::Event::Mouse(m) => m,
-            iced::canvas::Event::Keyboard(_) => {
-                return (iced::canvas::event::Status::Ignored, None)
-            }
+            Event::Mouse(m) => m,
+            // TODO: Support touch events
+            Event::Touch(_) | Event::Keyboard(_) => return (Status::Ignored, None),
         };
 
         let p = match cursor.position_in(&bounds) {
             Some(p) => p,
-            None => return (iced::canvas::event::Status::Ignored, None),
+            None => return (Status::Ignored, None),
         };
 
         let message = match event {
-            iced::mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
-            iced::mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
-            iced::mouse::Event::CursorMoved { position: _ } => Some(Message::Hover { position: p }),
-            iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
+            mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
+            mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
+            mouse::Event::CursorMoved { position: _ } => Some(Message::Hover { position: p }),
+            mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
                 Some(Message::Mouse { down: true })
             }
-            iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
+            mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
                 Some(Message::Mouse { down: false })
             }
-            iced::mouse::Event::ButtonPressed(_) => None,
-            iced::mouse::Event::ButtonReleased(_) => None,
-            iced::mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
+            mouse::Event::ButtonPressed(_) => None,
+            mouse::Event::ButtonReleased(_) => None,
+            mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
                 // TODO: Actually calculate the center instead of this bullshit
                 // center: self.chart_state.borrow().unwrap().,
                 // center: (self.x_range.map(p.x), p.y),
@@ -246,8 +245,8 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
                     // TODO: Treat line and pixel scroll differently
                     // TODO: Use a better zoom factor
                     // TODO: Look at x scroll
-                    iced::mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
-                    iced::mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
+                    mouse::ScrollDelta::Lines { y, .. } => (y / -10.0).exp(),
+                    mouse::ScrollDelta::Pixels { y, .. } => (y / -10.0).exp(),
                 },
             }),
         };

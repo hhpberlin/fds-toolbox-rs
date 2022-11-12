@@ -98,7 +98,12 @@ impl<
 
 impl ArrayStats<f32> {
     pub fn new_f32(data: impl Iterator<Item = f32>) -> Option<Self> {
-        Self::new(data, |a, b| a / b as f32, |a, b| a / b as f32, |a: f32| a.sqrt())
+        Self::new(
+            data,
+            |a, b| a / b as f32,
+            |a, b| a / b as f32,
+            |a: f32| a.sqrt(),
+        )
     }
 }
 

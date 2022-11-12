@@ -129,28 +129,33 @@ impl Application for FdsToolbox {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<'_, Self::Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         let tab_bar: Element<'_, Self::Message> = match self.tabs.len() {
             0 => Column::new().into(),
             _ => self
                 .tabs
                 .iter()
                 .fold(
-                    TabBar::new(self.active_tab, Message::TabSelected),
-                    |tab_bar, tab| {
+                    // TabBar::new(self.active_tab, Message::TabSelected),
+                    // |tab_bar, tab| {
+                    //     let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
+                    //     tab_bar.push(TabLabel::Text(tab_label))
+                    // },
+                    Column::new(),
+                    |column, tab| {
                         let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
-                        tab_bar.push(TabLabel::Text(tab_label))
+                        column.push(Text::new(tab_label))
                     },
                 )
-                .on_close(Message::TabClosed)
-                .tab_width(Length::Shrink)
+                // .on_close(Message::TabClosed)
+                // .tab_width(Length::Shrink)
                 .spacing(5)
                 .padding(5)
-                .text_size(32)
+                // .text_size(32)
                 .into(),
         };
 
-        let content = match self.tabs.get_mut(self.active_tab) {
+        let content = match self.tabs.get(self.active_tab) {
             Some(tab) => tab.view(&self.simulations),
             None => Text::new("No tabs open").into(),
         };
@@ -165,5 +170,4 @@ impl Application for FdsToolbox {
             )
             .into()
     }
-
 }
