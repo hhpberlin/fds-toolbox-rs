@@ -1,18 +1,15 @@
 use std::{
+    cell::{RefCell, RefMut},
     collections::{HashMap, HashSet},
-    iter::FromIterator, cell::{RefCell, RefMut}, rc::Rc,
 };
 
-use fds_toolbox_core::{
-    common::arr_meta::ArrayStats,
-    formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx},
-};
+use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
 use iced::{
     widget::{canvas::Cache, checkbox, row, scrollable, Column},
-    Command, Element, Length,
+    Command, Element,
 };
 
-use crate::{array_stats_vis::{array_stats_vis}, tabs::Tab, Simulations};
+use crate::{array_stats_vis::array_stats_vis, tabs::Tab, Simulations};
 
 use super::plot::{IdSource, Plot2DState};
 
@@ -52,15 +49,16 @@ impl PlotTab {
         Self {
             chart: Plot2DState::new(),
             // selected: HashSet::from_iter(idx.into_iter()),
-            series: RefCell::new(idx
-                .into_iter()
-                .map(|idx| PlotTabSeries {
-                    idx,
-                    selected: true,
-                    array_stats_vis_cache: Cache::default(),
-                })
-                .map(|series| (series.idx, series))
-                .collect()),
+            series: RefCell::new(
+                idx.into_iter()
+                    .map(|idx| PlotTabSeries {
+                        idx,
+                        selected: true,
+                        array_stats_vis_cache: Cache::default(),
+                    })
+                    .map(|series| (series.idx, series))
+                    .collect(),
+            ),
         }
     }
 
@@ -144,10 +142,13 @@ impl Tab<Simulations> for PlotTab {
     }
 
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
-        let ids: Vec<_> = self.series.borrow().iter()
-        .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
-        .copied()
-        .collect();
+        let ids: Vec<_> = self
+            .series
+            .borrow()
+            .iter()
+            .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
+            .copied()
+            .collect();
 
         row![
             Self::view_sidebar(self.series.borrow_mut(), model),

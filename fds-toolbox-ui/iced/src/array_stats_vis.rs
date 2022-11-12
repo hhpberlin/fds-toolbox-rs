@@ -1,20 +1,19 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     widget::{
-        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke}, Canvas,
+        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke},
+        Canvas,
     },
-    Color, Element, Point, Size, Theme, Length,
+    Color, Element, Length, Point, Size, Theme,
 };
 
 struct ArrayStatsCanvas<Num, NumDivisible = Num, NumSq = Num>(ArrayStats<Num, NumDivisible, NumSq>);
 
-pub fn array_stats_vis<'a, Message: Copy + 'a>(
-    stats: ArrayStats<f32>,
-) -> Element<'a, Message> {
+pub fn array_stats_vis<'a, Message: Copy + 'a>(stats: ArrayStats<f32>) -> Element<'a, Message> {
     Canvas::new(ArrayStatsCanvas(stats))
-    // .width(Length::Fill)
-    .height(Length::Units(20))
-    .into()
+        // .width(Length::Fill)
+        .height(Length::Units(20))
+        .into()
 }
 
 impl<Message> Program<Message> for ArrayStatsCanvas<f32> {
@@ -23,9 +22,9 @@ impl<Message> Program<Message> for ArrayStatsCanvas<f32> {
     fn draw(
         &self,
         state: &Self::State,
-        theme: &Theme,
+        _theme: &Theme,
         bounds: iced::Rectangle,
-        cursor: iced::widget::canvas::Cursor,
+        _cursor: iced::widget::canvas::Cursor,
     ) -> Vec<Geometry> {
         draw(self.0, state, bounds)
     }

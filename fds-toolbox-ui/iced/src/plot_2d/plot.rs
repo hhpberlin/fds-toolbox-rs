@@ -9,7 +9,7 @@ use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
 use iced::widget::canvas::Event;
 use iced::{
     event::Status,
-    keyboard, mouse,
+    mouse,
     widget::canvas::{Cache, Cursor, Frame, Geometry},
     Command, Element, Length, Point, Size,
 };
@@ -72,9 +72,9 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
         self.state.cache.draw(bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, state: &Self::State, _chart: ChartBuilder<DB>) {}
+    fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _chart: ChartBuilder<DB>) {}
 
-    fn draw_chart<DB: DrawingBackend>(&self, state: &Self::State, root: DrawingArea<DB, Shift>) {
+    fn draw_chart<DB: DrawingBackend>(&self, _state: &Self::State, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
@@ -195,8 +195,8 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
         chart
             .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
-            .border_style(&BLACK)
+            .background_style(WHITE.mix(0.8))
+            .border_style(BLACK)
             .draw()
             .expect("failed to draw chart labels");
 
@@ -208,7 +208,7 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
 
     fn update(
         &self,
-        state: &mut Self::State,
+        _state: &mut Self::State,
         event: Event,
         bounds: iced::Rectangle,
         cursor: Cursor,
