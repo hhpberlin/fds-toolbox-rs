@@ -72,9 +72,9 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
         self.state.cache.draw(bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, state: Self::State, _chart: ChartBuilder<DB>) {}
+    fn build_chart<DB: DrawingBackend>(&self, state: &Self::State, _chart: ChartBuilder<DB>) {}
 
-    fn draw_chart<DB: DrawingBackend>(&self, state: Self::State, root: DrawingArea<DB, Shift>) {
+    fn draw_chart<DB: DrawingBackend>(&self, state: &Self::State, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 

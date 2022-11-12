@@ -1,5 +1,3 @@
-use iced::pure;
-
 fn view<'a, Message: Copy + 'a>(
     children: impl Iterator<Item = (impl Fn(bool) -> pure::Element<'a, Message>, bool)>,
 ) -> pure::Element<'a, Message> {

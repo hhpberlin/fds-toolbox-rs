@@ -10,9 +10,8 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 
 use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{GlobalTimeSeriesIdx, Simulations};
-use iced::widget::{Column, Text};
-use iced::{executor, Application, Command, Container, Element, Length, Row, Settings};
-use iced_aw::{TabBar, TabLabel};
+use iced::widget::{Column, Container, Text};
+use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
@@ -89,6 +88,7 @@ impl Application for FdsToolbox {
     type Message = Message;
     type Executor = executor::Default;
     type Flags = ();
+    type Theme = Theme;
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut this = FdsToolbox {
@@ -155,7 +155,7 @@ impl Application for FdsToolbox {
             None => Text::new("No tabs open").into(),
         };
 
-        Row::new()
+        iced::widget::Row::new()
             .push(
                 Column::new().push(tab_bar).push(
                     Container::new(content.map(Message::TabMessage))
@@ -165,4 +165,5 @@ impl Application for FdsToolbox {
             )
             .into()
     }
+
 }
