@@ -1,36 +1,24 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     widget::{
-        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke, self},
+        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke}, Canvas,
     },
-    Color, Element, Point, Size, Theme,
+    Color, Element, Point, Size, Theme, Length,
 };
 
-#[derive(Debug, Copy, Clone)]
-pub struct ArrayStatsVis<'a> {
-    stats: &'a ArrayStats<f32>,
-    cache: Option<&'a Cache>,
+struct ArrayStatsCanvas<Num, NumDivisible = Num, NumSq = Num>(ArrayStats<Num, NumDivisible, NumSq>);
+
+pub fn array_stats_vis<'a, Message: Copy + 'a>(
+    stats: ArrayStats<f32>,
+) -> Element<'a, Message> {
+    Canvas::new(ArrayStatsCanvas(stats))
+    // .width(Length::Fill)
+    .height(Length::Units(20))
+    .into()
 }
 
-impl<'a> ArrayStatsVis<'a> {
-    pub fn new(stats: &'a ArrayStats<f32>, cache: Option<&'a Cache>) -> Self {
-        Self { stats, cache }
-    }
-
-    pub fn view<Message: Copy + 'a>(&'a self) -> Element<'a, Message> {
-        canvas(self).into()
-    }
-}
-
-// pub fn view<'a, Message: Copy + 'a>(
-//     stats: &'a ArrayStats<f32>,
-//     cache: &'a Cache,
-// ) -> Element<'a, Message> {
-//     ArrayStatsVis::new(stats, cache).view()
-// }
-
-impl<Message> Program<Message> for ArrayStatsVis<'_> {
-    type State = ();
+impl<Message> Program<Message> for ArrayStatsCanvas<f32> {
+    type State = Cache;
 
     fn draw(
         &self,
@@ -39,12 +27,13 @@ impl<Message> Program<Message> for ArrayStatsVis<'_> {
         bounds: iced::Rectangle,
         cursor: iced::widget::canvas::Cursor,
     ) -> Vec<Geometry> {
-        draw(self, bounds)
+        draw(self.0, state, bounds)
     }
 }
 
 fn draw(
-    data: &ArrayStatsVis<'_>,
+    stats: ArrayStats<f32>,
+    cache: &Cache,
     bounds: iced::Rectangle,
     // _cursor: iced::canvas::Cursor,
 ) -> Vec<Geometry> {
@@ -58,12 +47,16 @@ fn draw(
     }
 
     // let mut frame = Frame::new(bounds.size());
-    let vis = data.cache.unwrap_or_else(|| &Cache::new()).draw(bounds.size(), |frame| {
+    let vis = cache.draw(bounds.size(), |frame| {
+        if w <= 1.0 || h <= 1.0 {
+            return;
+        }
+
         // let background = Path::rectangle(Point::ORIGIN, frame.size());
         // frame.fill(&background, Color::TRANSPARENT);
 
         let map = move |s| {
-            let res = data.stats.range.map(s) * w;
+            let res = stats.range.map(s) * w;
             // if !res.is_finite() || res.is_nan() { return vec![]; } // Guard against divisions by very small numbers
             if !res.is_finite() || res.is_nan() {
                 0.0
@@ -74,9 +67,10 @@ fn draw(
         // dbg!(bounds);
 
         let range = Path::rectangle(
-            Point::new(map(data.stats.range.min), 0.0),
-            Size::new(map(data.stats.range.max), h),
+            Point::new(map(stats.range.min), 0.0),
+            Size::new(map(stats.range.max), h),
         );
+        dbg![&range];
         frame.fill(&range, Color::from_rgb8(0x66, 0x66, 0x66));
 
         let mean_stroke = Stroke {
@@ -85,7 +79,7 @@ fn draw(
             ..Stroke::default()
         };
 
-        let mean_pos = map(data.stats.mean);
+        let mean_pos = map(stats.mean);
         let mean = Path::line(Point::new(mean_pos, 0.0), Point::new(mean_pos, h));
 
         let stddev_stroke = Stroke {
@@ -94,11 +88,13 @@ fn draw(
             ..Stroke::default()
         };
 
-        let std_dev = map(data.stats.variance.abs().sqrt()); // TODO
+        let std_dev = map(stats.variance.abs().sqrt()); // TODO
         let std_dev = Path::line(
             Point::new(mean_pos - std_dev, h / 2.0),
             Point::new(mean_pos + std_dev, h / 2.0),
         );
+        dbg![&mean];
+        dbg![&std_dev];
 
         frame.stroke(&std_dev, stddev_stroke);
         frame.stroke(&mean, mean_stroke);

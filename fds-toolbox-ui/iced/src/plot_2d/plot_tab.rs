@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    iter::FromIterator, cell::RefCell,
+    iter::FromIterator, cell::{RefCell, RefMut}, rc::Rc,
 };
 
 use fds_toolbox_core::{
@@ -9,10 +9,10 @@ use fds_toolbox_core::{
 };
 use iced::{
     widget::{canvas::Cache, checkbox, row, scrollable, Column},
-    Command, Element,
+    Command, Element, Length,
 };
 
-use crate::{array_stats_vis::ArrayStatsVis, tabs::Tab, Simulations};
+use crate::{array_stats_vis::{array_stats_vis}, tabs::Tab, Simulations};
 
 use super::plot::{IdSource, Plot2DState};
 
@@ -66,7 +66,7 @@ impl PlotTab {
 
     fn view_sidebar<'a>(
         // set: &'a HashSet<GlobalTimeSeriesIdx>,
-        series: &'a HashMap<GlobalTimeSeriesIdx, PlotTabSeries>,
+        mut series: RefMut<'a, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
@@ -83,9 +83,9 @@ impl PlotTab {
             // let info = info.unwrap_or(default)
 
             let info = series
-                .get(&global_idx);
-                // .entry(global_idx)
-                // .or_insert_with(|| PlotTabSeries::new(global_idx));
+                // .get(&global_idx);
+                .entry(global_idx)
+                .or_insert_with(|| PlotTabSeries::new(global_idx));
 
             // let info = match info {
             //     Some(info) => info,
@@ -95,7 +95,7 @@ impl PlotTab {
             sidebar = sidebar.push(row![
                 checkbox(
                     format!("{} ({})", device.name, device.unit),
-                    info.map_or(false, |x| x.selected),
+                    info.selected,
                     move |checked| {
                         if checked {
                             Message::Add(global_idx)
@@ -104,7 +104,7 @@ impl PlotTab {
                         }
                     },
                 ),
-                ArrayStatsVis::new(&device.values.stats, info.map(|x| &x.array_stats_vis_cache)).view(),
+                array_stats_vis(device.values.stats),
                 // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
             ]);
         }
@@ -144,9 +144,13 @@ impl Tab<Simulations> for PlotTab {
     }
 
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
-        let ids: Vec<_> = self.series.borrow().iter_ids().collect();
+        let ids: Vec<_> = self.series.borrow().iter()
+        .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
+        .copied()
+        .collect();
+
         row![
-            Self::view_sidebar(&self.series.borrow(), model,),
+            Self::view_sidebar(self.series.borrow_mut(), model),
             self.chart.view(model, ids).map(Message::Plot),
         ]
         .into()
