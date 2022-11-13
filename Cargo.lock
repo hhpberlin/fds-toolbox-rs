@@ -1353,6 +1353,7 @@ version = "0.1.0"
 dependencies = [
  "fds-toolbox-core",
  "iced",
+ "iced_aw",
  "plotters",
  "plotters-iced",
  "tracing",
@@ -1918,6 +1919,16 @@ dependencies = [
  "iced_wgpu",
  "iced_winit",
  "thiserror",
+]
+
+[[package]]
+name = "iced_aw"
+version = "0.2.0"
+source = "git+https://github.com/iced-rs/iced_aw?branch=main#81b4dd16a695d9c89c4338401bd88202e5dc2108"
+dependencies = [
+ "iced_graphics",
+ "iced_native",
+ "iced_style",
 ]
 
 [[package]]
@@ -2995,14 +3006,11 @@ dependencies = [
 
 [[package]]
 name = "plotters-iced"
-version = "0.5.0"
-source = "git+https://github.com/blenderfreaky/plotters-iced?branch=next#c4d3ddf60c6575979c44900dccde6724bf92245c"
+version = "0.4.0"
+source = "git+https://github.com/Joylei/plotters-iced?branch=master#f441abdff52e70db7ed4c97f50c0da924bc9e4ac"
 dependencies = [
- "cc",
  "iced_graphics",
  "iced_native",
- "libc",
- "num-traits",
  "plotters",
  "plotters-backend",
 ]

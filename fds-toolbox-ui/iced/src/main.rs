@@ -12,6 +12,7 @@ use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{GlobalTimeSeriesIdx, Simulations};
 use iced::widget::{Column, Container, Text};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
+use iced_aw::{TabLabel, TabBar};
 use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
@@ -138,22 +139,22 @@ impl Application for FdsToolbox {
                 .tabs
                 .iter()
                 .fold(
-                    // TabBar::new(self.active_tab, Message::TabSelected),
-                    // |tab_bar, tab| {
-                    //     let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
-                    //     tab_bar.push(TabLabel::Text(tab_label))
-                    // },
-                    Column::new(),
-                    |column, tab| {
+                    TabBar::new(self.active_tab, Message::TabSelected),
+                    |tab_bar, tab| {
                         let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
-                        column.push(Text::new(tab_label))
+                        tab_bar.push(TabLabel::Text(tab_label))
                     },
+                    // Column::new(),
+                    // |column, tab| {
+                    //     let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
+                    //     column.push(Text::new(tab_label))
+                    // },
                 )
-                // .on_close(Message::TabClosed)
-                // .tab_width(Length::Shrink)
+                .on_close(Message::TabClosed)
+                .tab_width(Length::Shrink)
                 .spacing(5)
                 .padding(5)
-                // .text_size(32)
+                .text_size(32)
                 .into(),
         };
 
