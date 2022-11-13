@@ -2,7 +2,7 @@ use std::{hash::Hash, net::SocketAddr};
 
 use async_trait::async_trait;
 use color_eyre::Report;
-use quinn::{Connection, Endpoint, NewConnection};
+use quinn::{Connection, Endpoint};
 
 use super::Remote;
 
@@ -34,10 +34,9 @@ impl QuicRemote<'_> {
         let endpoint = Endpoint::client(connection_info.local_addr).unwrap();
 
         // Connect to the server passing in the server name which is supposed to be in the server certificate.
-        let new_connection = endpoint
+        let connection = endpoint
             .connect(connection_info.remote_addr, connection_info.server_name)?
             .await?;
-        let NewConnection { connection, .. } = new_connection;
 
         // Start transferring, receiving data, see data transfer page.
 
