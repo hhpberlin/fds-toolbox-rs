@@ -5,8 +5,8 @@ use std::{
 
 use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
 use iced::{
-    widget::{canvas::Cache, checkbox, row, scrollable, Column},
-    Command, Element,
+    widget::{canvas::Cache, checkbox, container, row, scrollable, Column, horizontal_space},
+    Command, Element, Length,
 };
 
 use crate::{array_stats_vis::array_stats_vis, tabs::Tab, Simulations};
@@ -89,9 +89,8 @@ impl PlotTab {
             //     Some(info) => info,
             //     None => &PlotTabSeries::new(global_idx)
             // };
-
             sidebar = sidebar.push(row![
-                checkbox(
+                container(checkbox(
                     format!("{} ({})", device.name, device.unit),
                     info.selected,
                     move |checked| {
@@ -101,10 +100,13 @@ impl PlotTab {
                             Message::Remove(global_idx)
                         }
                     },
-                ),
-                array_stats_vis(device.values.stats),
-                // .push(iced::Text::new(format!("{} ({})", device.name, device.unit)))
-            ]);
+                )).width(Length::Shrink),
+                horizontal_space(Length::Fill),
+                container(array_stats_vis(device.values.stats))
+                .width(Length::Units(100))
+                .height(Length::Units(20)),
+            ])
+            .max_width(400);
         }
 
         scrollable(sidebar).into()

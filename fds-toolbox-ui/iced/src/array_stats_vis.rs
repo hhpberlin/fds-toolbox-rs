@@ -1,7 +1,7 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     widget::{
-        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke},
+        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke, stroke::Style},
         Canvas,
     },
     Color, Element, Length, Point, Size, Theme,
@@ -11,8 +11,8 @@ struct ArrayStatsCanvas<Num, NumDivisible = Num, NumSq = Num>(ArrayStats<Num, Nu
 
 pub fn array_stats_vis<'a, Message: Copy + 'a>(stats: ArrayStats<f32>) -> Element<'a, Message> {
     Canvas::new(ArrayStatsCanvas(stats))
-        // .width(Length::Fill)
-        .height(Length::Units(20))
+        .width(Length::Fill)
+        .height(Length::Fill)
         .into()
 }
 
@@ -22,17 +22,18 @@ impl<Message> Program<Message> for ArrayStatsCanvas<f32> {
     fn draw(
         &self,
         state: &Self::State,
-        _theme: &Theme,
+        theme: &Theme,
         bounds: iced::Rectangle,
         _cursor: iced::widget::canvas::Cursor,
     ) -> Vec<Geometry> {
-        draw(self.0, state, bounds)
+        draw(self.0, state, theme, bounds)
     }
 }
 
 fn draw(
     stats: ArrayStats<f32>,
     cache: &Cache,
+    theme: &Theme,
     bounds: iced::Rectangle,
     // _cursor: iced::canvas::Cursor,
 ) -> Vec<Geometry> {
@@ -50,7 +51,6 @@ fn draw(
         if w <= 1.0 || h <= 1.0 {
             return;
         }
-
         // let background = Path::rectangle(Point::ORIGIN, frame.size());
         // frame.fill(&background, Color::TRANSPARENT);
 
@@ -69,10 +69,11 @@ fn draw(
             Point::new(map(stats.range.min), 0.0),
             Size::new(map(stats.range.max), h),
         );
-        dbg![&range];
-        frame.fill(&range, Color::from_rgb8(0x66, 0x66, 0x66));
+        // dbg![&range];
+        frame.fill(&range, theme.extended_palette().secondary.base.color);
 
         let mean_stroke = Stroke {
+            style: Style::Solid(theme.extended_palette().danger.base.color),
             width: 2.0,
             line_cap: LineCap::Round,
             ..Stroke::default()
@@ -82,6 +83,7 @@ fn draw(
         let mean = Path::line(Point::new(mean_pos, 0.0), Point::new(mean_pos, h));
 
         let stddev_stroke = Stroke {
+            style: Style::Solid(theme.extended_palette().primary.base.color),
             width: 2.0,
             line_cap: LineCap::Round,
             ..Stroke::default()
@@ -92,8 +94,8 @@ fn draw(
             Point::new(mean_pos - std_dev, h / 2.0),
             Point::new(mean_pos + std_dev, h / 2.0),
         );
-        dbg![&mean];
-        dbg![&std_dev];
+        // dbg![&mean];
+        // dbg![&std_dev];
 
         frame.stroke(&std_dev, stddev_stroke);
         frame.stroke(&mean, mean_stroke);

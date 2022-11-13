@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug - iced",
-            "program": "${workspaceFolder}/target/debug/fds-toolbox-iced",
+            "program": "${workspaceFolder}/target/debug/fds-toolbox-ui-iced",
             "args": [],
             "cwd": "${workspaceFolder}"
         }
