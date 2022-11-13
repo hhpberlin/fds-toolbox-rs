@@ -5,7 +5,7 @@ use std::{
 
 use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
 use iced::{
-    widget::{canvas::Cache, checkbox, container, row, scrollable, Column, horizontal_space},
+    widget::{canvas::Cache, checkbox, container, horizontal_space, row, scrollable, Column},
     Command, Element, Length,
 };
 
@@ -48,7 +48,6 @@ impl PlotTab {
     pub fn new(idx: impl IntoIterator<Item = GlobalTimeSeriesIdx>) -> Self {
         Self {
             chart: Plot2DState::new(),
-            // selected: HashSet::from_iter(idx.into_iter()),
             series: RefCell::new(
                 idx.into_iter()
                     .map(|idx| PlotTabSeries {
@@ -63,7 +62,6 @@ impl PlotTab {
     }
 
     fn view_sidebar<'a>(
-        // set: &'a HashSet<GlobalTimeSeriesIdx>,
         mut series: RefMut<'a, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
@@ -77,36 +75,30 @@ impl PlotTab {
             // TODO: This does not work with multiple simulations
             let global_idx = GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(idx));
 
-            // let info = series.get(&global_idx);
-            // let info = info.unwrap_or(default)
-
             let info = series
-                // .get(&global_idx);
                 .entry(global_idx)
                 .or_insert_with(|| PlotTabSeries::new(global_idx));
 
-            // let info = match info {
-            //     Some(info) => info,
-            //     None => &PlotTabSeries::new(global_idx)
-            // };
-            sidebar = sidebar.push(row![
-                container(checkbox(
-                    format!("{} ({})", device.name, device.unit),
-                    info.selected,
-                    move |checked| {
-                        if checked {
-                            Message::Add(global_idx)
-                        } else {
-                            Message::Remove(global_idx)
-                        }
-                    },
-                )).width(Length::Shrink),
-                horizontal_space(Length::Fill),
-                container(array_stats_vis(device.values.stats))
-                .width(Length::Units(100))
-                .height(Length::Units(20)),
-            ])
-            .max_width(400);
+            sidebar = sidebar
+                .push(row![
+                    container(checkbox(
+                        format!("{} ({})", device.name, device.unit),
+                        info.selected,
+                        move |checked| {
+                            if checked {
+                                Message::Add(global_idx)
+                            } else {
+                                Message::Remove(global_idx)
+                            }
+                        },
+                    ))
+                    .width(Length::Shrink),
+                    horizontal_space(Length::Fill),
+                    container(array_stats_vis(device.values.stats))
+                        .width(Length::Units(100))
+                        .height(Length::Units(20)),
+                ])
+                .max_width(400);
         }
 
         scrollable(sidebar).into()
@@ -144,13 +136,7 @@ impl Tab<Simulations> for PlotTab {
     }
 
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
-        let ids: Vec<_> = self
-            .series
-            .borrow()
-            .iter()
-            .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
-            .copied()
-            .collect();
+        let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
         row![
             Self::view_sidebar(self.series.borrow_mut(), model),

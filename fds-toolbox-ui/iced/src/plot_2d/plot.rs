@@ -237,9 +237,6 @@ impl<'a, Id: Copy, Source: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> C
             mouse::Event::ButtonPressed(_) => None,
             mouse::Event::ButtonReleased(_) => None,
             mouse::Event::WheelScrolled { delta } => Some(Message::Zoom {
-                // TODO: Actually calculate the center instead of this bullshit
-                // center: self.chart_state.borrow().unwrap().,
-                // center: (self.x_range.map(p.x), p.y),
                 center: Position::Screen(p),
                 factor: match delta {
                     // TODO: Treat line and pixel scroll differently

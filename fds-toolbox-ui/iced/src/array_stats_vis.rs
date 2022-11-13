@@ -1,10 +1,10 @@
 use fds_toolbox_core::common::arr_meta::ArrayStats;
 use iced::{
     widget::{
-        canvas::{Cache, Geometry, LineCap, Path, Program, Stroke, stroke::Style},
+        canvas::{stroke::Style, Cache, Geometry, LineCap, Path, Program, Stroke},
         Canvas,
     },
-    Color, Element, Length, Point, Size, Theme,
+    Element, Length, Point, Size, Theme,
 };
 
 struct ArrayStatsCanvas<Num, NumDivisible = Num, NumSq = Num>(ArrayStats<Num, NumDivisible, NumSq>);
@@ -46,30 +46,26 @@ fn draw(
         return vec![];
     }
 
-    // let mut frame = Frame::new(bounds.size());
     let vis = cache.draw(bounds.size(), |frame| {
         if w <= 1.0 || h <= 1.0 {
             return;
         }
-        // let background = Path::rectangle(Point::ORIGIN, frame.size());
-        // frame.fill(&background, Color::TRANSPARENT);
 
         let map = move |s| {
             let res = stats.range.map(s) * w;
-            // if !res.is_finite() || res.is_nan() { return vec![]; } // Guard against divisions by very small numbers
+            // Guard against divisions by very small numbers
             if !res.is_finite() || res.is_nan() {
                 0.0
             } else {
                 res
             }
         };
-        // dbg!(bounds);
 
         let range = Path::rectangle(
             Point::new(map(stats.range.min), 0.0),
             Size::new(map(stats.range.max), h),
         );
-        // dbg![&range];
+
         frame.fill(&range, theme.extended_palette().secondary.base.color);
 
         let mean_stroke = Stroke {
@@ -94,8 +90,6 @@ fn draw(
             Point::new(mean_pos - std_dev, h / 2.0),
             Point::new(mean_pos + std_dev, h / 2.0),
         );
-        // dbg![&mean];
-        // dbg![&std_dev];
 
         frame.stroke(&std_dev, stddev_stroke);
         frame.stroke(&mean, mean_stroke);
