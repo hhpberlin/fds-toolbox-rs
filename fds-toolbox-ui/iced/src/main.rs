@@ -16,6 +16,8 @@ use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;
+pub mod slice;
+
 pub mod tabs;
 
 mod array_stats_vis;
