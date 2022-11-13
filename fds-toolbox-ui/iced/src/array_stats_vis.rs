@@ -52,6 +52,10 @@ fn draw(
         }
 
         let map = move |s| {
+            if stats.range.width() == 0.0 {
+                return 0.0;
+            }
+
             let res = stats.range.map(s) * w;
             // Guard against divisions by very small numbers
             if !res.is_finite() || res.is_nan() {
