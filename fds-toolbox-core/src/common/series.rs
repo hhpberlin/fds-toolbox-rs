@@ -142,6 +142,12 @@ pub trait TimeSeriesViewSource<Id> {
     // }
 }
 
+impl<Id, T: TimeSeriesViewSource<Id>> TimeSeriesViewSource<Id> for &T {
+    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView> {
+        (*self).get_time_series(id)
+    }
+}
+
 impl TimeSeriesViewSource<()> for TimeSeries {
     fn get_time_series(&self, _: ()) -> Option<TimeSeriesView> {
         Some(self.view())

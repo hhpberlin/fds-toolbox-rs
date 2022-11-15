@@ -3007,7 +3007,7 @@ dependencies = [
 [[package]]
 name = "plotters-iced"
 version = "0.4.0"
-source = "git+https://github.com/Joylei/plotters-iced?branch=master#f441abdff52e70db7ed4c97f50c0da924bc9e4ac"
+source = "git+https://github.com/blenderfreaky/plotters-iced?branch=master#503b32ac9904f2cf7f885345fdae85b8de346024"
 dependencies = [
  "iced_graphics",
  "iced_native",

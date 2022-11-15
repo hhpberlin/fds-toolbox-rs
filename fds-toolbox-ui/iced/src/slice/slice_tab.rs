@@ -1,5 +1,5 @@
-use fds_toolbox_core::formats::{slcf::SliceFile, simulations::Simulations};
-use iced::{Element, Command};
+use fds_toolbox_core::formats::{simulations::Simulations, slcf::SliceFile};
+use iced::{Command, Element};
 
 use crate::tabs::Tab;
 
@@ -31,7 +31,11 @@ impl Tab<Simulations> for SliceTab {
         todo!()
     }
 
-    fn update(&mut self, model: &mut Simulations, message: Self::Message) -> Command<Self::Message> {
+    fn update(
+        &mut self,
+        model: &mut Simulations,
+        message: Self::Message,
+    ) -> Command<Self::Message> {
         todo!()
     }
 }

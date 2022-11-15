@@ -12,11 +12,12 @@ use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{GlobalTimeSeriesIdx, Simulations};
 use iced::widget::{Column, Container, Text};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
-use iced_aw::{TabLabel, TabBar};
+use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;
+pub mod plotters;
 pub mod slice;
 
 pub mod tabs;

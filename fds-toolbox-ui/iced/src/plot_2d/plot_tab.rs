@@ -1,6 +1,6 @@
 use std::{
     cell::{RefCell, RefMut},
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet}, iter::Copied,
 };
 
 use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
@@ -9,13 +9,16 @@ use iced::{
     Command, Element, Length,
 };
 
-use crate::{array_stats_vis::array_stats_vis, tabs::Tab, Simulations};
-
-use super::plot::{IdSource, Plot2DState};
+use crate::{
+    array_stats_vis::array_stats_vis,
+    plotters::{cartesian::{self, CartesianDrawer, CartesianPlot, cartesian}, lines::{IdSource, LinePlot}},
+    tabs::Tab,
+    Simulations,
+};
 
 #[derive(Debug)]
 pub struct PlotTab {
-    chart: Plot2DState,
+    // chart: CartesianPlot<LinePlot<GlobalTimeSeriesIdx, Simulations, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>>,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
     series: RefCell<HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
 }
@@ -39,7 +42,7 @@ impl PlotTabSeries {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
-    Plot(super::plot::Message),
+    Plot(cartesian::Message),
     Add(GlobalTimeSeriesIdx),
     Remove(GlobalTimeSeriesIdx),
 }
@@ -47,7 +50,7 @@ pub enum Message {
 impl PlotTab {
     pub fn new(idx: impl IntoIterator<Item = GlobalTimeSeriesIdx>) -> Self {
         Self {
-            chart: Plot2DState::new(),
+            // chart: CartesianPlot::new(LinePlot::new()),
             series: RefCell::new(
                 idx.into_iter()
                     .map(|idx| PlotTabSeries {
@@ -120,16 +123,15 @@ impl Tab<Simulations> for PlotTab {
         _model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
+        // self.chart.invalidate();
         match message {
-            Message::Plot(msg) => self.chart.update(msg).map(Message::Plot),
+            Message::Plot(_) => Command::none(),//self.chart.update(msg).map(Message::Plot),
             Message::Add(idx) => {
                 self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
-                self.chart.invalidate();
                 Command::none()
             }
             Message::Remove(idx) => {
                 self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
-                self.chart.invalidate();
                 Command::none()
             }
         }
@@ -140,7 +142,7 @@ impl Tab<Simulations> for PlotTab {
 
         row![
             Self::view_sidebar(self.series.borrow_mut(), model),
-            self.chart.view(model, ids).map(Message::Plot),
+            cartesian(LinePlot::new(model, ids)).map(Message::Plot),
         ]
         .into()
     }
@@ -148,24 +150,30 @@ impl Tab<Simulations> for PlotTab {
 
 impl IdSource for HashSet<GlobalTimeSeriesIdx> {
     type Id = GlobalTimeSeriesIdx;
+    // The things I do to avoid a single alloc lmao
+    type Iter<'a> = Copied<std::collections::hash_set::Iter<'a, Self::Id>>;
 
-    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
-        Box::new(self.iter().copied())
+    fn iter_ids(&self) -> Self::Iter<'_> {
+        self.iter().copied()
     }
 }
 
 impl IdSource for Vec<GlobalTimeSeriesIdx> {
     type Id = GlobalTimeSeriesIdx;
+    type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>;
 
-    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
-        Box::new(self.iter().copied())
+    fn iter_ids(&self) -> Self::Iter<'_> {
+        self.iter().copied()
     }
 }
 
 impl IdSource for HashMap<GlobalTimeSeriesIdx, PlotTabSeries> {
     type Id = GlobalTimeSeriesIdx;
+    // TODO: Find a way to avoid this alloc
+    //       Currently here because filter_map's iterator cannot be named
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Id> + 'a>;
 
-    fn iter_ids(&self) -> Box<dyn Iterator<Item = Self::Id> + '_> {
+    fn iter_ids(&self) -> Self::Iter<'_> {
         Box::new(
             self.iter()
                 .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
