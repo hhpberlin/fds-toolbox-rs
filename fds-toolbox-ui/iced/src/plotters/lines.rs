@@ -1,11 +1,14 @@
-use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate},
-    prelude::{Cartesian2d, ChartContext, Circle, EmptyElement, PathElement, Text, CoordTranslate},
+    prelude::{Cartesian2d, ChartContext, Circle, CoordTranslate, EmptyElement, PathElement, Text},
     series::{LineSeries, PointSeries},
-    style::{Palette99, ShapeStyle, RED, Palette, Color},
+    style::{Color, Palette, Palette99, ShapeStyle, RED},
 };
 
 use super::cartesian::{self, CartesianDrawer};

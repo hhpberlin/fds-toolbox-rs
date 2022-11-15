@@ -1,6 +1,7 @@
 use std::{
     cell::{RefCell, RefMut},
-    collections::{HashMap, HashSet}, iter::Copied,
+    collections::{HashMap, HashSet},
+    iter::Copied,
 };
 
 use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
@@ -11,7 +12,10 @@ use iced::{
 
 use crate::{
     array_stats_vis::array_stats_vis,
-    plotters::{cartesian::{self, CartesianDrawer, CartesianPlot, cartesian}, lines::{IdSource, LinePlot}},
+    plotters::{
+        cartesian::{self, cartesian},
+        lines::{IdSource, LinePlot},
+    },
     tabs::Tab,
     Simulations,
 };
@@ -125,7 +129,7 @@ impl Tab<Simulations> for PlotTab {
     ) -> Command<Self::Message> {
         // self.chart.invalidate();
         match message {
-            Message::Plot(_) => Command::none(),//self.chart.update(msg).map(Message::Plot),
+            Message::Plot(_) => Command::none(), //self.chart.update(msg).map(Message::Plot),
             Message::Add(idx) => {
                 self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
                 Command::none()

@@ -1,17 +1,12 @@
-use std::{
-    cell::RefCell,
-    collections::hash_map::DefaultHasher,
-    fmt::Debug,
-    hash::{Hash, Hasher},
-};
+use std::{cell::RefCell, fmt::Debug};
 
-use fds_toolbox_core::common::{range::RangeIncl, series::TimeSeriesViewSource};
+use fds_toolbox_core::common::range::RangeIncl;
 use iced::widget::canvas::Event;
 use iced::{
     event::Status,
     mouse,
     widget::canvas::{Cache, Cursor, Frame, Geometry},
-    Command, Element, Length, Point, Size,
+    Element, Length, Point, Size,
 };
 use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
@@ -82,9 +77,7 @@ pub trait CartesianDrawer {
 
 impl<Drawer: CartesianDrawer> CartesianPlot<Drawer> {
     pub fn new(drawer: Drawer) -> Self {
-        Self {
-            drawer,
-        }
+        Self { drawer }
     }
 }
 
@@ -103,10 +96,7 @@ impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
         let mut chart = chart
-            .build_cartesian_2d(
-                state.x_range.into_range(),
-                state.y_range.into_range(),
-            )
+            .build_cartesian_2d(state.x_range.into_range(), state.y_range.into_range())
             .expect("failed to build chart");
 
         // Draws the grid and axis
@@ -117,7 +107,7 @@ impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
 
-        self.drawer.draw(&mut chart, &state);
+        self.drawer.draw(&mut chart, state);
 
         chart
             .configure_series_labels()
@@ -251,9 +241,7 @@ impl State {
     }
 }
 
-pub fn cartesian<'a>(
-    drawer: impl CartesianDrawer + 'a,
-) -> Element<'a, Message> {
+pub fn cartesian<'a>(drawer: impl CartesianDrawer + 'a) -> Element<'a, Message> {
     ChartWidget::new(CartesianPlot { drawer })
         .width(Length::Fill)
         .height(Length::Fill)

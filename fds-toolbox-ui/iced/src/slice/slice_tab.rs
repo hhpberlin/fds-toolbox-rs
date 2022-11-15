@@ -13,7 +13,7 @@ pub enum Message {
 }
 
 impl SliceTab {
-    pub fn new(slice: SliceFile) -> Self {
+    pub fn new(_slice: SliceFile) -> Self {
         Self {
             // slice: Slice::new(slice),
         }
@@ -27,14 +27,14 @@ impl Tab<Simulations> for SliceTab {
         todo!()
     }
 
-    fn view(&self, model: &Simulations) -> Element<'_, Message> {
+    fn view(&self, _model: &Simulations) -> Element<'_, Message> {
         todo!()
     }
 
     fn update(
         &mut self,
-        model: &mut Simulations,
-        message: Self::Message,
+        _model: &mut Simulations,
+        _message: Self::Message,
     ) -> Command<Self::Message> {
         todo!()
     }
