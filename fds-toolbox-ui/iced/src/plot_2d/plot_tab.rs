@@ -4,7 +4,7 @@ use std::{
     iter::Copied,
 };
 
-use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::GlobalTimeSeriesIdx};
+use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::SimulationIdx};
 use iced::{
     widget::{canvas::Cache, checkbox, container, horizontal_space, row, scrollable, Column},
     Command, Element, Length,
@@ -24,19 +24,19 @@ use crate::{
 pub struct PlotTab {
     // chart: CartesianPlot<LinePlot<GlobalTimeSeriesIdx, Simulations, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>>,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
-    series: RefCell<HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
+    series: RefCell<HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
     plot_state: RefCell<cartesian::State>,
 }
 
 #[derive(Debug)]
 pub struct PlotTabSeries {
-    idx: GlobalTimeSeriesIdx,
+    idx: SimulationIdx<TimeSeriesIdx>,
     selected: bool,
     array_stats_vis_cache: Cache,
 }
 
 impl PlotTabSeries {
-    pub fn new(idx: GlobalTimeSeriesIdx) -> Self {
+    pub fn new(idx: SimulationIdx<TimeSeriesIdx>) -> Self {
         Self {
             idx,
             selected: false,
@@ -48,12 +48,12 @@ impl PlotTabSeries {
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
     Plot(cartesian::Message),
-    Add(GlobalTimeSeriesIdx),
-    Remove(GlobalTimeSeriesIdx),
+    Add(SimulationIdx<TimeSeriesIdx>),
+    Remove(SimulationIdx<TimeSeriesIdx>),
 }
 
 impl PlotTab {
-    pub fn new(idx: impl IntoIterator<Item = GlobalTimeSeriesIdx>) -> Self {
+    pub fn new(idx: impl IntoIterator<Item = SimulationIdx<TimeSeriesIdx>>) -> Self {
         Self {
             // chart: CartesianPlot::new(LinePlot::new()),
             series: RefCell::new(
@@ -71,7 +71,7 @@ impl PlotTab {
     }
 
     fn view_sidebar<'a>(
-        mut series: RefMut<'a, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
+        mut series: RefMut<'a, HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
         model: &'a Simulations,
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
@@ -82,7 +82,7 @@ impl PlotTab {
             .flat_map(|x| x.devc.enumerate_devices())
         {
             // TODO: This does not work with multiple simulations
-            let global_idx = GlobalTimeSeriesIdx(0, TimeSeriesIdx::Device(idx));
+            let global_idx = SimulationIdx(0, TimeSeriesIdx::Device(idx));
 
             let info = series
                 .entry(global_idx)
@@ -154,8 +154,8 @@ impl Tab<Simulations> for PlotTab {
     }
 }
 
-impl IdSource for HashSet<GlobalTimeSeriesIdx> {
-    type Id = GlobalTimeSeriesIdx;
+impl IdSource for HashSet<SimulationIdx<TimeSeriesIdx>> {
+    type Id = SimulationIdx<TimeSeriesIdx>;
     // The things I do to avoid a single alloc lmao
     type Iter<'a> = Copied<std::collections::hash_set::Iter<'a, Self::Id>>;
 
@@ -164,8 +164,8 @@ impl IdSource for HashSet<GlobalTimeSeriesIdx> {
     }
 }
 
-impl IdSource for Vec<GlobalTimeSeriesIdx> {
-    type Id = GlobalTimeSeriesIdx;
+impl IdSource for Vec<SimulationIdx<TimeSeriesIdx>> {
+    type Id = SimulationIdx<TimeSeriesIdx>;
     type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>;
 
     fn iter_ids(&self) -> Self::Iter<'_> {
@@ -173,8 +173,8 @@ impl IdSource for Vec<GlobalTimeSeriesIdx> {
     }
 }
 
-impl IdSource for HashMap<GlobalTimeSeriesIdx, PlotTabSeries> {
-    type Id = GlobalTimeSeriesIdx;
+impl IdSource for HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries> {
+    type Id = SimulationIdx<TimeSeriesIdx>;
     // TODO: Find a way to avoid this alloc
     //       Currently here because filter_map's iterator cannot be named
     type Iter<'a> = Box<dyn Iterator<Item = Self::Id> + 'a>;

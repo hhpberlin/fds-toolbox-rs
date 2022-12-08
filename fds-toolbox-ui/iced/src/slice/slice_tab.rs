@@ -5,7 +5,7 @@ use crate::tabs::Tab;
 
 #[derive(Debug)]
 pub struct SliceTab {
-    slice: Slice,
+    slice: SimulationIdx<SliceIdx>,
 }
 
 pub enum Message {

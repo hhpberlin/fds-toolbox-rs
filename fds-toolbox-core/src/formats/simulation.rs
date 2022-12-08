@@ -1,3 +1,5 @@
+use core::slice;
+
 use serde::{Deserialize, Serialize};
 
 use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
@@ -7,6 +9,7 @@ use super::csv::devc::{DeviceIdx, Devices};
 #[derive(Debug)]
 pub struct Simulation {
     pub devc: Devices,
+    pub slcf: ,
 }
 
 impl TimeSeriesViewSource<TimeSeriesIdx> for Simulation {
@@ -25,3 +28,5 @@ pub enum SimulationData2D<'a> {
 pub enum TimeSeriesIdx {
     Device(DeviceIdx),
 }
+
+pub struct SliceIdx()
