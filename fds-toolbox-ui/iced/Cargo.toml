@@ -10,7 +10,7 @@ iced_aw = { version = "0.2", git = "https://github.com/iced-rs/iced_aw", branch 
 
 plotters = "0.3"
 # TODO: Try to make PR to merge this into the official crate
-plotters-iced = { version = "0.4", git = "https://github.com/blenderfreaky/plotters-iced", branch = "master" }
+plotters-iced = "0.4"
 
 # makima_spline = "1.1"
 tracing = "0.1"
