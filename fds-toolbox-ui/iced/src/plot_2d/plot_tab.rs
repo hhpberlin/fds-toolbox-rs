@@ -25,6 +25,7 @@ pub struct PlotTab {
     // chart: CartesianPlot<LinePlot<GlobalTimeSeriesIdx, Simulations, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>>,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
     series: RefCell<HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>,
+    plot_state: RefCell<cartesian::State>,
 }
 
 #[derive(Debug)]
@@ -65,6 +66,7 @@ impl PlotTab {
                     .map(|series| (series.idx, series))
                     .collect(),
             ),
+            plot_state: RefCell::new(cartesian::State::new()),
         }
     }
 
@@ -146,7 +148,7 @@ impl Tab<Simulations> for PlotTab {
 
         row![
             Self::view_sidebar(self.series.borrow_mut(), model),
-            cartesian(LinePlot::new(model, ids)).map(Message::Plot),
+            cartesian(LinePlot::new(model, ids), &self.plot_state).map(Message::Plot),
         ]
         .into()
     }

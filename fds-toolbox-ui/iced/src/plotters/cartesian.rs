@@ -24,6 +24,7 @@ pub enum Message {
     Zoom { center: Position, factor: f32 },
     Hover { position: Point },
     Mouse { down: bool },
+    Invalidate,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -58,8 +59,9 @@ impl Debug for State {
 }
 
 #[derive(Debug)]
-pub struct CartesianPlot<Drawer: CartesianDrawer> {
+pub struct CartesianPlot<'a, Drawer: CartesianDrawer + 'a> {
     drawer: Drawer,
+    state: &'a RefCell<State>,
 }
 
 pub struct Crosshair<'a> {
@@ -75,25 +77,29 @@ pub trait CartesianDrawer {
     );
 }
 
-impl<Drawer: CartesianDrawer> CartesianPlot<Drawer> {
-    pub fn new(drawer: Drawer) -> Self {
-        Self { drawer }
+impl<'a, Drawer: CartesianDrawer + 'a> CartesianPlot<'a, Drawer> {
+    pub fn new(drawer: Drawer, state: &'a RefCell<State>) -> Self {
+        Self { drawer, state }
     }
 }
 
-impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
-    type State = State;
+impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Drawer> {
+    // TODO: See if I can make use of this
+    //       Currently not used because this persists between tabs
+    type State = ();
 
     #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, state: &Self::State, draw_fn: F) -> Geometry {
-        state.cache.draw(bounds, draw_fn)
+    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, _state: &Self::State, draw_fn: F) -> Geometry {
+        self.state.borrow().cache.draw(bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _chart: ChartBuilder<DB>) {}
 
-    fn draw_chart<DB: DrawingBackend>(&self, state: &Self::State, root: DrawingArea<DB, Shift>) {
+    fn draw_chart<DB: DrawingBackend>(&self, _state: &Self::State, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
+
+        let state = self.state.borrow();
 
         let mut chart = chart
             .build_cartesian_2d(state.x_range.into_range(), state.y_range.into_range())
@@ -107,7 +113,7 @@ impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
 
-        self.drawer.draw(&mut chart, state);
+        self.drawer.draw(&mut chart, &state);
 
         chart
             .configure_series_labels()
@@ -119,7 +125,7 @@ impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
 
     fn update(
         &self,
-        state: &mut Self::State,
+        _state: &mut Self::State,
         event: Event,
         bounds: iced::Rectangle,
         cursor: Cursor,
@@ -160,7 +166,7 @@ impl<Drawer: CartesianDrawer> Chart<Message> for CartesianPlot<Drawer> {
         };
 
         if let Some(message) = message {
-            state.update(message);
+            self.state.borrow_mut().update(message);
         }
 
         (Status::Captured, message)
@@ -194,14 +200,14 @@ impl State {
 
     fn map_pos_to_coord(&self, screen: Position) -> Option<PosF> {
         self.coord_spec
-            .borrow()
+            .borrow_mut()
             .as_ref()
             .and_then(|x| screen.into_data_coords(x))
     }
 
     fn map_screen_to_coord(&self, screen: Point) -> Option<PosF> {
         self.coord_spec
-            .borrow()
+            .borrow_mut()
             .as_ref()
             .and_then(|x| x.reverse_translate((screen.x as i32, screen.y as i32)))
     }
@@ -233,6 +239,9 @@ impl State {
             Message::Mouse { down } => {
                 self.mouse_down = down;
             }
+            Message::Invalidate => {
+                self.invalidate();
+            }
         }
     }
 
@@ -241,8 +250,8 @@ impl State {
     }
 }
 
-pub fn cartesian<'a>(drawer: impl CartesianDrawer + 'a) -> Element<'a, Message> {
-    ChartWidget::new(CartesianPlot { drawer })
+pub fn cartesian<'a>(drawer: impl CartesianDrawer + 'a, state: &'a RefCell<State>) -> Element<'a, Message> {
+    ChartWidget::new(CartesianPlot { drawer, state })
         .width(Length::Fill)
         .height(Length::Fill)
         .into()

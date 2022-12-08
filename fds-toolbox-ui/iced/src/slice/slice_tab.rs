@@ -5,7 +5,7 @@ use crate::tabs::Tab;
 
 #[derive(Debug)]
 pub struct SliceTab {
-    // slice: Slice,
+    slice: Slice,
 }
 
 pub enum Message {
@@ -15,7 +15,7 @@ pub enum Message {
 impl SliceTab {
     pub fn new(_slice: SliceFile) -> Self {
         Self {
-            // slice: Slice::new(slice),
+            slice: Slice::new(slice),
         }
     }
 }
