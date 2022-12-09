@@ -21,7 +21,7 @@ mod tests {
         if let Ok(None) = val {
             return;
         }
-        panic!("Expected empty value, got: {:?}", val);
+        panic!("Expected empty value, got: {val:?}");
     }
 
     async fn remote() -> (String, TestRemote<&'static str>) {
@@ -47,7 +47,7 @@ mod tests {
             assert_eq!(*val, data);
             return;
         }
-        panic!("Expected value, got: {:?}", val);
+        panic!("Expected value, got: {val:?}");
     }
 
     #[tokio::test]

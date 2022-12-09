@@ -3,7 +3,7 @@ use std::ops::Index;
 use ndarray::Ix1;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeries1View, TimeSeriesView, TimeSeriesViewSource};
+use crate::common::series::{TimeSeries1View, TimeSeriesViewSource};
 
 use super::simulation::{Simulation, TimeSeriesIdx};
 
