@@ -5,18 +5,16 @@ use std::{
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use plotters::{
-    coord::{types::RangedCoordf32, ReverseCoordTranslate},
-    prelude::{Cartesian2d, ChartContext, Circle, CoordTranslate, EmptyElement, PathElement, Text},
+    coord::{ReverseCoordTranslate},
+    prelude::{ChartContext, Circle, CoordTranslate, EmptyElement, PathElement, Text},
     series::{LineSeries, PointSeries},
     style::{Color, Palette, Palette99, ShapeStyle, RED},
 };
 
-use super::cartesian::{self, CartesianDrawer};
+use super::{cartesian::{self, CartesianDrawer, Cartesian2df32}, ids::IdSource};
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);
-
-type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 
 #[derive(Debug)]
 pub struct LinePlot<Id, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> {
@@ -31,13 +29,6 @@ impl<Id, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> LinePlot<I
             id_source,
         }
     }
-}
-pub trait IdSource {
-    type Id;
-    type Iter<'a>: Iterator<Item = Self::Id> + 'a
-    where
-        Self: 'a;
-    fn iter_ids(&self) -> Self::Iter<'_>;
 }
 
 impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> CartesianDrawer

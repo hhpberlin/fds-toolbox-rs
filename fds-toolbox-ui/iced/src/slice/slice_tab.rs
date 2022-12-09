@@ -1,25 +1,43 @@
+use std::{iter::Copied, cell::RefCell};
+
 use fds_toolbox_core::formats::{
     simulation::SliceIdx,
     simulations::{SimulationIdx, Simulations},
     slcf::{Slice, SliceFile},
 };
-use iced::{Command, Element};
+use iced::{Command, Element, widget::row};
 
-use crate::tabs::Tab;
+use crate::{tabs::Tab, plotters::{cartesian::{cartesian, self}, heatmap::Heatmap, ids::IdSource}};
 
 #[derive(Debug)]
 pub struct SliceTab {
     slice: SimulationIdx<SliceIdx>,
+    frame: usize,
+    plot_state: RefCell<cartesian::State>,
+}
+
+impl IdSource for SliceTab {
+    type Id = SimulationIdx<SliceIdx>;
+    type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>
+    where
+        Self: 'a;
+
+    fn iter_ids(&self) -> Self::Iter<'_> {
+        [self.slice].iter().copied()
+    }
 }
 
 pub enum Message {
+    Plot(cartesian::Message),
     // AddSlice(SliceFile),
 }
 
 impl SliceTab {
-    pub fn new(slice: Slice) -> Self {
+    pub fn new(slice: SimulationIdx<SliceIdx>) -> Self {
         Self {
-            slice: Slice::new(slice),
+            slice,
+            frame: 0, // TODO
+            plot_state: RefCell::new(cartesian::State::default()),
         }
     }
 }
@@ -28,11 +46,15 @@ impl Tab<Simulations> for SliceTab {
     type Message = Message;
 
     fn title(&self) -> String {
-        todo!()
+        "Slice".to_string()
     }
 
-    fn view(&self, _model: &Simulations) -> Element<'_, Message> {
-        todo!()
+    fn view(&self, model: &Simulations) -> Element<'_, Message> {
+        row![
+            // Self::view_sidebar(self.series.borrow_mut(), model),
+            cartesian(Heatmap::new(model, self.slice), &self.plot_state).map(Message::Plot),
+        ]
+        .into()
     }
 
     fn update(

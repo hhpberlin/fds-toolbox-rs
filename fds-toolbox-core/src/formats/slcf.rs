@@ -1,6 +1,6 @@
 use uom::si::f32::Time;
 
-use crate::geom::Axis;
+use crate::{geom::Axis, common::series::TimeSeriesViewSource};
 
 #[derive(Debug)]
 pub struct Slice {
@@ -38,4 +38,16 @@ pub struct SliceFrame {
 //     let mut buf = [0u8; 4];
 //     rdr.read_exact(&mut buf).map_err(|x| { EarlyEoF { missing_bytes: None } })?;
 //     Ok(i32::from_le_bytes(buf))
+// }
+
+// impl TimeSeriesViewSource<Glo, f32, Ix2> for Simulations {
+//     fn view(&self, id: Id) -> Option<TimeSeriesView<f32, Ix2>> {
+//         let slice = self.get_slice(id)?;
+//         let frames = slice.frames.iter().map(|frame| {
+//             let time = frame.time;
+//             let data = frame.data.clone();
+//             TimeSeriesFrame { time, data }
+//         }).collect();
+//         Some(TimeSeriesView { frames })
+//     }
 // }

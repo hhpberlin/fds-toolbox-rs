@@ -164,6 +164,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "binary-reader"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d173c51941d642588ed6a13d464617e3a9176b8fe00dc2de182434c36812a5e"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -942,6 +951,7 @@ version = "0.1.0"
 dependencies = [
  "async-compression",
  "async-trait",
+ "binary-reader",
  "blake3",
  "chrono",
  "color-eyre",
@@ -969,6 +979,7 @@ dependencies = [
  "fds-toolbox-core",
  "iced",
  "iced_aw",
+ "ndarray",
  "plotters",
  "plotters-iced",
  "tracing",
