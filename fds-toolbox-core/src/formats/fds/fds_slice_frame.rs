@@ -3,7 +3,7 @@ use std::io::Read;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use uom::si::f32::Time;
-use uom::si::time::Units::second;
+use uom::si::time::second;
 use crate::formats::fds::fds_slice::FdsSlice;
 
 pub struct FdsSliceFrame
@@ -18,7 +18,7 @@ impl FdsSliceFrame {
     fn new(reader: &mut impl Read, slice: FdsSlice, block: i32) -> Result<FdsSliceFrame, &str>
     {
         let mut ret: FdsSliceFrame = FdsSliceFrame {
-            time: reader.read_f32() as Second,
+            time: Time::new::<second>(reader.read_f32()),
             values: vec![],
             min_value: f32::MAX,
             max_value: f32::MIN

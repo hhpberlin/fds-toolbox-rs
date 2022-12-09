@@ -1,6 +1,5 @@
+use ndarray::Axis;
 use uom::si::f32::Time;
-
-use crate::{geom::Axis, common::series::TimeSeriesViewSource};
 
 #[derive(Debug)]
 pub struct Slice {
