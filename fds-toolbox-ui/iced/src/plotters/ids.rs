@@ -1,4 +1,3 @@
-
 pub trait IdSource {
     type Id;
     type Iter<'a>: Iterator<Item = Self::Id> + 'a

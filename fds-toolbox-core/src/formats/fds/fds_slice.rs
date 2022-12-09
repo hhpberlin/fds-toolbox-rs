@@ -6,7 +6,7 @@ pub struct FdsSlice {
     min_value: f32,
     max_value: f32,
     frames: Series2<FdsSliceFrame>,
-    bounds: Bounds3I, 
+    bounds: Bounds3I,
     flat_dimension: Dimension3D,
     flat_dimension_position: i32,
     dimension_i: Dimension3D,

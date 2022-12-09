@@ -5,13 +5,16 @@ use std::{
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use plotters::{
-    coord::{ReverseCoordTranslate},
+    coord::ReverseCoordTranslate,
     prelude::{ChartContext, Circle, CoordTranslate, EmptyElement, PathElement, Text},
     series::{LineSeries, PointSeries},
     style::{Color, Palette, Palette99, ShapeStyle, RED},
 };
 
-use super::{cartesian::{self, CartesianDrawer, Cartesian2df32}, ids::IdSource};
+use super::{
+    cartesian::{self, Cartesian2df32, CartesianDrawer},
+    ids::IdSource,
+};
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);

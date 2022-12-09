@@ -1,13 +1,20 @@
-use std::{iter::Copied, cell::RefCell};
+use std::{cell::RefCell, iter::Copied};
 
 use fds_toolbox_core::formats::{
     simulation::SliceIdx,
     simulations::{SimulationIdx, Simulations},
     slcf::{Slice, SliceFile},
 };
-use iced::{Command, Element, widget::row};
+use iced::{widget::row, Command, Element};
 
-use crate::{tabs::Tab, plotters::{cartesian::{cartesian, self}, heatmap::Heatmap, ids::IdSource}};
+use crate::{
+    plotters::{
+        cartesian::{self, cartesian},
+        heatmap::Heatmap,
+        ids::IdSource,
+    },
+    tabs::Tab,
+};
 
 #[derive(Debug)]
 pub struct SliceTab {
