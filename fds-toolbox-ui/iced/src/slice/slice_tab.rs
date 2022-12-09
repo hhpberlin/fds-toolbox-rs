@@ -1,7 +1,7 @@
 use std::{cell::RefCell, iter::Copied};
 
 use fds_toolbox_core::formats::{
-    simulation::SliceIdx,
+    simulation::SliceSeriesIdx,
     simulations::{SimulationIdx, Simulations},
     slcf::{Slice, SliceFile},
 };
@@ -18,13 +18,13 @@ use crate::{
 
 #[derive(Debug)]
 pub struct SliceTab {
-    slice: SimulationIdx<SliceIdx>,
+    slice: SimulationIdx<SliceSeriesIdx>,
     frame: usize,
     plot_state: RefCell<cartesian::State>,
 }
 
 impl IdSource for SliceTab {
-    type Id = SimulationIdx<SliceIdx>;
+    type Id = SimulationIdx<SliceSeriesIdx>;
     type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>
     where
         Self: 'a;
@@ -40,7 +40,7 @@ pub enum Message {
 }
 
 impl SliceTab {
-    pub fn new(slice: SimulationIdx<SliceIdx>) -> Self {
+    pub fn new(slice: SimulationIdx<SliceSeriesIdx>) -> Self {
         Self {
             slice,
             frame: 0, // TODO

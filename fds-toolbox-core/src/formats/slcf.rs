@@ -1,22 +1,18 @@
 use ndarray::Axis;
 use uom::si::f32::Time;
 
+use crate::common::series::{TimeSeries, TimeSeries2};
+
 #[derive(Debug)]
 pub struct Slice {
-    files: Vec<SliceFile>,
+    pub files: Vec<SliceFile>,
     axis: Axis,
     cell_centered: bool,
 }
 
 #[derive(Debug)]
 pub struct SliceFile {
-    frames: Vec<SliceFrame>,
-}
-
-#[derive(Debug)]
-pub struct SliceFrame {
-    time: Time,
-    data: ndarray::Array2<f32>,
+    pub data: TimeSeries2,
 }
 
 // fn parse_slcf_2(rdr: impl Read) {

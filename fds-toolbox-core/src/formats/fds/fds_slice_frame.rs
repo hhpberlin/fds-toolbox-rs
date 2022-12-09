@@ -1,10 +1,4 @@
-
-
-
-
-
 use uom::si::f32::Time;
-
 
 pub struct FdsSliceFrame {
     time: Time,

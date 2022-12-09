@@ -1,11 +1,11 @@
 use std::ops::Index;
 
-use ndarray::Ix1;
+use ndarray::Dimension;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeries1View, TimeSeriesViewSource};
+use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
 
-use super::simulation::{Simulation, TimeSeriesIdx};
+use super::simulation::Simulation;
 
 #[derive(Debug)]
 pub struct Simulations {
@@ -32,13 +32,17 @@ impl Index<usize> for Simulations {
     }
 }
 
-impl TimeSeriesViewSource<SimulationIdx<TimeSeriesIdx>, f32, Ix1> for Simulations {
-    fn get_time_series(&self, idx: SimulationIdx<TimeSeriesIdx>) -> Option<TimeSeries1View> {
+// TODO: Should this have public fields or be an opaque type instantiated by Simulations?
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SimulationIdx<T>(pub usize, pub T);
+
+impl<Idx, Value: Copy, Ix: Dimension, Time: Copy>
+    TimeSeriesViewSource<SimulationIdx<Idx>, Value, Ix, Time> for Simulations
+where
+    Simulation: TimeSeriesViewSource<Idx, Value, Ix, Time>,
+{
+    fn get_time_series(&self, idx: SimulationIdx<Idx>) -> Option<TimeSeriesView<Value, Ix, Time>> {
         let SimulationIdx(idx, inner) = idx;
         self.simulations.get(idx)?.get_time_series(inner)
     }
 }
-
-// TODO: Should this have public fields or be an opaque type instantiated by Simulations?
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SimulationIdx<T>(pub usize, pub T);

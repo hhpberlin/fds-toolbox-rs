@@ -70,6 +70,7 @@ pub struct SeriesView<'a, T: Copy, Ix: Dimension> {
 }
 
 pub type Series1View<'a, T = f32> = SeriesView<'a, T, Ix1>;
+pub type Series2View<'a, T = f32> = SeriesView<'a, T, Ix2>;
 
 impl<'a, T: Copy, Ix: Dimension> SeriesView<'a, T, Ix> {
     pub fn new(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>) -> Self {
@@ -88,6 +89,9 @@ pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
     unit: String,
     name: String,
 }
+
+pub type TimeSeries1<Value = f32, Time = f32> = TimeSeries<Value, Ix1, Time>;
+pub type TimeSeries2<Value = f32, Time = f32> = TimeSeries<Value, Ix2, Time>;
 
 impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
     pub fn new(
@@ -131,6 +135,7 @@ pub struct TimeSeriesView<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
 }
 
 pub type TimeSeries1View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix1, Time>;
+pub type TimeSeries2View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix2, Time>;
 
 impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, Time> {
     pub fn new(

@@ -1,9 +1,7 @@
-
-
-use ndarray::Ix1;
+use ndarray::{Ix1, Ix2};
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeries1View, TimeSeriesViewSource};
+use crate::common::series::{TimeSeries1View, TimeSeries2View, TimeSeriesViewSource};
 
 use super::{
     csv::devc::{DeviceIdx, Devices},
@@ -24,6 +22,12 @@ impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
     }
 }
 
+impl TimeSeriesViewSource<SliceSeriesIdx, f32, Ix2> for Simulation {
+    fn get_time_series(&self, idx: SliceSeriesIdx) -> Option<TimeSeries2View> {
+        self.slcf.get(idx.0).map(|slice| slice.files[0].data.view())
+    }
+}
+
 pub enum SimulationData2D<'a> {
     Device(&'a str),
 }
@@ -34,4 +38,4 @@ pub enum TimeSeriesIdx {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SliceIdx(pub u32);
+pub struct SliceSeriesIdx(pub usize);
