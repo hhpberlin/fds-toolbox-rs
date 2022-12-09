@@ -33,4 +33,5 @@ pub enum TimeSeriesIdx {
     Device(DeviceIdx),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SliceIdx(pub u32);

@@ -164,13 +164,15 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
 //     }
 // }
 
-pub trait TimeSeriesViewSource<Id, Value: Copy, Ix: Dimension, Time: Copy = f32> {
+pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time: Copy = f32> {
     fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>>;
 
     // fn get_time_series_iter(&self, ids: impl Iterator<Item = Id>) -> impl Iterator<Item = TimeSeriesView> {
     //     ids.filter_map(move |id| self.get_time_series(id))
     // }
 }
+
+// pub type TimeSeries1ViewSource<Id, Value = f32, Time = f32> = TimeSeriesViewSource<Id, Value, Ix1, Time>;
 
 impl<Id, T: TimeSeriesViewSource<Id, Value, Ix, Time>, Value: Copy, Ix: Dimension, Time: Copy>
     TimeSeriesViewSource<Id, Value, Ix, Time> for &T

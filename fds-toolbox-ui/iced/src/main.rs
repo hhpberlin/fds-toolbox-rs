@@ -101,6 +101,7 @@ impl Application for FdsToolbox {
                     include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
                 .unwrap(),
+                slcf: vec![],
             }]),
         };
         Self::open_some_tabs(&mut this);
