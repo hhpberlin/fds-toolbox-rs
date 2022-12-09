@@ -1,16 +1,19 @@
 use std::{collections::HashMap, io::Read, num::ParseFloatError, str::FromStr};
 
+use ndarray::Ix1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::common::series::{Series, SeriesView, TimeSeriesView, TimeSeriesViewSource};
+use crate::common::series::{
+    Series, Series1, Series1View, SeriesView, TimeSeries1View, TimeSeriesView, TimeSeriesViewSource,
+};
 
 // TODO: Use 2d-array instead?
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
-    pub time_in_seconds: Series,
+    pub time_in_seconds: Series1,
     devices: Vec<DeviceReadings>,
     devices_by_name: HashMap<String, DeviceIdx>,
 }
@@ -22,11 +25,11 @@ pub struct DeviceIdx(usize);
 pub struct DeviceReadings {
     pub unit: String,
     pub name: String,
-    pub values: Series,
+    pub values: Series1,
 }
 
 impl DeviceReadings {
-    pub fn view<'a>(&'a self, time_in_seconds: SeriesView<'a>) -> TimeSeriesView<'a> {
+    pub fn view<'a>(&'a self, time_in_seconds: Series1View<'a>) -> TimeSeries1View<'a> {
         TimeSeriesView::new(time_in_seconds, self.values.view(), &self.unit, &self.name)
     }
 }
@@ -200,8 +203,8 @@ impl Devices {
     }
 }
 
-impl TimeSeriesViewSource<DeviceIdx> for Devices {
-    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeriesView> {
+impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
+    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeries1View> {
         self.get_device_by_idx(id)
             .map(|x| x.view(self.time_in_seconds.view()))
     }

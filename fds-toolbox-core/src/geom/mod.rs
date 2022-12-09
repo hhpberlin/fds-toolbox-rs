@@ -15,5 +15,7 @@ impl Point3<f64> {
 
 #[derive(Debug)]
 pub enum Axis {
-    X, Y, Z,
+    X,
+    Y,
+    Z,
 }

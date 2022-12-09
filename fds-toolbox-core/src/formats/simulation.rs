@@ -1,10 +1,14 @@
 use core::slice;
 
+use ndarray::Ix1;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series1d::{TimeSeries1View, TimeSeriesViewSource};
+use crate::common::series::{TimeSeries1View, TimeSeriesViewSource};
 
-use super::{csv::devc::{DeviceIdx, Devices}, slcf::Slice};
+use super::{
+    csv::devc::{DeviceIdx, Devices},
+    slcf::Slice,
+};
 
 #[derive(Debug)]
 pub struct Simulation {
@@ -12,7 +16,7 @@ pub struct Simulation {
     pub slcf: Vec<Slice>,
 }
 
-impl TimeSeriesViewSource<TimeSeriesIdx> for Simulation {
+impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
     fn get_time_series(&self, idx: TimeSeriesIdx) -> Option<TimeSeries1View> {
         match idx {
             TimeSeriesIdx::Device(idx) => self.devc.get_time_series(idx),
