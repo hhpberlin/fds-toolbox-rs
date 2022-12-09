@@ -1,7 +1,6 @@
 use ndarray::Axis;
-use uom::si::f32::Time;
 
-use crate::common::series::{TimeSeries, TimeSeries2};
+use crate::common::series::TimeSeries2;
 
 #[derive(Debug)]
 pub struct Slice {

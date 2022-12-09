@@ -1,9 +1,11 @@
-use std::{cell::RefCell, iter::{Copied, once, Once}};
+use std::{
+    cell::RefCell,
+    iter::{once, Once},
+};
 
 use fds_toolbox_core::formats::{
     simulation::SliceSeriesIdx,
     simulations::{SimulationIdx, Simulations},
-    slcf::{Slice, SliceFile},
 };
 use iced::{widget::row, Command, Element};
 

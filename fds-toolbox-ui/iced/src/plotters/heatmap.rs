@@ -16,8 +16,8 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
 {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
-        chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
-        state: &super::cartesian::State,
+        _chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
+        _state: &super::cartesian::State,
     ) {
     }
 }
