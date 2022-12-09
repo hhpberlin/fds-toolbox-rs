@@ -2,18 +2,18 @@ use core::slice;
 
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
+use crate::common::series1d::{TimeSeries1View, TimeSeriesViewSource};
 
-use super::csv::devc::{DeviceIdx, Devices};
+use super::{csv::devc::{DeviceIdx, Devices}, slcf::Slice};
 
 #[derive(Debug)]
 pub struct Simulation {
     pub devc: Devices,
-    pub slcf: ,
+    pub slcf: Vec<Slice>,
 }
 
 impl TimeSeriesViewSource<TimeSeriesIdx> for Simulation {
-    fn get_time_series(&self, idx: TimeSeriesIdx) -> Option<TimeSeriesView> {
+    fn get_time_series(&self, idx: TimeSeriesIdx) -> Option<TimeSeries1View> {
         match idx {
             TimeSeriesIdx::Device(idx) => self.devc.get_time_series(idx),
         }
@@ -29,4 +29,4 @@ pub enum TimeSeriesIdx {
     Device(DeviceIdx),
 }
 
-pub struct SliceIdx()
+pub struct SliceIdx(pub u32);
