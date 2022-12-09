@@ -1,4 +1,4 @@
-use std::{cell::RefCell, iter::Copied};
+use std::{cell::RefCell, iter::{Copied, once, Once}};
 
 use fds_toolbox_core::formats::{
     simulation::SliceSeriesIdx,
@@ -25,12 +25,12 @@ pub struct SliceTab {
 
 impl IdSource for SliceTab {
     type Id = SimulationIdx<SliceSeriesIdx>;
-    type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>
+    type Iter<'a> = Once<Self::Id>
     where
         Self: 'a;
 
     fn iter_ids(&self) -> Self::Iter<'_> {
-        [self.slice].iter().copied()
+        once(self.slice)
     }
 }
 
@@ -56,10 +56,10 @@ impl Tab<Simulations> for SliceTab {
         "Slice".to_string()
     }
 
-    fn view(&self, model: &Simulations) -> Element<'_, Message> {
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
-            cartesian(Heatmap::new(model, self.slice), &self.plot_state).map(Message::Plot),
+            cartesian(Heatmap::new(model, self), &self.plot_state).map(Message::Plot),
         ]
         .into()
     }
