@@ -1,26 +1,28 @@
-pub struct HeatmapPlot {
+use fds_toolbox_core::common::series::TimeSeriesViewSource;
+use ndarray::Ix2;
 
+use super::{cartesian::{CartesianDrawer, Cartesian2df32}, ids::IdSource};
+
+pub struct Heatmap<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>> {
+    data_source: DataSrc,
+    id_source: IdSrc,
 }
 
-pub fn heatmap<Message>(data: Array2<f64>) -> impl Widget<Message> {
-
+impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>> CartesianDrawer for Heatmap<Id, DataSrc, IdSrc> {
+    fn draw<DB: plotters_iced::DrawingBackend>(
+        &self,
+        chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
+        state: &super::cartesian::State,
+    ) {
+        
+    }
 }
 
-
-
-/// FizzBuzz implementation that is generic over the number of iterations.
-pub fn fizzbuzz<N: Unsigned>(n: N) -> impl Iterator<Item = String> {
-    (0..n.to_usize())
-        .map(|i| {
-            let i = i + 1;
-            if i % 15 == 0 {
-                "FizzBuzz".to_string()
-            } else if i % 3 == 0 {
-                "Fizz".to_string()
-            } else if i % 5 == 0 {
-                "Buzz".to_string()
-            } else {
-                i.to_string()
-            }
-        })
+impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>> Heatmap<Id, DataSrc, IdSrc> {
+    pub fn new(data_source: DataSrc, id_source: IdSrc) -> Self {
+        Self {
+            data_source,
+            id_source,
+        }
+    }
 }

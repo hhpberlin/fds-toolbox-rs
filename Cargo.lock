@@ -969,6 +969,7 @@ dependencies = [
  "fds-toolbox-core",
  "iced",
  "iced_aw",
+ "ndarray",
  "plotters",
  "plotters-iced",
  "tracing",

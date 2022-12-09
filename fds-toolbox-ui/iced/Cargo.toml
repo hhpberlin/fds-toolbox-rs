@@ -15,4 +15,6 @@ plotters-iced = "0.4"
 # makima_spline = "1.1"
 tracing = "0.1"
 
+ndarray = "0.15"
+
 fds-toolbox-core = { path = "../../fds-toolbox-core" }

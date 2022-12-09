@@ -17,7 +17,7 @@ use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 type PosF = (f32, f32);
 type PosI = (i32, i32);
 
-type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
+pub type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
