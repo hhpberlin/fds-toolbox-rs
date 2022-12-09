@@ -1,41 +1,62 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array1, ArrayView1};
+use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, NdIndex};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Series {
-    data: Array1<f32>,
-    pub stats: ArrayStats<f32>,
+pub struct Series<T, Ix: Dimension> {
+    data: Array<T, Ix>,
+    pub stats: ArrayStats<T>,
 }
 
-impl Series {
-    pub fn new(data: Array1<f32>) -> Self {
-        // TODO: Should we be storing Option directly instead? Does default really make sense here?
-        let stats = ArrayStats::new_f32(data.iter().copied()).unwrap_or_default();
+pub type Series1<T = f32> = Series<T, Ix1>;
+pub type Series2<T = f32> = Series<T, Ix2>;
+
+impl<T: Copy, Ix: Dimension> Series<T, Ix> {
+    pub fn new(data: Array<T, Ix>, stats: ArrayStats<T>) -> Self {
         Self { data, stats }
     }
 
-    pub fn from_vec(data: Vec<f32>) -> Self {
-        Self::new(Array1::from_vec(data))
-    }
+    // pub fn from_vec(data: Vec<T>, stats: ArrayStats<T>) -> Self {
+    //     Self::new(Array::from_vec(data), stats)
+    // }
 
-    pub fn view(&self) -> SeriesView {
+    pub fn view(&self) -> SeriesView<T, Ix> {
         SeriesView {
             data: self.data.view(),
             stats: self.stats,
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = f32> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
     }
 }
 
-impl Index<usize> for Series {
-    type Output = f32;
+impl Series1 {
+    pub fn from_vec(data: Vec<f32>) -> Self {
+        Self::new_f32(Array::from_vec(data))
+    }
+
+    pub fn new_f32(data: Array<f32, Ix1>) -> Self {
+        // TODO: Should we be storing Option directly instead? Does default really make sense here?
+        let stats = ArrayStats::new_f32(data.iter().copied()).unwrap_or_default();
+        Self { data, stats }
+    }
+}
+
+impl<T, Ix: Dimension> Index<Ix> for Series<T, Ix> {
+    type Output = T;
+
+    fn index(&self, index: Ix) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl<T> Index<usize> for Series1<T> {
+    type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.data[index]
@@ -43,31 +64,38 @@ impl Index<usize> for Series {
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct SeriesView<'a> {
-    pub data: ArrayView1<'a, f32>,
-    pub stats: ArrayStats<f32>, // TODO: Should we borrow this instead?
+pub struct SeriesView<'a, T: Copy, Ix: Dimension> {
+    pub data: ArrayView<'a, T, Ix>,
+    pub stats: ArrayStats<T>, // TODO: Should we borrow this instead?
 }
 
-impl<'a> SeriesView<'a> {
-    pub fn new(data: ArrayView1<'a, f32>, stats: ArrayStats<f32>) -> Self {
+pub type Series1View<'a, T = f32> = SeriesView<'a, T, Ix1>;
+
+impl<'a, T: Copy, Ix: Dimension> SeriesView<'a, T, Ix> {
+    pub fn new(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>) -> Self {
         Self { data, stats }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = f32> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TimeSeries {
-    time_in_seconds: Series,
-    values: Series,
+pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
+    time_in_seconds: Series1<Time>,
+    values: Series<Value, Ix>,
     unit: String,
     name: String,
 }
 
-impl TimeSeries {
-    pub fn new(name: String, unit: String, time_in_seconds: Series, values: Series) -> Self {
+impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
+    pub fn new(
+        name: String,
+        unit: String,
+        time_in_seconds: Series1<Time>,
+        values: Series<Value, Ix>,
+    ) -> Self {
         assert_eq!(time_in_seconds.data.len(), values.data.len());
         Self {
             name,
@@ -77,7 +105,7 @@ impl TimeSeries {
         }
     }
 
-    pub fn view(&self) -> TimeSeriesView {
+    pub fn view(&self) -> TimeSeriesView<Value, Ix, Time> {
         TimeSeriesView {
             name: self.name.borrow(),
             unit: self.unit.borrow(),
@@ -86,7 +114,7 @@ impl TimeSeries {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (Time, Value)> + '_ {
         self.time_in_seconds
             .iter()
             .zip(self.values.iter())
@@ -95,17 +123,19 @@ impl TimeSeries {
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct TimeSeriesView<'a> {
-    pub time_in_seconds: SeriesView<'a>,
-    pub values: SeriesView<'a>,
+pub struct TimeSeriesView<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
+    pub time_in_seconds: Series1View<'a, Time>,
+    pub values: SeriesView<'a, Value, Ix>,
     pub unit: &'a str,
     pub name: &'a str,
 }
 
-impl<'a> TimeSeriesView<'a> {
+pub type TimeSeries1View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix1, Time>;
+
+impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, Time> {
     pub fn new(
-        time_in_seconds: SeriesView<'a>,
-        values: SeriesView<'a>,
+        time_in_seconds: Series1View<'a, Time>,
+        values: SeriesView<'a, Value, Ix>,
         unit: &'a str,
         name: &'a str,
     ) -> Self {
@@ -118,7 +148,7 @@ impl<'a> TimeSeriesView<'a> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (Time, Value)> + '_ {
         self.time_in_seconds
             .iter()
             .zip(self.values.iter())
@@ -134,22 +164,28 @@ impl<'a> TimeSeriesView<'a> {
 //     }
 // }
 
-pub trait TimeSeriesViewSource<Id> {
-    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView>;
+pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time: Copy = f32> {
+    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>>;
 
     // fn get_time_series_iter(&self, ids: impl Iterator<Item = Id>) -> impl Iterator<Item = TimeSeriesView> {
     //     ids.filter_map(move |id| self.get_time_series(id))
     // }
 }
 
-impl<Id, T: TimeSeriesViewSource<Id>> TimeSeriesViewSource<Id> for &T {
-    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView> {
+// pub type TimeSeries1ViewSource<Id, Value = f32, Time = f32> = TimeSeriesViewSource<Id, Value, Ix1, Time>;
+
+impl<Id, T: TimeSeriesViewSource<Id, Value, Ix, Time>, Value: Copy, Ix: Dimension, Time: Copy>
+    TimeSeriesViewSource<Id, Value, Ix, Time> for &T
+{
+    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>> {
         (*self).get_time_series(id)
     }
 }
 
-impl TimeSeriesViewSource<()> for TimeSeries {
-    fn get_time_series(&self, _: ()) -> Option<TimeSeriesView> {
+impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesViewSource<(), Value, Ix, Time>
+    for TimeSeries<Value, Ix, Time>
+{
+    fn get_time_series(&self, _: ()) -> Option<TimeSeriesView<Value, Ix, Time>> {
         Some(self.view())
     }
 }

@@ -56,8 +56,8 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
-            SimulationIdx(
+        self.tabs
+            .push(FdsToolboxTab::Overview(PlotTab::new(vec![SimulationIdx(
                 0,
                 TimeSeriesIdx::Device(
                     self.simulations[0]
@@ -65,10 +65,9 @@ impl FdsToolbox {
                         .get_device_idx_by_name("T_B05")
                         .unwrap(),
                 ),
-            ),
-        ])));
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(vec![
-            SimulationIdx(
+            )])));
+        self.tabs
+            .push(FdsToolboxTab::Overview(PlotTab::new(vec![SimulationIdx(
                 0,
                 TimeSeriesIdx::Device(
                     self.simulations[0]
@@ -76,8 +75,7 @@ impl FdsToolbox {
                         .get_device_idx_by_name("AST_1OG_Glaswand_N2")
                         .unwrap(),
                 ),
-            ),
-        ])));
+            )])));
         self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
             self.simulations[0]
                 .devc
@@ -103,6 +101,7 @@ impl Application for FdsToolbox {
                     include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
                 .unwrap(),
+                slcf: vec![],
             }]),
         };
         Self::open_some_tabs(&mut this);

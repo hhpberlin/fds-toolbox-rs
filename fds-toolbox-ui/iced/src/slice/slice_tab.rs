@@ -1,4 +1,8 @@
-use fds_toolbox_core::formats::{simulations::Simulations, slcf::SliceFile};
+use fds_toolbox_core::formats::{
+    simulation::SliceIdx,
+    simulations::{SimulationIdx, Simulations},
+    slcf::{Slice, SliceFile},
+};
 use iced::{Command, Element};
 
 use crate::tabs::Tab;
@@ -13,7 +17,7 @@ pub enum Message {
 }
 
 impl SliceTab {
-    pub fn new(_slice: SliceFile) -> Self {
+    pub fn new(slice: Slice) -> Self {
         Self {
             slice: Slice::new(slice),
         }

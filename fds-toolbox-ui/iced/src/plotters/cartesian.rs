@@ -250,7 +250,10 @@ impl State {
     }
 }
 
-pub fn cartesian<'a>(drawer: impl CartesianDrawer + 'a, state: &'a RefCell<State>) -> Element<'a, Message> {
+pub fn cartesian<'a>(
+    drawer: impl CartesianDrawer + 'a,
+    state: &'a RefCell<State>,
+) -> Element<'a, Message> {
     ChartWidget::new(CartesianPlot { drawer, state })
         .width(Length::Fill)
         .height(Length::Fill)

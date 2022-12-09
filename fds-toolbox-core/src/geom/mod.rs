@@ -12,3 +12,10 @@ impl Point3<f64> {
         Self { x, y, z }
     }
 }
+
+#[derive(Debug)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}

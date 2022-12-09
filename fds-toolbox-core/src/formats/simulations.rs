@@ -1,8 +1,9 @@
 use std::ops::Index;
 
+use ndarray::Ix1;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
+use crate::common::series::{TimeSeries1View, TimeSeriesView, TimeSeriesViewSource};
 
 use super::simulation::{Simulation, TimeSeriesIdx};
 
@@ -31,8 +32,8 @@ impl Index<usize> for Simulations {
     }
 }
 
-impl TimeSeriesViewSource<SimulationIdx<TimeSeriesIdx>> for Simulations {
-    fn get_time_series(&self, idx: SimulationIdx<TimeSeriesIdx>) -> Option<TimeSeriesView> {
+impl TimeSeriesViewSource<SimulationIdx<TimeSeriesIdx>, f32, Ix1> for Simulations {
+    fn get_time_series(&self, idx: SimulationIdx<TimeSeriesIdx>) -> Option<TimeSeries1View> {
         let SimulationIdx(idx, inner) = idx;
         self.simulations.get(idx)?.get_time_series(inner)
     }
