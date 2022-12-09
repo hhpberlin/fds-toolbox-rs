@@ -3,4 +3,4 @@ pub mod remote;
 pub mod serialization;
 pub mod store;
 mod store_test;
-mod bounds3int;
+pub(crate) mod bounds3int;
