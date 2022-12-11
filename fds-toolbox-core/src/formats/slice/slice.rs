@@ -1,8 +1,8 @@
 use crate::common::series::Series2;
-use crate::formats::slcf::fds_slice_frame::FdsSliceFrame;
+use crate::formats::slcf::slice_frame::FdsSliceFrame;
 use crate::geom::bounds3int::{Bounds3I, Dimension3D};
 
-pub struct FdsSlice {
+pub struct Slice {
     min_value: f32,
     max_value: f32,
     frames: Series2<FdsSliceFrame>,
