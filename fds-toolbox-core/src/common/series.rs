@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Series<T, Ix: Dimension> {
     data: Array<T, Ix>,
     pub stats: ArrayStats<T>,

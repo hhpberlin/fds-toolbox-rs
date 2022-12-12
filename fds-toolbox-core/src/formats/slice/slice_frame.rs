@@ -1,11 +1,12 @@
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 
-use byteorder::ReadBytesExt;
 use thiserror::Error;
 use uom::si::{f32::Time, time::second};
 
 use super::slice::Slice;
+use byteorder::ReadBytesExt;
 
+#[derive(Default)]
 pub struct SliceFrame {
     time: Time,
     values: Vec<Vec<f32>>,
@@ -24,22 +25,30 @@ pub enum SliceFrameErr {
 }
 
 impl SliceFrame {
-    fn new(reader: &mut impl Read, slice: Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
+    fn new(reader: &mut (impl Read + Seek), slice: Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
         let mut ret: SliceFrame = SliceFrame {
-            time: Time::new::<second>(reader.read_f32()?),
-            values: vec![],
-            min_value: f32::MAX,
-            max_value: f32::MIN,
+            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr )?),
+            values: vec![vec![0.; slice.bounds.area()[slice.dimension_j]as usize];slice.bounds.area()[slice.dimension_i] as usize],
+            min_value: f32::INFINITY,
+            max_value: f32::NEG_INFINITY,
         };
-        let _ = reader.read_i32()?;
+        let _ = reader.seek(SeekFrom::Current(1));
 
-        let block_size = reader.read_i32()?;
+        let block_size = reader.read_i32::<byteorder::BigEndian>();
         match block_size {
-            None => return Err(SliceFrameErr::BadBlockSize(block_size)),
-            Some(blk) => {
+            Err(r) => return Err(SliceFrameErr::IoErr(r)),
+            Ok(blk) => {
                 if block * 4 != blk {
                     return Err(SliceFrameErr::BadBlock);
                 }
+                for j in 0..slice.bounds.area()[slice.dimension_i]  {
+                    for k in 0..slice.bounds.area()[slice.dimension_j]  {
+                        let value = reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?;
+                        ret.values[j as usize][k as usize] = value;
+                        ret.min_value = value.min(ret.min_value);
+                        ret.max_value = value.max(ret.max_value);                    }
+                }
+                let _ = reader.seek(SeekFrom::Current(1));
             }
         }
         Ok(ret)

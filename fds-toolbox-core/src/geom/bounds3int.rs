@@ -1,18 +1,26 @@
 use std::ops;
 use std::ops::Index;
+use strum_macros::EnumIter;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, EnumIter, PartialEq)]
 pub enum Dimension3D {
     X,
     Y,
     Z,
 }
 
-#[derive(Clone, Copy)]
+impl Default for Dimension3D {
+    fn default() -> Self {
+        Self::X
+    }
+    
+}
+
+#[derive(Clone, Copy, Default)]
 pub struct Vector3I {
-    x: i32,
-    y: i32,
-    z: i32,
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
 }
 
 impl Vector3I {
@@ -72,14 +80,18 @@ impl ops::Mul<i32> for Vector3I {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct Bounds3I {
-    min: Vector3I,
-    max: Vector3I,
+    pub min: Vector3I,
+    pub max: Vector3I,
 }
 
 impl Bounds3I {
-    fn area(&self) -> Vector3I {
+    pub fn new(min_x: i32,min_y: i32, min_z: i32, max_x: i32, max_y: i32, max_z: i32) -> Bounds3I
+    {
+         Bounds3I { min: Vector3I {x: min_x, y: min_y, z: min_z}, max: Vector3I {x: max_x, y: max_y, z: max_z} }
+    }
+    pub fn area(&self) -> Vector3I {
         self.max - self.min
     }
 }
