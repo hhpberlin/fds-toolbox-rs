@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, self};
 
 use thiserror::Error;
 use uom::si::{f32::Time, time::second};
@@ -24,10 +24,17 @@ pub enum SliceFrameErr {
     IoErr(std::io::Error),
 }
 
+impl From<io::Error> for SliceFrameErr
+{
+    fn from(err: io::Error) -> Self {
+        SliceFrameErr::IoErr(err)
+    }
+}
+
 impl SliceFrame {
     fn new(reader: &mut (impl Read + Seek), slice: Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
         let mut ret: SliceFrame = SliceFrame {
-            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr )?),
+            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>()?),
             values: vec![vec![0.; slice.bounds.area()[slice.dimension_j]as usize];slice.bounds.area()[slice.dimension_i] as usize],
             min_value: f32::INFINITY,
             max_value: f32::NEG_INFINITY,
@@ -43,7 +50,7 @@ impl SliceFrame {
                 }
                 for j in 0..slice.bounds.area()[slice.dimension_i]  {
                     for k in 0..slice.bounds.area()[slice.dimension_j]  {
-                        let value = reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?;
+                        let value = reader.read_f32::<byteorder::BigEndian>()?;
                         ret.values[j as usize][k as usize] = value;
                         ret.min_value = value.min(ret.min_value);
                         ret.max_value = value.max(ret.max_value);                    }

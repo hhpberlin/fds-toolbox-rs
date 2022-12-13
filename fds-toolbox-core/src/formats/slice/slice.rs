@@ -27,20 +27,22 @@ impl Slice {
     {
         let mut slice = Slice::default();
         
-        let _ = reader.read_to_string(&mut slice.quantity).map_err(SliceFrameErr::IoErr);
+        //let _ = reader.read_to_string(&mut slice.quantity);
         let _ = reader.seek(SeekFrom::Current(1));
-        let _ = reader.read_to_string(&mut slice.short_name).map_err(SliceFrameErr::IoErr);
+        //let _ = reader.read_to_string(&mut slice.short_name);
         let _ = reader.seek(SeekFrom::Current(1));
-        let _ = reader.read_to_string(&mut slice.units).map_err(SliceFrameErr::IoErr);
+        //let _ = reader.read_to_string(&mut slice.units);
         let _ = reader.seek(SeekFrom::Current(2));
 
+        //let a = reader.read_i32::<byteorder::BigEndian>()?;
+
         slice.bounds = Bounds3I::new(
-            reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?,
-            reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?,
-            reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?,
-            (reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?) + 1,
-            (reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?) + 1,
-            (reader.read_i32::<byteorder::BigEndian>().map_err(SliceFrameErr::IoErr)?) + 1,
+            reader.read_i32::<byteorder::BigEndian>()?,
+            reader.read_i32::<byteorder::BigEndian>()?,
+            reader.read_i32::<byteorder::BigEndian>()?,
+            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
+            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
+            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
         );
         let _ = reader.seek(SeekFrom::Current(2));
         
