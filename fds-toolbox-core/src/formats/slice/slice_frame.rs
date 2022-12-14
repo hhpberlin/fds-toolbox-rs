@@ -8,10 +8,10 @@ use byteorder::ReadBytesExt;
 
 #[derive(Default)]
 pub struct SliceFrame {
-    time: Time,
-    values: Vec<Vec<f32>>,
-    min_value: f32,
-    max_value: f32,
+    pub time: Time,
+    pub values: Vec<Vec<f32>>,
+    pub min_value: f32,
+    pub max_value: f32,
 }
 
 #[derive(Error, Debug)]
@@ -22,6 +22,8 @@ pub enum SliceFrameErr {
     BadBlockSize(usize),
     #[error("I/O error: {0}")]
     IoErr(std::io::Error),
+    #[error("EOF")]
+    NoBlocks,
 }
 
 impl From<io::Error> for SliceFrameErr
@@ -32,9 +34,9 @@ impl From<io::Error> for SliceFrameErr
 }
 
 impl SliceFrame {
-    fn new(reader: &mut (impl Read + Seek), slice: Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
+    pub fn new(reader: &mut (impl Read + Seek), slice: &Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
         let mut ret: SliceFrame = SliceFrame {
-            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>()?),
+            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::NoBlocks)),
             values: vec![vec![0.; slice.bounds.area()[slice.dimension_j]as usize];slice.bounds.area()[slice.dimension_i] as usize],
             min_value: f32::INFINITY,
             max_value: f32::NEG_INFINITY,

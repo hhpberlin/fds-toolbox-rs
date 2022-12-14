@@ -1,11 +1,10 @@
 use std::io::{Read, Seek, SeekFrom};
 use crate::common::series::Series2;
-use crate::formats::slice::slice_frame::SliceFrame;
 use crate::geom::bounds3int::{Bounds3I, Dimension3D};
 use byteorder::ReadBytesExt;
 use strum::IntoEnumIterator;
 
-use super::slice_frame::SliceFrameErr;
+use super::slice_frame::{SliceFrameErr, SliceFrame};
 
 #[derive(Default)]
 pub struct Slice {
@@ -27,11 +26,11 @@ impl Slice {
     {
         let mut slice = Slice::default();
         
-        //let _ = reader.read_to_string(&mut slice.quantity);
+        slice.quantity = ReadString::read_string( reader)?;
         let _ = reader.seek(SeekFrom::Current(1));
-        //let _ = reader.read_to_string(&mut slice.short_name);
+        slice.short_name = ReadString::read_string( reader)?;
         let _ = reader.seek(SeekFrom::Current(1));
-        //let _ = reader.read_to_string(&mut slice.units);
+        slice.units = ReadString::read_string( reader)?;
         let _ = reader.seek(SeekFrom::Current(2));
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
@@ -59,7 +58,46 @@ impl Slice {
             
         }
         
+        slice.min_value = f32::INFINITY;
+        slice.max_value = f32::NEG_INFINITY;
+        
+        let mut frames = Vec::new();
+        
+        while true {
+            match  SliceFrame::new(reader, &slice, block){
+                Ok(frame) => {
+                    frames.push(frame);
+                    slice.max_value = slice.max_value.max(frame.max_value);
+                    slice.min_value = slice.min_value.min(frame.min_value);
+                },
+                Err(SliceFrameErr::NoBlocks)=> {
+                    slice.frames = Series2::from_data(frames);
+                    return Ok(slice);
+                },
+                Err(err)=> {return Err(err);},
+                    }
+        }
+        
         Ok(slice)
+    }
+}
+
+pub trait ReadString {
+    fn read_string(&mut self) -> Result<String, SliceFrameErr>;
+}
+
+impl<T:Read + Seek> ReadString for  T {
+    fn read_string(&mut self) -> Result<String, SliceFrameErr>{
+        let mut buf: Vec<u8> = vec![0u8; self.read_i32::<byteorder::BigEndian>()? as usize];
+        self.read_exact(&mut buf)?;
+        String::from_utf8(buf).map_err(|_| -> SliceFrameErr {SliceFrameErr::BadBlock})
+    }
+    
+} 
+
+impl Series2 {
+    pub fn from_data(data: Vec<SliceFrame>) -> Self {
+        todo!();
     }
 }
 
