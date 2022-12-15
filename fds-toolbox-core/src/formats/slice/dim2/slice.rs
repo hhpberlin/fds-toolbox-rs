@@ -4,7 +4,8 @@ use crate::geom::bounds3int::{Bounds3I, Dimension3D};
 use byteorder::ReadBytesExt;
 use strum::IntoEnumIterator;
 
-use super::slice_frame::{SliceFrameErr, SliceFrame};
+use super::slice_frame::{SliceFrame};
+use super::super::slice_frame_err;
 
 #[derive(Default)]
 pub struct Slice {
