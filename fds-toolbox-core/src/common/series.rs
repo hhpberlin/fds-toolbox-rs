@@ -1,11 +1,11 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2};
+use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, Axis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Series<T, Ix: Dimension> {
     data: Array<T, Ix>,
     pub stats: ArrayStats<T>,
@@ -85,6 +85,7 @@ impl<'a, T: Copy, Ix: Dimension> SeriesView<'a, T, Ix> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
     time_in_seconds: Series1<Time>,
+    /// Axis 0 is time
     values: Series<Value, Ix>,
     unit: String,
     name: String,
@@ -129,6 +130,7 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimeSeriesView<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
     pub time_in_seconds: Series1View<'a, Time>,
+    /// Axis 0 is time
     pub values: SeriesView<'a, Value, Ix>,
     pub unit: &'a str,
     pub name: &'a str,
@@ -144,7 +146,7 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
         unit: &'a str,
         name: &'a str,
     ) -> Self {
-        assert_eq!(time_in_seconds.data.len(), values.data.len());
+        assert_eq!(time_in_seconds.data.len(), values.data.len_of(Axis(0)));
         Self {
             time_in_seconds,
             values,
@@ -159,12 +161,86 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
             .zip(self.values.iter())
             .map(|(t, v)| (t, v))
     }
+
+    pub fn frame(&self, frame_num: usize) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>> {
+        let len = self.values.data.len_of(Axis(0));
+        if frame_num >= len {
+            None
+        } else {
+            Some(TimeSeriesFrame::new(
+                self.time_in_seconds[frame_num],
+                self.values.data.index_axis(Axis(0), frame_num),
+                self.unit,
+                self.name,
+            ))
+        }
+    }
 }
 
-// impl<'a> IntoIterator<Item = (f32, f32)> for TimeSeriesView<'a> {
-//     type IntoIter = impl Iterator<Item = (f32, f32)>;
+impl<'a, Value: Copy, Ix: Dimension, Time: Copy> Index<usize>
+    for TimeSeriesView<'a, Value, Ix, Time>
+{
+    type Output = TimeSeriesFrame<'a, Value, Ix::Smaller, Time>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.frame(index).expect("Indexed out of bounds")
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct TimeSeriesFrame<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
+    pub time_in_seconds: Time,
+    pub values: SeriesView<'a, Value, Ix>,
+    pub unit: &'a str,
+    pub name: &'a str,
+}
+
+impl<'a, Value: Copy, Ix: Dimensions, Time: Copy> TimeSeriesFrame<'a, Value, Ix, Time> {
+    pub fn new(
+        time_in_seconds: Time,
+        values: SeriesView<'a, Value, Ix>,
+        unit: &'a str,
+        name: &'a str,
+    ) -> Self {
+        assert_eq!(time_in_seconds.data.len(), values.data.len());
+        Self {
+            time_in_seconds,
+            values,
+            unit,
+            name,
+        }
+    }
+}
+
+// impl<'a, Value: Copy, Time: Copy> TimeSeriesView1<'a, Value, Time> {
+//     fn iter(&self) -> Self::IntoIter {
+//         self.into_iter()
+//     }
+// }
+
+// impl<'a, Value: Copy, Time: Copy> IntoIterator for &TimeSeriesView1<'a, Value, Time> {
+//     type Item = (Time, Value);
+//     type IntoIter = impl Iterator<Item = (Time, Value)>;
 
 //     fn into_iter(self) -> Self::IntoIter {
+//         self.time_in_seconds
+//             .iter()
+//             .zip(self.values.iter())
+//             .map(|(t, v)| (t, v))
+//     }
+// }
+
+// impl<'a, Value: Copy, Time: Copy> IntoIterator for &TimeSeriesView2<'a, Value, Time> {
+//     type Item = (Time, Value);
+//     type IntoIter = impl Iterator<Item = (Time, Value)>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+
+// impl<'a, Value: Copy, Time: Copy> TimeSeriesView2<'a, Value, Time> {
+//     fn (self) -> Self::IntoIter {
 //         self.iter()
 //     }
 // }
