@@ -13,7 +13,6 @@ impl Default for Dimension3D {
     fn default() -> Self {
         Self::X
     }
-    
 }
 
 #[derive(Clone, Copy, Default)]
@@ -87,9 +86,19 @@ pub struct Bounds3I {
 }
 
 impl Bounds3I {
-    pub fn new(min_x: i32,min_y: i32, min_z: i32, max_x: i32, max_y: i32, max_z: i32) -> Bounds3I
-    {
-         Bounds3I { min: Vector3I {x: min_x, y: min_y, z: min_z}, max: Vector3I {x: max_x, y: max_y, z: max_z} }
+    pub fn new(min_x: i32, min_y: i32, min_z: i32, max_x: i32, max_y: i32, max_z: i32) -> Bounds3I {
+        Bounds3I {
+            min: Vector3I {
+                x: min_x,
+                y: min_y,
+                z: min_z,
+            },
+            max: Vector3I {
+                x: max_x,
+                y: max_y,
+                z: max_z,
+            },
+        }
     }
     pub fn area(&self) -> Vector3I {
         self.max - self.min
