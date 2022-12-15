@@ -1,5 +1,7 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
+use crate::formats::smoke::parse_err::ParseErr;
+
 use super::super::slice_frame_err;
 use thiserror::Error;
 use uom::si::{f32::Time, time::second};
@@ -20,12 +22,12 @@ impl SliceFrame {
         reader: impl Read + Seek,
         slice: &Slice,
         block: i32,
-    ) -> Result<SliceFrame, SliceFrameErr> {
+    ) -> Result<SliceFrame, ParseErr> {
         let mut ret: SliceFrame = SliceFrame {
             time: Time::new::<second>(
                 reader
                     .read_f32::<byteorder::BigEndian>()
-                    .map_err(SliceFrameErr::NoBlocks),
+                    .map_err(ParseErr::NoBlocks),
             ),
             values: vec![
                 vec![0.; slice.bounds.area()[slice.dimension_j] as usize];
@@ -38,10 +40,10 @@ impl SliceFrame {
 
         let block_size = reader.read_i32::<byteorder::BigEndian>();
         match block_size {
-            Err(r) => return Err(SliceFrameErr::IoErr(r)),
+            Err(r) => return Err(ParseErr::IoErr(r)),
             Ok(blk) => {
                 if block * 4 != blk {
-                    return Err(SliceFrameErr::BadBlock);
+                    return Err(ParseErr::BadBlock);
                 }
                 for j in 0..slice.bounds.area()[slice.dimension_i] {
                     for k in 0..slice.bounds.area()[slice.dimension_j] {

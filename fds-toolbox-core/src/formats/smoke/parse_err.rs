@@ -1,3 +1,5 @@
+use derive_more::Error;
+
 #[derive(Error, Debug)]
 pub enum ParseErr {
     #[error("Bad block")]
@@ -10,8 +12,8 @@ pub enum ParseErr {
     NoBlocks,
 }
 
-impl From<io::Error> for SliceFrameErr {
+impl From<io::Error> for ParseErr {
     fn from(err: io::Error) -> Self {
-        SliceFrameErr::IoErr(err)
+        ParseErr::IoErr(err)
     }
 }

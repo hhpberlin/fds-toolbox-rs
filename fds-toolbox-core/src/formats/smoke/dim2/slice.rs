@@ -1,4 +1,5 @@
 use crate::common::series::Series2;
+use crate::formats::smoke::parse_err::ParseErr;
 use crate::geom::bounds3int::{Bounds3I, Dimension3D};
 use byteorder::ReadBytesExt;
 use std::io::{Read, Seek, SeekFrom};
@@ -23,7 +24,7 @@ pub struct Slice {
 }
 
 impl Slice {
-    fn new(reader: &mut (impl Read + Seek)) -> Result<Slice, SliceFrameErr> {
+    fn new(reader: &mut (impl Read + Seek)) -> Result<Slice, ParseErr> {
         let mut slice = Slice::default();
 
         slice.quantity = ReadString::read_string(reader)?;
@@ -76,7 +77,7 @@ impl Slice {
                     slice.max_value = slice.max_value.max(frame.max_value);
                     slice.min_value = slice.min_value.min(frame.min_value);
                 }
-                Err(SliceFrameErr::NoBlocks) => {
+                Err(ParseErr::NoBlocks) => {
                     slice.frames = Series2::from_data(frames);
                     return Ok(slice);
                 }
@@ -91,14 +92,14 @@ impl Slice {
 }
 
 pub trait ReadString {
-    fn read_string(&mut self) -> Result<String, SliceFrameErr>;
+    fn read_string(&mut self) -> Result<String, ParseErr>;
 }
 
 impl<T: Read + Seek> ReadString for T {
-    fn read_string(&mut self) -> Result<String, SliceFrameErr> {
+    fn read_string(&mut self) -> Result<String, ParseErr> {
         let mut buf: Vec<u8> = vec![0u8; self.read_i32::<byteorder::BigEndian>()? as usize];
         self.read_exact(&mut buf)?;
-        String::from_utf8(buf).map_err(|_| -> SliceFrameErr { SliceFrameErr::BadBlock })
+        String::from_utf8(buf).map_err(|_| -> ParseErr { ParseErr::BadBlock })
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2};
+use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, Axis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -177,7 +177,9 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
     }
 }
 
-impl<'a, Value: Copy, Ix: Dimension, Time: Copy> Index<usize> for TimeSeriesView<'a, Value, Ix, Time> {
+impl<'a, Value: Copy, Ix: Dimension, Time: Copy> Index<usize>
+    for TimeSeriesView<'a, Value, Ix, Time>
+{
     type Output = TimeSeriesFrame<'a, Value, Ix::Smaller, Time>;
 
     fn index(&self, index: usize) -> &Self::Output {
