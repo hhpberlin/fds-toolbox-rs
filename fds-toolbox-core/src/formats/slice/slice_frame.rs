@@ -34,9 +34,9 @@ impl From<io::Error> for SliceFrameErr
 }
 
 impl SliceFrame {
-    pub fn new(reader: &mut (impl Read + Seek), slice: &Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
+    pub fn new(reader: impl Read + Seek, slice: &Slice, block: i32) -> Result<SliceFrame, SliceFrameErr> {
         let mut ret: SliceFrame = SliceFrame {
-            time: Time::new::<second>(reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::NoBlocks)),
+            time: Time::new::<second>(  reader.read_f32::<byteorder::BigEndian>().map_err(SliceFrameErr::NoBlocks)),
             values: vec![vec![0.; slice.bounds.area()[slice.dimension_j]as usize];slice.bounds.area()[slice.dimension_i] as usize],
             min_value: f32::INFINITY,
             max_value: f32::NEG_INFINITY,
