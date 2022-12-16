@@ -1,4 +1,4 @@
-use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
+use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::Range};
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use ndarray::Ix2;
@@ -36,7 +36,6 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
 
             let color = Palette99::pick(hash as usize);
 
-        for (_id, _data) in data {
             // let Some(frame) = data.frame(t) else { continue; };
 
             // let w = frame.values.data.len_of(Axis(0));
