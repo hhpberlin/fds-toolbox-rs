@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, Axis, RemoveAxis};
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -74,18 +74,29 @@ pub type Series2View<'a, T = f32> = SeriesView<'a, T, Ix2>;
 
 impl<'a, T: Copy, Ix: Dimension, Ref> SeriesView<'a, T, Ix, Ref> {
     pub fn new(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>) -> Self {
-        Self { data, stats, base_ref: None }
+        Self {
+            data,
+            stats,
+            base_ref: None,
+        }
     }
 
     pub fn new_with_ref(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>, base_ref: Ref) -> Self {
-        Self { data, stats, base_ref: Some(base_ref) }
+        Self {
+            data,
+            stats,
+            base_ref: Some(base_ref),
+        }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
     }
 
-    pub fn map<IxOut: Dimension>(&self, f: impl FnOnce(&Self) -> ArrayView<'a, T, IxOut>) -> SeriesView<'a, T, IxOut> {
+    pub fn map<IxOut: Dimension>(
+        &self,
+        f: impl FnOnce(&Self) -> ArrayView<'a, T, IxOut>,
+    ) -> SeriesView<'a, T, IxOut> {
         SeriesView::new(f(&self), self.stats)
     }
 }
@@ -170,15 +181,22 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
             .map(|(t, v)| (t, v))
     }
 
-    pub fn frame(&'a self, frame_num: usize) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>>
-    where Self: 'a,
-        Ix: RemoveAxis
+    pub fn frame(
+        &'a self,
+        frame_num: usize,
+    ) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>>
+    where
+        Self: 'a,
+        Ix: RemoveAxis,
     {
         let len = self.values.data.len_of(Axis(0));
         if frame_num >= len {
             None
         } else {
-            let frame = SeriesView::new(self.values.data.index_axis(Axis(0), frame_num), self.values.stats);
+            let frame = SeriesView::new(
+                self.values.data.index_axis(Axis(0), frame_num),
+                self.values.stats,
+            );
             Some(TimeSeriesFrame::new(
                 self.time_in_seconds.data[frame_num],
                 frame,
@@ -188,9 +206,10 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
         }
     }
 
-    pub fn frame_panic(&'a self, index: usize) -> TimeSeriesFrame<'a, Value, Ix::Smaller, Time> 
-    where Self: 'a,
-    Ix: RemoveAxis
+    pub fn frame_panic(&'a self, index: usize) -> TimeSeriesFrame<'a, Value, Ix::Smaller, Time>
+    where
+        Self: 'a,
+        Ix: RemoveAxis,
     {
         self.frame(index).expect("Indexed out of bounds")
     }

@@ -33,32 +33,36 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
         let t = self.frame;
 
         for (id, data) in data {
-            let frame = data.frame(t);
-            let w = frame.values.data.len_of(Axis(0));
-            let h = frame.values.data.len_of(Axis(1));
+            // let Some(frame) = data.frame(t) else { continue; };
 
-            chart.draw_series(iter_2d(0..w, 0..h).map(|(x, y)| {
-                let v = frame.data[[w, h]];
+            // let w = frame.values.data.len_of(Axis(0));
+            // let h = frame.values.data.len_of(Axis(1));
 
-                Rectangle::new(
-                    [(x, y), (x + 1, y + 1)],
-                    HSLColor(
-                        240.0 / 360.0 - 240.0 / 360.0 * (*v as f64 / 20.0),
-                        0.7,
-                        0.1 + 0.4 * *v as f64 / 20.0,
-                    )
-                    .filled(),
-                )
-            }))
+            // chart.draw_series(iter_2d(0..w, 0..h).map(|(x, y)| {
+            //     let v = frame.values.data[[w, h]];
+
+            //     Rectangle::new(
+            //         [(x, y), (x + 1, y + 1)],
+            //         HSLColor(
+            //             240.0 / 360.0 - 240.0 / 360.0 * (v as f64 / 20.0),
+            //             0.7,
+            //             0.1 + 0.4 * v as f64 / 20.0,
+            //         ),
+            //     )
+            // })
+            // // .collect::<Vec<_>>()
+            // );
         }
     }
 }
 
-fn iter_2d<T>(x: Range<T>, y: Range<T>) -> impl Iterator<Item = (T, T)>
+fn iter_2d<X: Copy, Y>(x: Range<X>, y: Range<Y>) -> impl Iterator<Item = (X, Y)>
 where
-    Range<T>: IntoIterator<Item = T>,
+    Range<X>: IntoIterator<Item = X>,
+    Range<Y>: IntoIterator<Item = Y> + Clone,
 {
-    x.into_iter().flat_map(|x| y.into_iter().map(|y| (x, y)))
+    x.into_iter()
+        .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
 }
 
 impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>>
