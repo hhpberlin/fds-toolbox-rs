@@ -1,5 +1,6 @@
 use std::ops;
 use std::ops::Index;
+use derive_more::{Add, Sub, Mul, Div};
 use strum_macros::EnumIter;
 
 #[derive(Clone, Copy, EnumIter, PartialEq, Eq)]
@@ -15,7 +16,7 @@ impl Default for Dimension3D {
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Add, Sub, Mul, Debug, PartialEq, Eq)]
 pub struct Vector3I {
     pub x: i32,
     pub y: i32,
@@ -34,47 +35,6 @@ impl Index<Dimension3D> for Vector3I {
             Dimension3D::X => &self.x,
             Dimension3D::Y => &self.y,
             Dimension3D::Z => &self.z,
-        }
-    }
-}
-
-impl ops::Sub<Vector3I> for Vector3I {
-    type Output = Vector3I;
-    fn sub(self, rhs: Vector3I) -> Self::Output {
-        Vector3I {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-            z: self.z - rhs.z,
-        }
-    }
-}
-impl ops::Add<Vector3I> for Vector3I {
-    type Output = Vector3I;
-    fn add(self, rhs: Vector3I) -> Self::Output {
-        Vector3I {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
-        }
-    }
-}
-impl ops::Mul<Vector3I> for Vector3I {
-    type Output = Vector3I;
-    fn mul(self, rhs: Vector3I) -> Self::Output {
-        Vector3I {
-            x: self.x * rhs.x,
-            y: self.y * rhs.y,
-            z: self.z * rhs.z,
-        }
-    }
-}
-impl ops::Mul<i32> for Vector3I {
-    type Output = Vector3I;
-    fn mul(self, rhs: i32) -> Self::Output {
-        Vector3I {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            z: self.z * rhs,
         }
     }
 }
