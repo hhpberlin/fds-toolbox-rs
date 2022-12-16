@@ -1,7 +1,8 @@
-use std::ops::Range;
+use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use ndarray::Ix2;
+use plotters::style::{Palette99, Palette};
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
@@ -11,7 +12,6 @@ use super::{
 pub struct Heatmap<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>> {
     data_source: DataSrc,
     id_source: IdSrc,
-    frame: usize,
 }
 
 impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>>
@@ -19,17 +19,22 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
 {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
-        _chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
+        chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
         _state: &super::cartesian::State,
     ) {
-        // let plot_area = chart.plotting_area();
-
         let data = self
             .id_source
             .iter_ids()
             .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)));
 
-        let _t = self.frame;
+        for (id, data) in data {
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                data.values.stats.hash(&mut hasher);
+                hasher.finish()
+            };
+
+            let color = Palette99::pick(hash as usize);
 
         for (_id, _data) in data {
             // let Some(frame) = data.frame(t) else { continue; };
@@ -71,7 +76,6 @@ impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>>
         Self {
             data_source,
             id_source,
-            frame: 0,
         }
     }
 }
