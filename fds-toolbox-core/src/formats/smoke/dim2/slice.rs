@@ -103,7 +103,7 @@ impl<T: Read + Seek> ReadString for T {
 }
 
 impl Series2 {
-    pub fn from_data(data: Vec<SliceFrame>) -> Self {
+    pub fn from_data(_data: Vec<SliceFrame>) -> Self {
         todo!();
     }
 }

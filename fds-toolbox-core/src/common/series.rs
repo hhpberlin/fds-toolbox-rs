@@ -97,7 +97,7 @@ impl<'a, T: Copy, Ix: Dimension, Ref> SeriesView<'a, T, Ix, Ref> {
         &self,
         f: impl FnOnce(&Self) -> ArrayView<'a, T, IxOut>,
     ) -> SeriesView<'a, T, IxOut> {
-        SeriesView::new(f(&self), self.stats)
+        SeriesView::new(f(self), self.stats)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 
 use crate::formats::smoke::parse_err::ParseErr;
 
@@ -25,7 +25,7 @@ impl SliceFrame {
             time: Time::new::<second>(
                 reader
                     .read_f32::<byteorder::BigEndian>()
-                    .map_err(|x| ParseErr::NoBlocks)?, // TODO: Should IO Error really be discarded?
+                    .map_err(|_x| ParseErr::NoBlocks)?, // TODO: Should IO Error really be discarded?
             ),
             values: vec![
                 vec![0.; slice.bounds.area()[slice.dimension_j] as usize];
