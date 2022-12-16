@@ -1,98 +1,116 @@
-use crate::common::series::Series2;
+use crate::common::series::TimeSeries2;
 use crate::formats::read_ext::ReadExt;
 use crate::formats::smoke::parse_err::ParseErr;
-use crate::geom::bounds3int::{Bounds3I, Dimension3D};
+use crate::geom::{Bounds3I, Dimension3D, Point3I};
 use byteorder::ReadBytesExt;
 use std::io::Read;
-use strum::IntoEnumIterator;
 
 use super::slice_frame::SliceFrame;
 
-#[derive(Default)]
-pub struct Slice {
-    pub min_value: f32,
-    pub max_value: f32,
-    pub frames: Series2,
+pub struct SliceInfo {
     pub bounds: Bounds3I,
-    pub flat_dimension: Dimension3D,
-    pub flat_dimension_position: i32,
-    pub dimension_i: Dimension3D,
-    pub dimension_j: Dimension3D,
+    pub flat_dim: Dimension3D,
     pub quantity: String,
     pub short_name: String,
     pub units: String,
 }
 
-impl Slice {
-    fn new(mut reader: impl Read) -> Result<Slice, ParseErr> {
-        let mut slice = Slice::default();
+pub struct Slice {
+    pub info: SliceInfo,
+    pub frames: TimeSeries2,
+}
 
+impl SliceInfo {
+    pub fn dim_i(&self) -> Dimension3D {
+        if self.flat_dim == Dimension3D::X {
+            Dimension3D::Y
+        } else {
+            Dimension3D::X
+        }
+    }
+
+    pub fn dim_j(&self) -> Dimension3D {
+        if self.flat_dim == Dimension3D::Z {
+            Dimension3D::Y
+        } else {
+            Dimension3D::Z
+        }
+    }
+
+    pub fn flat_dim_len(&self) -> u32 {
+        self.bounds.area()[self.flat_dim]
+    }
+}
+
+impl Slice {
+    fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be propagated?
-        slice.quantity = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        let quantity = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
         reader.skip(1)?;
-        slice.short_name = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        let short_name = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
         reader.skip(1)?;
-        slice.units = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        let units = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
         reader.skip(2)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
-        slice.bounds = Bounds3I::new(
+        let min = Point3I::new(
             reader.read_i32::<byteorder::BigEndian>()?,
             reader.read_i32::<byteorder::BigEndian>()?,
             reader.read_i32::<byteorder::BigEndian>()?,
-            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
-            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
-            (reader.read_i32::<byteorder::BigEndian>()?) + 1,
         );
+
+        let max = Point3I::new(
+            reader.read_i32::<byteorder::BigEndian>()? + 1,
+            reader.read_i32::<byteorder::BigEndian>()? + 1,
+            reader.read_i32::<byteorder::BigEndian>()? + 1,
+        );
+
+        let bounds = Bounds3I::new(min, max);
+
         reader.skip(2)?;
 
-        let block = slice.bounds.area().x * slice.bounds.area().y * slice.bounds.area().z;
-        for i in Dimension3D::iter() {
-            if slice.bounds.area()[i] == 1 {
-                slice.flat_dimension = i;
-                slice.flat_dimension_position = slice.bounds.min[i];
-                slice.dimension_i = if i == Dimension3D::X {
-                    Dimension3D::Y
-                } else {
-                    Dimension3D::X
-                };
-                slice.dimension_j = if i == Dimension3D::Z {
-                    Dimension3D::Y
-                } else {
-                    Dimension3D::Z
-                };
-                break;
-            }
-        }
+        let block_size = bounds.area().x * bounds.area().y * bounds.area().z;
 
-        slice.min_value = f32::INFINITY;
-        slice.max_value = f32::NEG_INFINITY;
+        let flat_dim = bounds.area().enumerate().find(|(_, x)| *x == 1);
+        let flat_dim = match flat_dim {
+            Some((dim, _)) => dim,
+            None => {
+                return Err(ParseErr::BadBoundsSize);
+            }
+        };
+
+        let slice_info = SliceInfo {
+            bounds,
+            flat_dim,
+            quantity,
+            short_name,
+            units,
+        };
 
         let mut frames = Vec::new();
 
         loop {
-            match SliceFrame::new(&mut reader, &slice, block) {
+            match SliceFrame::new(&mut reader, &slice_info, block_size) {
                 Ok(frame) => {
-                    slice.max_value = slice.max_value.max(frame.max_value);
-                    slice.min_value = slice.min_value.min(frame.min_value);
                     frames.push(frame);
                 }
                 Err(ParseErr::NoBlocks) => {
-                    slice.frames = Series2::from_data(frames);
-                    return Ok(slice);
+                    let frames = TimeSeries2::from_data(frames);
+                    return Ok(Slice {
+                        frames,
+                        info: slice_info,
+                    });
                 }
                 Err(err) => {
                     return Err(err);
                 }
             }
         }
-
-        Ok(slice)
     }
 }
 
-impl Series2 {
+impl TimeSeries2 {
     pub fn from_data(_data: Vec<SliceFrame>) -> Self {
         todo!();
     }

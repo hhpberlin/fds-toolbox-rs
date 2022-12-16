@@ -4,19 +4,21 @@ use crate::formats::{read_ext::ReadExt, smoke::parse_err::ParseErr};
 
 use uom::si::{f32::Time, time::second};
 
-use super::slice::Slice;
+use super::slice::SliceInfo;
 use byteorder::ReadBytesExt;
 
 #[derive(Default)]
 pub struct SliceFrame {
     pub time: Time,
     pub values: Vec<Vec<f32>>,
-    pub min_value: f32,
-    pub max_value: f32,
 }
 
 impl SliceFrame {
-    pub fn new(mut reader: impl Read, slice: &Slice, block: i32) -> Result<SliceFrame, ParseErr> {
+    pub fn new(
+        mut reader: impl Read,
+        slice: &SliceInfo,
+        block: u32,
+    ) -> Result<SliceFrame, ParseErr> {
         let mut ret: SliceFrame = SliceFrame {
             time: Time::new::<second>(
                 reader
@@ -24,32 +26,24 @@ impl SliceFrame {
                     .map_err(|_x| ParseErr::NoBlocks)?, // TODO: Should IO Error really be discarded?
             ),
             values: vec![
-                vec![0.; slice.bounds.area()[slice.dimension_j] as usize];
-                slice.bounds.area()[slice.dimension_i] as usize
+                vec![0.; slice.bounds.area()[slice.dim_j()] as usize];
+                slice.bounds.area()[slice.dim_i()] as usize
             ],
-            min_value: f32::INFINITY,
-            max_value: f32::NEG_INFINITY,
         };
         reader.skip(1)?;
 
-        let block_size = reader.read_i32::<byteorder::BigEndian>();
-        match block_size {
-            Err(r) => return Err(ParseErr::IoErr(r)),
-            Ok(blk) => {
-                if block * 4 != blk {
-                    return Err(ParseErr::BadBlock);
-                }
-                for j in 0..slice.bounds.area()[slice.dimension_i] {
-                    for k in 0..slice.bounds.area()[slice.dimension_j] {
-                        let value = reader.read_f32::<byteorder::BigEndian>()?;
-                        ret.values[j as usize][k as usize] = value;
-                        ret.min_value = value.min(ret.min_value);
-                        ret.max_value = value.max(ret.max_value);
-                    }
-                }
-                reader.skip(1)?;
+        let block_size = reader.read_u32::<byteorder::BigEndian>()?;
+        if block * 4 != block_size {
+            return Err(ParseErr::BadBlock);
+        }
+        for j in 0..slice.bounds.area()[slice.dim_i()] {
+            for k in 0..slice.bounds.area()[slice.dim_j()] {
+                let value = reader.read_f32::<byteorder::BigEndian>()?;
+                ret.values[j as usize][k as usize] = value;
             }
         }
+        reader.skip(1)?;
+
         Ok(ret)
     }
 }

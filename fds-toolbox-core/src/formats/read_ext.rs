@@ -12,9 +12,7 @@ pub enum ReadStrErr {
 }
 
 pub trait ReadExt {
-    #[must_use]
     fn read_string(&mut self) -> Result<String, ReadStrErr>;
-    #[must_use]
     fn skip(&mut self, n: usize) -> Result<(), io::Error>;
 }
 

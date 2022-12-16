@@ -29,8 +29,8 @@ uom = { version = "*", features = ["use_serde"] }
 csv = "1.1"
 ndarray = { version = "0.15", features = ["serde"] }
 byteorder = "1.4"
-strum = "0.24.1"
-strum_macros = "0.24.3"
+# strum = "0.24.1"
+# strum_macros = "0.24.3"
 
 # [target.'cfg(loom)'.dependencies]
 # loom = "0.5"
