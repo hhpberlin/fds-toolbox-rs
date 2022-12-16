@@ -1,4 +1,6 @@
-use derive_more::Error;
+use std::io;
+
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ParseErr {

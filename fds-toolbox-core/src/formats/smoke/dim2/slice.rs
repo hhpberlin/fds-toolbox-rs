@@ -5,7 +5,6 @@ use byteorder::ReadBytesExt;
 use std::io::{Read, Seek, SeekFrom};
 use strum::IntoEnumIterator;
 
-use super::super::slice_frame_err;
 use super::slice_frame::SliceFrame;
 
 #[derive(Default)]
@@ -24,14 +23,14 @@ pub struct Slice {
 }
 
 impl Slice {
-    fn new(reader: &mut (impl Read + Seek)) -> Result<Slice, ParseErr> {
+    fn new(mut reader: impl Read + Seek) -> Result<Slice, ParseErr> {
         let mut slice = Slice::default();
 
-        slice.quantity = ReadString::read_string(reader)?;
+        slice.quantity = reader.read_string()?;
         let _ = reader.seek(SeekFrom::Current(1));
-        slice.short_name = ReadString::read_string(reader)?;
+        slice.short_name = reader.read_string()?;
         let _ = reader.seek(SeekFrom::Current(1));
-        slice.units = ReadString::read_string(reader)?;
+        slice.units = reader.read_string()?;
         let _ = reader.seek(SeekFrom::Current(2));
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
@@ -70,12 +69,12 @@ impl Slice {
 
         let mut frames = Vec::new();
 
-        while true {
-            match SliceFrame::new(reader, &slice, block) {
+        loop {
+            match SliceFrame::new(&mut reader, &slice, block) {
                 Ok(frame) => {
-                    frames.push(frame);
                     slice.max_value = slice.max_value.max(frame.max_value);
                     slice.min_value = slice.min_value.min(frame.min_value);
+                    frames.push(frame);
                 }
                 Err(ParseErr::NoBlocks) => {
                     slice.frames = Series2::from_data(frames);

@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, Axis};
+use ndarray::{Array, ArrayView, Dimension, Ix1, Ix2, Axis, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -24,10 +24,7 @@ impl<T: Copy, Ix: Dimension> Series<T, Ix> {
     // }
 
     pub fn view(&self) -> SeriesView<T, Ix> {
-        SeriesView {
-            data: self.data.view(),
-            stats: self.stats,
-        }
+        SeriesView::new(self.data.view(), self.stats)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
@@ -64,21 +61,32 @@ impl<T> Index<usize> for Series1<T> {
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct SeriesView<'a, T: Copy, Ix: Dimension> {
+pub struct SeriesView<'a, T: Copy, Ix: Dimension, Ref: 'a = ()> {
     pub data: ArrayView<'a, T, Ix>,
-    pub stats: ArrayStats<T>, // TODO: Should we borrow this instead?
+    // TODO: Should we borrow this instead?
+    // TODO: Should this recompute for the subset?
+    pub stats: ArrayStats<T>,
+    base_ref: Option<Ref>,
 }
 
 pub type Series1View<'a, T = f32> = SeriesView<'a, T, Ix1>;
 pub type Series2View<'a, T = f32> = SeriesView<'a, T, Ix2>;
 
-impl<'a, T: Copy, Ix: Dimension> SeriesView<'a, T, Ix> {
+impl<'a, T: Copy, Ix: Dimension, Ref> SeriesView<'a, T, Ix, Ref> {
     pub fn new(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>) -> Self {
-        Self { data, stats }
+        Self { data, stats, base_ref: None }
+    }
+
+    pub fn new_with_ref(data: ArrayView<'a, T, Ix>, stats: ArrayStats<T>, base_ref: Ref) -> Self {
+        Self { data, stats, base_ref: Some(base_ref) }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
+    }
+
+    pub fn map<IxOut: Dimension>(&self, f: impl FnOnce(&Self) -> ArrayView<'a, T, IxOut>) -> SeriesView<'a, T, IxOut> {
+        SeriesView::new(f(&self), self.stats)
     }
 }
 
@@ -162,30 +170,41 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
             .map(|(t, v)| (t, v))
     }
 
-    pub fn frame(&self, frame_num: usize) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>> {
+    pub fn frame(&'a self, frame_num: usize) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>>
+    where Self: 'a,
+        Ix: RemoveAxis
+    {
         let len = self.values.data.len_of(Axis(0));
         if frame_num >= len {
             None
         } else {
+            let frame = SeriesView::new(self.values.data.index_axis(Axis(0), frame_num), self.values.stats);
             Some(TimeSeriesFrame::new(
-                self.time_in_seconds[frame_num],
-                self.values.data.index_axis(Axis(0), frame_num),
+                self.time_in_seconds.data[frame_num],
+                frame,
                 self.unit,
                 self.name,
             ))
         }
     }
-}
 
-impl<'a, Value: Copy, Ix: Dimension, Time: Copy> Index<usize>
-    for TimeSeriesView<'a, Value, Ix, Time>
-{
-    type Output = TimeSeriesFrame<'a, Value, Ix::Smaller, Time>;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.frame(index).expect("Indexed out of bounds")
+    pub fn frame_panic(&'a self, index: usize) -> TimeSeriesFrame<'a, Value, Ix::Smaller, Time> 
+    where Self: 'a,
+    Ix: RemoveAxis
+    {
+        self.frame(index).expect("Indexed out of bounds")
     }
 }
+
+// impl<'a, Value: Copy, Ix: Dimension + RemoveAxis, Time: Copy> Index<usize>
+//     for TimeSeriesView<'a, Value, Ix, Time>
+// {
+//     type Output = TimeSeriesFrame<'a, Value, Ix::Smaller, Time>;
+
+//     fn index(&self, index: usize) -> &Self::Output {
+//         &self.frame(index).expect("Indexed out of bounds")
+//     }
+// }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimeSeriesFrame<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
@@ -195,14 +214,13 @@ pub struct TimeSeriesFrame<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
     pub name: &'a str,
 }
 
-impl<'a, Value: Copy, Ix: Dimensions, Time: Copy> TimeSeriesFrame<'a, Value, Ix, Time> {
+impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesFrame<'a, Value, Ix, Time> {
     pub fn new(
         time_in_seconds: Time,
         values: SeriesView<'a, Value, Ix>,
         unit: &'a str,
         name: &'a str,
     ) -> Self {
-        assert_eq!(time_in_seconds.data.len(), values.data.len());
         Self {
             time_in_seconds,
             values,

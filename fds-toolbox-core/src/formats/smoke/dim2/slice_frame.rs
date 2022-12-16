@@ -2,8 +2,6 @@ use std::io::{self, Read, Seek, SeekFrom};
 
 use crate::formats::smoke::parse_err::ParseErr;
 
-use super::super::slice_frame_err;
-use thiserror::Error;
 use uom::si::{f32::Time, time::second};
 
 use super::slice::Slice;
@@ -19,7 +17,7 @@ pub struct SliceFrame {
 
 impl SliceFrame {
     pub fn new(
-        reader: impl Read + Seek,
+        mut reader: impl Read + Seek,
         slice: &Slice,
         block: i32,
     ) -> Result<SliceFrame, ParseErr> {
@@ -27,7 +25,7 @@ impl SliceFrame {
             time: Time::new::<second>(
                 reader
                     .read_f32::<byteorder::BigEndian>()
-                    .map_err(ParseErr::NoBlocks),
+                    .map_err(|x| { ParseErr::NoBlocks })?, // TODO: Should IO Error really be discarded?
             ),
             values: vec![
                 vec![0.; slice.bounds.area()[slice.dimension_j] as usize];

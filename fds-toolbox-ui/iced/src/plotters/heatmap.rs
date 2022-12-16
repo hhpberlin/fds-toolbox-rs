@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use ndarray::{Axis, Dimension, Ix2};
 use plotters::{prelude::Rectangle, style::HSLColor};
@@ -52,7 +54,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
     }
 }
 
-fn iter_2d<T>(x: Range<T>, y: Range<T>) -> impl Iterator<(T, T)>
+fn iter_2d<T>(x: Range<T>, y: Range<T>) -> impl Iterator<Item = (T, T)>
 where
     Range<T>: IntoIterator<Item = T>,
 {

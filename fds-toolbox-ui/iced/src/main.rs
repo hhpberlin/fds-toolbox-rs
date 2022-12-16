@@ -99,10 +99,9 @@ impl Application for FdsToolbox {
             simulations: Simulations::new(vec![Simulation {
                 devc: Devices::from_reader(
                     include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
-                ),
-                .unwrap(),
+                ).unwrap(),
                 slcf: vec![
-                    Slice
+                    
                 ],
             }]),
         };
