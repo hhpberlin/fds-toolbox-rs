@@ -1,6 +1,6 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::io::Read;
 
-use crate::formats::smoke::parse_err::ParseErr;
+use crate::formats::{read_ext::ReadExt, smoke::parse_err::ParseErr};
 
 use uom::si::{f32::Time, time::second};
 
@@ -16,11 +16,7 @@ pub struct SliceFrame {
 }
 
 impl SliceFrame {
-    pub fn new(
-        mut reader: impl Read + Seek,
-        slice: &Slice,
-        block: i32,
-    ) -> Result<SliceFrame, ParseErr> {
+    pub fn new(mut reader: impl Read, slice: &Slice, block: i32) -> Result<SliceFrame, ParseErr> {
         let mut ret: SliceFrame = SliceFrame {
             time: Time::new::<second>(
                 reader
@@ -34,7 +30,7 @@ impl SliceFrame {
             min_value: f32::INFINITY,
             max_value: f32::NEG_INFINITY,
         };
-        let _ = reader.seek(SeekFrom::Current(1));
+        reader.skip(1)?;
 
         let block_size = reader.read_i32::<byteorder::BigEndian>();
         match block_size {
@@ -51,7 +47,7 @@ impl SliceFrame {
                         ret.max_value = value.max(ret.max_value);
                     }
                 }
-                let _ = reader.seek(SeekFrom::Current(1));
+                reader.skip(1)?;
             }
         }
         Ok(ret)

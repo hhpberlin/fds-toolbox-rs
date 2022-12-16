@@ -2,7 +2,7 @@ use std::ops;
 use std::ops::Index;
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, EnumIter, PartialEq)]
+#[derive(Clone, Copy, EnumIter, PartialEq, Eq)]
 pub enum Dimension3D {
     X,
     Y,

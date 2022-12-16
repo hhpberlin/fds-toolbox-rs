@@ -1,8 +1,12 @@
-use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::Range};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    ops::Range,
+};
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use ndarray::Ix2;
-use plotters::style::{Palette99, Palette};
+use plotters::style::{Palette, Palette99};
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
@@ -19,7 +23,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
 {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
-        chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
+        _chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
         _state: &super::cartesian::State,
     ) {
         let data = self
@@ -27,14 +31,14 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id =
             .iter_ids()
             .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)));
 
-        for (id, data) in data {
+        for (_id, data) in data {
             let hash = {
                 let mut hasher = DefaultHasher::new();
                 data.values.stats.hash(&mut hasher);
                 hasher.finish()
             };
 
-            let color = Palette99::pick(hash as usize);
+            let _color = Palette99::pick(hash as usize);
 
             // let Some(frame) = data.frame(t) else { continue; };
 

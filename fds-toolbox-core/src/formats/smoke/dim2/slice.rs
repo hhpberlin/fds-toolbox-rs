@@ -1,8 +1,9 @@
 use crate::common::series::Series2;
+use crate::formats::read_ext::ReadExt;
 use crate::formats::smoke::parse_err::ParseErr;
 use crate::geom::bounds3int::{Bounds3I, Dimension3D};
 use byteorder::ReadBytesExt;
-use std::io::{Read, Seek, SeekFrom, self};
+use std::io::Read;
 use strum::IntoEnumIterator;
 
 use super::slice_frame::SliceFrame;
@@ -23,15 +24,16 @@ pub struct Slice {
 }
 
 impl Slice {
-    fn new(mut reader: impl Read + Seek) -> Result<Slice, ParseErr> {
+    fn new(mut reader: impl Read) -> Result<Slice, ParseErr> {
         let mut slice = Slice::default();
 
-        slice.quantity = reader.read_string()?;
-        let _ = reader.seek(SeekFrom::Current(1));
-        slice.short_name = reader.read_string()?;
-        let _ = reader.seek(SeekFrom::Current(1));
-        slice.units = reader.read_string()?;
-        let _ = reader.seek(SeekFrom::Current(2));
+        // TODO: Should the underlying error be propagated?
+        slice.quantity = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        reader.skip(1)?;
+        slice.short_name = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        reader.skip(1)?;
+        slice.units = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        reader.skip(2)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
@@ -43,7 +45,7 @@ impl Slice {
             (reader.read_i32::<byteorder::BigEndian>()?) + 1,
             (reader.read_i32::<byteorder::BigEndian>()?) + 1,
         );
-        let _ = reader.seek(SeekFrom::Current(2));
+        reader.skip(2)?;
 
         let block = slice.bounds.area().x * slice.bounds.area().y * slice.bounds.area().z;
         for i in Dimension3D::iter() {
@@ -87,24 +89,6 @@ impl Slice {
         }
 
         Ok(slice)
-    }
-}
-
-pub trait ReadExt {
-    fn read_string(&mut self) -> Result<String, ParseErr>;
-    fn skip<const N: usize>(&mut self, n: usize) -> Result<(), io::Error>;
-}
-
-impl<T: Read> ReadExt for T {
-    fn read_string(&mut self) -> Result<String, ParseErr> {
-        let mut buf: Vec<u8> = vec![0u8; self.read_i32::<byteorder::BigEndian>()? as usize];
-        self.read_exact(&mut buf)?;
-        // TODO: Should the underlying error be propagated?
-        String::from_utf8(buf).map_err(|_| { ParseErr::BadBlock })
-    }
-
-    fn skip<const N: usize>(&mut self, n: usize) -> Result<(), io::Error> {
-        self.read_exact(&mut [0; N])
     }
 }
 
