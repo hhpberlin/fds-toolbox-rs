@@ -5,7 +5,7 @@ use std::{
 };
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
-use ndarray::Ix2;
+use ndarray::Ix3;
 use plotters::style::{Palette, Palette99};
 
 use super::{
@@ -13,12 +13,12 @@ use super::{
     ids::IdSource,
 };
 
-pub struct Heatmap<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>> {
+pub struct Heatmap<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>> {
     data_source: DataSrc,
     id_source: IdSrc,
 }
 
-impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>>
+impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>>
     CartesianDrawer for Heatmap<Id, DataSrc, IdSrc>
 {
     fn draw<DB: plotters_iced::DrawingBackend>(
@@ -72,7 +72,7 @@ where
         .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
 }
 
-impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix2>, IdSrc: IdSource<Id = Id>>
+impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>>
     Heatmap<Id, DataSrc, IdSrc>
 {
     pub fn new(data_source: DataSrc, id_source: IdSrc) -> Self {

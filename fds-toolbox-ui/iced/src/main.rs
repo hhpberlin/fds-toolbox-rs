@@ -10,6 +10,7 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 
 use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
+use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use iced::widget::{Column, Container, Text};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 use iced_aw::{TabBar, TabLabel};
@@ -97,13 +98,15 @@ impl Application for FdsToolbox {
             active_tab: 0,
             tabs: vec![],
             simulations: Simulations::new(vec![Simulation {
+                // TODO: Prompt for files, this is all for testing
                 devc: Devices::from_reader(
                     include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
                 .unwrap(),
-                slcf: vec![
-                    // Slice::
-                ],
+                slcf: vec![Slice::from_reader(
+                    include_bytes!("../../../demo-house/DemoHaus2_0004_39.sf").as_ref(),
+                )
+                .unwrap()],
             }]),
         };
         Self::open_some_tabs(&mut this);

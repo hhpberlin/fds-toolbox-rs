@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, RemoveAxis};
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -110,8 +110,8 @@ pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
     name: String,
 }
 
-pub type TimeSeries1<Value = f32, Time = f32> = TimeSeries<Value, Ix1, Time>;
-pub type TimeSeries2<Value = f32, Time = f32> = TimeSeries<Value, Ix2, Time>;
+pub type TimeSeries0<Value = f32, Time = f32> = TimeSeries<Value, Ix1, Time>;
+pub type TimeSeries2<Value = f32, Time = f32> = TimeSeries<Value, Ix3, Time>;
 
 impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
     pub fn new(
@@ -155,8 +155,8 @@ pub struct TimeSeriesView<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
     pub name: &'a str,
 }
 
-pub type TimeSeries1View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix1, Time>;
-pub type TimeSeries2View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix2, Time>;
+pub type TimeSeries0View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix1, Time>;
+pub type TimeSeries2View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix3, Time>;
 
 impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, Time> {
     pub fn new(

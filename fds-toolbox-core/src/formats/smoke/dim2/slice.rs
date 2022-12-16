@@ -7,6 +7,7 @@ use std::io::Read;
 
 use super::slice_frame::SliceFrame;
 
+#[derive(Debug)]
 pub struct SliceInfo {
     pub bounds: Bounds3I,
     pub flat_dim: Dimension3D,
@@ -15,6 +16,7 @@ pub struct SliceInfo {
     pub units: String,
 }
 
+#[derive(Debug)]
 pub struct Slice {
     pub info: SliceInfo,
     pub frames: TimeSeries2,
@@ -43,7 +45,7 @@ impl SliceInfo {
 }
 
 impl Slice {
-    fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
+    pub fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be propagated?
         let quantity = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
         reader.skip(1)?;

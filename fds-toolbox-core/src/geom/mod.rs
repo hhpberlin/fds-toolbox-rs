@@ -5,7 +5,7 @@ use std::ops::Index;
 
 use derive_more::{Add, Constructor, Mul, Sub, Sum};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Dimension3D {
     X,
     Y,

@@ -6,7 +6,7 @@ use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
 use crate::common::series::{
-    Series, Series1, Series1View, TimeSeries1View, TimeSeriesView, TimeSeriesViewSource,
+    Series, Series1, Series1View, TimeSeries0View, TimeSeriesView, TimeSeriesViewSource,
 };
 
 // TODO: Use 2d-array instead?
@@ -29,7 +29,7 @@ pub struct DeviceReadings {
 }
 
 impl DeviceReadings {
-    pub fn view<'a>(&'a self, time_in_seconds: Series1View<'a>) -> TimeSeries1View<'a> {
+    pub fn view<'a>(&'a self, time_in_seconds: Series1View<'a>) -> TimeSeries0View<'a> {
         TimeSeriesView::new(time_in_seconds, self.values.view(), &self.unit, &self.name)
     }
 }
@@ -204,7 +204,7 @@ impl Devices {
 }
 
 impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
-    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeries1View> {
+    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeries0View> {
         self.get_device_by_idx(id)
             .map(|x| x.view(self.time_in_seconds.view()))
     }
