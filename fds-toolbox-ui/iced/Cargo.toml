@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.5", features = ["canvas", "tokio"] }
+iced = { version = "0.6", features = ["canvas", "tokio"] }
 # Track git until they bump the version number
-iced_aw = { version = "0.2", git = "https://github.com/iced-rs/iced_aw", branch = "main", default-features = false, features = ["tabs", "tab_bar"] }
+iced_aw = { version = "0.3", git = "https://github.com/iced-rs/iced_aw", branch = "main", default-features = false, features = ["tabs", "tab_bar"] }
 
 plotters = "0.3"
 # TODO: Try to make PR to merge this into the official crate
-plotters-iced = "0.4"
+plotters-iced = "0.5"
 
 # makima_spline = "1.1"
 tracing = "0.1"
