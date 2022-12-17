@@ -60,10 +60,8 @@ impl Slice {
             let vals = [
                 reader.read_i32::<byteorder::LittleEndian>()?,
                 reader.read_i32::<byteorder::LittleEndian>()?,
-
                 reader.read_i32::<byteorder::LittleEndian>()?,
                 reader.read_i32::<byteorder::LittleEndian>()?,
-
                 reader.read_i32::<byteorder::LittleEndian>()?,
                 reader.read_i32::<byteorder::LittleEndian>()?,
             ];
@@ -99,7 +97,7 @@ impl Slice {
         let mut frames = Vec::new();
 
         loop {
-            match SliceFrame::new(&mut reader, &slice_info, block_size) {
+            match SliceFrame::from_reader(&mut reader, &slice_info, block_size) {
                 Ok(frame) => {
                     frames.push(frame);
                 }

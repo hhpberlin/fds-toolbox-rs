@@ -1,6 +1,6 @@
-use std::{io::{self, Read}};
+use std::io::{self, Read};
 
-use byteorder::{ReadBytesExt, LittleEndian};
+use byteorder::{LittleEndian, ReadBytesExt};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -26,8 +26,9 @@ impl<T: Read> ReadExt for T {
         let len = len as usize;
 
         let mut buf: Vec<u8> = vec![0u8; len];
-        self.read_exact(&mut buf).map_err(|err| ReadStrErr::IoBuf(err, len))?;
-        
+        self.read_exact(&mut buf)
+            .map_err(|err| ReadStrErr::IoBuf(err, len))?;
+
         let from_utf8 = String::from_utf8(buf)?;
         dbg!(&from_utf8);
         Ok(from_utf8)

@@ -14,7 +14,7 @@ pub struct SliceFrame {
 }
 
 impl SliceFrame {
-    pub fn new(
+    pub fn from_reader(
         mut reader: impl Read,
         slice: &SliceInfo,
         block: u32,
@@ -30,7 +30,7 @@ impl SliceFrame {
                 slice.bounds.area()[slice.dim_i()] as usize
             ],
         };
-        reader.skip(1 * 4)?;
+        reader.skip(4)?;
 
         let block_size = reader.read_u32::<byteorder::LittleEndian>()?;
         if block * 4 != block_size {
@@ -42,7 +42,7 @@ impl SliceFrame {
                 ret.values[j as usize][k as usize] = value;
             }
         }
-        reader.skip(1 * 4)?;
+        reader.skip(4)?;
 
         Ok(ret)
     }
