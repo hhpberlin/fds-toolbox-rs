@@ -47,12 +47,10 @@ impl SliceInfo {
 impl Slice {
     pub fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be annotated with added context?
-        let quantity = reader.read_string()?;
+        let quantity = reader.read_string_fortran()?;
+        let short_name = reader.read_string_fortran()?;
+        let units = reader.read_string_fortran()?;
         reader.skip(4)?;
-        let short_name = reader.read_string()?;
-        reader.skip(4)?;
-        let units = reader.read_string()?;
-        reader.skip(2 * 4)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
@@ -76,7 +74,7 @@ impl Slice {
         reader.skip(2 * 4)?;
 
         dbg!(bounds);
-        let block_size = bounds.area().x * bounds.area().y * bounds.area().z;
+        let volume = bounds.area().x * bounds.area().y * bounds.area().z;
 
         let flat_dim = bounds.area().enumerate().find(|(_, x)| *x == 1);
         let flat_dim = match flat_dim {
@@ -97,7 +95,7 @@ impl Slice {
         let mut frames = Vec::new();
 
         loop {
-            match SliceFrame::from_reader(&mut reader, &slice_info, block_size) {
+            match SliceFrame::from_reader(&mut reader, &slice_info, volume) {
                 Ok(frame) => {
                     frames.push(frame);
                 }

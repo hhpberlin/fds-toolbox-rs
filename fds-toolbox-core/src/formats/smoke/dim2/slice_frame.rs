@@ -17,7 +17,7 @@ impl SliceFrame {
     pub fn from_reader(
         mut reader: impl Read,
         slice: &SliceInfo,
-        block: u32,
+        volume: u32,
     ) -> Result<SliceFrame, ParseErr> {
         let mut ret: SliceFrame = SliceFrame {
             time: Time::new::<second>(
@@ -33,8 +33,11 @@ impl SliceFrame {
         reader.skip(4)?;
 
         let block_size = reader.read_u32::<byteorder::LittleEndian>()?;
-        if block * 4 != block_size {
-            return Err(ParseErr::BadBlock);
+        if volume * 4 != block_size {
+            return Err(ParseErr::BadBlockSize {
+                read: block_size as usize,
+                expected: volume as usize,
+            });
         }
         for j in 0..slice.bounds.area()[slice.dim_i()] {
             for k in 0..slice.bounds.area()[slice.dim_j()] {
