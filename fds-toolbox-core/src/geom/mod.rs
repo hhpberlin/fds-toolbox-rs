@@ -31,6 +31,7 @@ pub type Point3U = Point3<u32>;
 
 impl Point3I {
     pub const ZERO: Point3I = Point3I { x: 0, y: 0, z: 0 };
+    pub const ONE: Point3I = Point3I { x: 1, y: 1, z: 1 };
 }
 
 impl<T> Point3<T> {

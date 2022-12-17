@@ -56,19 +56,24 @@ impl Slice {
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
-        let min = Point3I::new(
-            reader.read_i32::<byteorder::LittleEndian>()?,
-            reader.read_i32::<byteorder::LittleEndian>()?,
-            reader.read_i32::<byteorder::LittleEndian>()?,
-        );
+        let bounds = {
+            let vals = [
+                reader.read_i32::<byteorder::LittleEndian>()?,
+                reader.read_i32::<byteorder::LittleEndian>()?,
 
-        let max = Point3I::new(
-            reader.read_i32::<byteorder::LittleEndian>()? + 1,
-            reader.read_i32::<byteorder::LittleEndian>()? + 1,
-            reader.read_i32::<byteorder::LittleEndian>()? + 1,
-        );
+                reader.read_i32::<byteorder::LittleEndian>()?,
+                reader.read_i32::<byteorder::LittleEndian>()?,
 
-        let bounds = Bounds3I::new(min, max);
+                reader.read_i32::<byteorder::LittleEndian>()?,
+                reader.read_i32::<byteorder::LittleEndian>()?,
+            ];
+
+            let min = Point3I::new(vals[0], vals[2], vals[4]);
+            let max = Point3I::new(vals[1], vals[3], vals[5]);
+            let max = max + Point3I::ONE;
+
+            Bounds3I::new(min, max)
+        };
 
         reader.skip(2 * 4)?;
 
