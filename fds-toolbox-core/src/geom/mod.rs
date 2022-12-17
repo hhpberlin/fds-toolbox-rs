@@ -19,6 +19,21 @@ impl Dimension3D {
 }
 
 #[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
+pub struct Point2<T> {
+    pub x: T,
+    pub y: T,
+}
+
+// TODO: Is 32-bit enough?
+pub type Point2I = Point2<i32>;
+pub type Point2U = Point2<u32>;
+
+impl Point2I {
+    pub const ZERO: Point2I = Point2I { x: 0, y: 0 };
+    pub const ONE: Point2I = Point2I { x: 1, y: 1 };
+}
+
+#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Point3<T> {
     pub x: T,
     pub y: T,

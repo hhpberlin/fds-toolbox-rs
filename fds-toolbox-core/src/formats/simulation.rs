@@ -25,7 +25,7 @@ impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
 
 impl TimeSeriesViewSource<SliceSeriesIdx, f32, Ix3> for Simulation {
     fn get_time_series(&self, idx: SliceSeriesIdx) -> Option<TimeSeries2View> {
-        self.slcf.get(idx.0).map(|slice| slice.frames.view())
+        self.slcf.get(idx.0).map(|slice| slice.data.view())
     }
 }
 

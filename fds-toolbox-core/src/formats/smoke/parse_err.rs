@@ -1,5 +1,6 @@
 use std::num::TryFromIntError;
 
+use ndarray::ShapeError;
 use thiserror::Error;
 
 use crate::formats::read_ext::{ReadStrErr, ReadBlockErr, ReadValErr};
@@ -12,6 +13,9 @@ pub enum ParseErr {
     BadString(#[from] ReadStrErr),
     #[error("Bad magic number: {0}")]
     BadMagicNumber(#[from] ReadValErr<u32>),
+
+    #[error("Reordering data resulted in shape error: {0}")]
+    ShaperErr(#[from] ShapeError),
 
     #[error("Bad bounds size, no dimension was size 1")]
     BadBoundsSize,

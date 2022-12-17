@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis};
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis, Array1};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -34,10 +34,12 @@ impl<T: Copy, Ix: Dimension> Series<T, Ix> {
 
 impl Series1 {
     pub fn from_vec(data: Vec<f32>) -> Self {
-        Self::new_f32(Array::from_vec(data))
+        Array::from_vec(data).into()
     }
+}
 
-    pub fn new_f32(data: Array<f32, Ix1>) -> Self {
+impl<Ix: Dimension> From<Array<f32, Ix>> for Series<f32, Ix> {
+    fn from(data: Array<f32, Ix>) -> Self {
         // TODO: Should we be storing Option directly instead? Does default really make sense here?
         let stats = ArrayStats::new_f32(data.iter().copied()).unwrap_or_default();
         Self { data, stats }
@@ -120,7 +122,7 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
         time_in_seconds: Series1<Time>,
         values: Series<Value, Ix>,
     ) -> Self {
-        assert_eq!(time_in_seconds.data.len(), values.data.len());
+        assert_eq!(time_in_seconds.data.len(), values.data.len_of(Axis(0)));
         Self {
             name,
             unit,

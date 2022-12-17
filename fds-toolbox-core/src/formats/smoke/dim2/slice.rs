@@ -1,8 +1,9 @@
-use crate::common::series::TimeSeries2;
-use crate::formats::read_ext::ReadExt;
+use crate::common::series::{TimeSeries2, Series1};
+use crate::formats::read_ext::{ReadExt, U32Ext};
 use crate::formats::smoke::parse_err::ParseErr;
-use crate::geom::{Bounds3I, Dimension3D, Point3I};
+use crate::geom::{Bounds3I, Dimension3D, Point3I, Point2U, Point2};
 use byteorder::ReadBytesExt;
+use ndarray::{Array3, s, Array2, Array1, Axis};
 use std::io::Read;
 
 use super::slice_frame::SliceFrame;
@@ -19,7 +20,7 @@ pub struct SliceInfo {
 #[derive(Debug)]
 pub struct Slice {
     pub info: SliceInfo,
-    pub frames: TimeSeries2,
+    pub data: TimeSeries2,
 }
 
 impl SliceInfo {
@@ -39,8 +40,20 @@ impl SliceInfo {
         }
     }
 
-    pub fn flat_dim_len(&self) -> u32 {
+    pub fn flat_dim_pos(&self) -> u32 {
         self.bounds.area()[self.flat_dim]
+    }
+
+    pub fn dim_i_len(&self) -> u32 {
+        self.bounds.area()[self.dim_i()]
+    }
+
+    pub fn dim_j_len(&self) -> u32 {
+        self.bounds.area()[self.dim_j()]
+    }
+
+    pub fn area(&self) -> Point2U {
+        Point2U::new(self.dim_i_len(), self.dim_j_len())
     }
 }
 
@@ -54,6 +67,7 @@ impl Slice {
         let short_name = rdr.read_fortran_string()?;
         let short_name = short_name.trim().to_string();
 
+        // TODO: Why is units plural? Should it be? Can there be multiple units?
         let units = rdr.read_fortran_string()?;
         let units = units.trim().to_string();
 
@@ -100,17 +114,18 @@ impl Slice {
 
         let mut frames = Vec::new();
 
-        dbg!(&slice_info);
-
         loop {
             match SliceFrame::from_reader(&mut rdr, &slice_info, volume) {
                 Ok(frame) => {
                     frames.push(frame);
                 }
                 Err(ParseErr::NoBlocks) => {
-                    let frames = TimeSeries2::from_data(frames);
+                    // TODO: Avoid copying all the data here?
+                    //       Instead maybe write directly to a shared Vec from the beginning
+                    //       Although resizing the Vec might just be doing the same thing
+                    let data = TimeSeries2::from_frames(&slice_info, frames)?;
                     return Ok(Slice {
-                        frames,
+                        data,
                         info: slice_info,
                     });
                 }
@@ -123,7 +138,39 @@ impl Slice {
 }
 
 impl TimeSeries2 {
-    pub fn from_data(_data: Vec<SliceFrame>) -> Self {
-        todo!();
+    fn from_frames(info: &SliceInfo, frames: Vec<SliceFrame>) -> Result<Self, ParseErr> {
+        let area = info.area();
+        // TODO: Store usize directly?
+        let area = Point2::new(area.x.try_into_usize()?, area.y.try_into_usize()?);
+
+        let mut time_arr = Array1::zeros(frames.len());
+        let mut values_arr = Array3::zeros((frames.len(), area.x, area.y));
+
+        for (i, frame) in frames.into_iter().enumerate() {
+            time_arr[i] = frame.time.value;
+            values_arr.index_axis_mut(Axis(0), 0).assign(&Array2::from_shape_vec((area.x, area.y), frame.values)?);
+        }
+
+        Ok(TimeSeries2::new(info.short_name.clone(), info.units.clone(), time_arr.into(), values_arr.into()))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parses_example() {
+        let data = include_bytes!("../../../../../demo-house/DemoHaus2_0004_39.sf");
+        let slice = Slice::from_reader(&data[..]).unwrap();
+
+        assert_eq!(slice.info.quantity, "SOOT OPTICAL DENSITY");
+        assert_eq!(slice.info.short_name, "OD_C0.9H0.1");
+        assert_eq!(slice.info.units, "1/m");
+
+        assert_eq!(slice.info.bounds.min, Point3I::new(0, 0, 43));
+        assert_eq!(slice.info.bounds.max, Point3I::new(34, 34, 44));
+
+        assert_eq!(slice.info.flat_dim, Dimension3D::Z);
     }
 }
