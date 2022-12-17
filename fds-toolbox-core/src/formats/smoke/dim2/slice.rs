@@ -45,23 +45,25 @@ impl SliceInfo {
 }
 
 impl Slice {
-    pub fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
+    pub fn from_reader(mut rdr: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be annotated with added context?
-        let quantity = reader.read_string_fortran()?;
-        let short_name = reader.read_string_fortran()?;
-        let units = reader.read_string_fortran()?;
-        reader.skip(4)?;
+        let quantity = rdr.read_fortran_string()?;
+        let short_name = rdr.read_fortran_string()?;
+        let units = rdr.read_fortran_string()?;
+        
+        // Size of the bounds
+        rdr.read_fixed_u32(6 * 4)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
         let bounds = {
             let vals = [
-                reader.read_i32::<byteorder::LittleEndian>()?,
-                reader.read_i32::<byteorder::LittleEndian>()?,
-                reader.read_i32::<byteorder::LittleEndian>()?,
-                reader.read_i32::<byteorder::LittleEndian>()?,
-                reader.read_i32::<byteorder::LittleEndian>()?,
-                reader.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
+                rdr.read_i32::<byteorder::LittleEndian>()?,
             ];
 
             let min = Point3I::new(vals[0], vals[2], vals[4]);
@@ -71,9 +73,9 @@ impl Slice {
             Bounds3I::new(min, max)
         };
 
-        reader.skip(2 * 4)?;
+        // Size of the bounds
+        rdr.read_fixed_u32(6 * 4)?;
 
-        dbg!(bounds);
         let volume = bounds.area().x * bounds.area().y * bounds.area().z;
 
         let flat_dim = bounds.area().enumerate().find(|(_, x)| *x == 1);
@@ -95,7 +97,7 @@ impl Slice {
         let mut frames = Vec::new();
 
         loop {
-            match SliceFrame::from_reader(&mut reader, &slice_info, volume) {
+            match SliceFrame::from_reader(&mut rdr, &slice_info, volume) {
                 Ok(frame) => {
                     frames.push(frame);
                 }
