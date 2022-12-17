@@ -1,6 +1,6 @@
-use std::{io::{self, Read}, fmt::UpperHex};
+use std::{io::{self, Read}};
 
-use byteorder::ReadBytesExt;
+use byteorder::{ReadBytesExt, LittleEndian};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -21,14 +21,16 @@ pub trait ReadExt {
 
 impl<T: Read> ReadExt for T {
     fn read_string(&mut self) -> Result<String, ReadStrErr> {
-        let len = self
-            .read_vlq_u32()?;
+        // let len = self.read_vlq_u32()?;
+        let len = self.read_u32::<LittleEndian>()?;
         let len = len as usize;
 
         let mut buf: Vec<u8> = vec![0u8; len];
         self.read_exact(&mut buf).map_err(|err| ReadStrErr::IoBuf(err, len))?;
         
-        Ok(String::from_utf8(buf)?)
+        let from_utf8 = String::from_utf8(buf)?;
+        dbg!(&from_utf8);
+        Ok(from_utf8)
     }
 
     fn read_vlq_u32(&mut self) -> Result<u32, io::Error> {
@@ -59,4 +61,39 @@ fn skip<const BUF: usize>(mut rdr: impl Read, n: usize) -> Result<(), io::Error>
         rdr.read_exact(&mut buf[..b])?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn as_reader(bytes: &[u8]) -> impl Read + '_ {
+        bytes
+    }
+
+    #[test]
+    fn skip() {
+        let mut rdr = as_reader(&[1, 2, 3]);
+        assert_eq!(rdr.read_u8().unwrap(), 1);
+        rdr.skip(1).expect("Failed to skip");
+        assert_eq!(rdr.read_u8().unwrap(), 3);
+    }
+
+    #[test]
+    fn read_vlq_u32_0() {
+        let mut rdr = as_reader(&[0b00000000]);
+        assert_eq!(rdr.read_vlq_u32().unwrap(), 0);
+    }
+
+    #[test]
+    fn read_vlq_u32_one_block() {
+        let mut rdr = as_reader(&[0b01000001]);
+        assert_eq!(rdr.read_vlq_u32().unwrap(), 65);
+    }
+
+    #[test]
+    fn read_vlq_u32_two_blocks() {
+        let mut rdr = as_reader(&[0b10000010, 0b00000001]);
+        assert_eq!(rdr.read_vlq_u32().unwrap(), 130);
+    }
 }

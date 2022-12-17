@@ -48,30 +48,31 @@ impl Slice {
     pub fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be annotated with added context?
         let quantity = reader.read_string()?;
-        reader.skip(1)?;
+        reader.skip(4)?;
         let short_name = reader.read_string()?;
-        reader.skip(1)?;
+        reader.skip(4)?;
         let units = reader.read_string()?;
-        reader.skip(2)?;
+        reader.skip(2 * 4)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
         let min = Point3I::new(
-            reader.read_i32::<byteorder::BigEndian>()?,
-            reader.read_i32::<byteorder::BigEndian>()?,
-            reader.read_i32::<byteorder::BigEndian>()?,
+            reader.read_i32::<byteorder::LittleEndian>()?,
+            reader.read_i32::<byteorder::LittleEndian>()?,
+            reader.read_i32::<byteorder::LittleEndian>()?,
         );
 
         let max = Point3I::new(
-            reader.read_i32::<byteorder::BigEndian>()? + 1,
-            reader.read_i32::<byteorder::BigEndian>()? + 1,
-            reader.read_i32::<byteorder::BigEndian>()? + 1,
+            reader.read_i32::<byteorder::LittleEndian>()? + 1,
+            reader.read_i32::<byteorder::LittleEndian>()? + 1,
+            reader.read_i32::<byteorder::LittleEndian>()? + 1,
         );
 
         let bounds = Bounds3I::new(min, max);
 
-        reader.skip(2)?;
+        reader.skip(2 * 4)?;
 
+        dbg!(bounds);
         let block_size = bounds.area().x * bounds.area().y * bounds.area().z;
 
         let flat_dim = bounds.area().enumerate().find(|(_, x)| *x == 1);

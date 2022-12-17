@@ -22,7 +22,7 @@ impl SliceFrame {
         let mut ret: SliceFrame = SliceFrame {
             time: Time::new::<second>(
                 reader
-                    .read_f32::<byteorder::BigEndian>()
+                    .read_f32::<byteorder::LittleEndian>()
                     .map_err(|_x| ParseErr::NoBlocks)?, // TODO: Should IO Error really be discarded?
             ),
             values: vec![
@@ -30,19 +30,19 @@ impl SliceFrame {
                 slice.bounds.area()[slice.dim_i()] as usize
             ],
         };
-        reader.skip(1)?;
+        reader.skip(1 * 4)?;
 
-        let block_size = reader.read_u32::<byteorder::BigEndian>()?;
+        let block_size = reader.read_u32::<byteorder::LittleEndian>()?;
         if block * 4 != block_size {
             return Err(ParseErr::BadBlock);
         }
         for j in 0..slice.bounds.area()[slice.dim_i()] {
             for k in 0..slice.bounds.area()[slice.dim_j()] {
-                let value = reader.read_f32::<byteorder::BigEndian>()?;
+                let value = reader.read_f32::<byteorder::LittleEndian>()?;
                 ret.values[j as usize][k as usize] = value;
             }
         }
-        reader.skip(1)?;
+        reader.skip(1 * 4)?;
 
         Ok(ret)
     }
