@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis, Array1};
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;

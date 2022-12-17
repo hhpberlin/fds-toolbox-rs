@@ -1,6 +1,8 @@
 use std::{
+    fmt::Display,
     io::{self, Read},
-    num::TryFromIntError, ops::{RangeBounds, Bound, Range}, fmt::Display,
+    num::TryFromIntError,
+    ops::{Bound, Range, RangeBounds},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -51,40 +53,62 @@ pub trait ReadExt {
     fn read_fortran_string(&mut self) -> Result<String, ReadStrErr> {
         self.read_fortran_string_bounded_option::<Range<usize>>(None)
     }
-    fn read_fortran_string_bounded<R: RangeBounds<usize>>(&mut self, size_range: R) -> Result<String, ReadStrErr> {
+    fn read_fortran_string_bounded<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: R,
+    ) -> Result<String, ReadStrErr> {
         self.read_fortran_string_bounded_option(Some(size_range))
     }
     // to call this
-    fn read_fortran_string_bounded_option<R: RangeBounds<usize>>(&mut self, size_range: Option<R>) -> Result<String, ReadStrErr>;
+    fn read_fortran_string_bounded_option<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: Option<R>,
+    ) -> Result<String, ReadStrErr>;
 
     // Convenience functions
     fn read_fortran_block(&mut self) -> Result<Vec<u8>, ReadBlockErr> {
         self.read_fortran_block_bounded_option::<Range<usize>>(None)
     }
-    fn read_fortran_block_bounded<R: RangeBounds<usize>>(&mut self, size_range: R) -> Result<Vec<u8>, ReadBlockErr> {
+    fn read_fortran_block_bounded<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: R,
+    ) -> Result<Vec<u8>, ReadBlockErr> {
         self.read_fortran_block_bounded_option(Some(size_range))
     }
     // to call this
-    fn read_fortran_block_bounded_option<R: RangeBounds<usize>>(&mut self, size_range: Option<R>) -> Result<Vec<u8>, ReadBlockErr>;
-    
+    fn read_fortran_block_bounded_option<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: Option<R>,
+    ) -> Result<Vec<u8>, ReadBlockErr>;
+
     fn read_fixed_u32(&mut self, num: u32) -> Result<(), ReadValErr<u32>>;
 
     fn skip(&mut self, n: usize) -> Result<(), io::Error>;
 }
 
 impl<T: Read> ReadExt for T {
-    fn read_fortran_string_bounded_option<R: RangeBounds<usize>>(&mut self, size_range: Option<R>) -> Result<String, ReadStrErr> {
+    fn read_fortran_string_bounded_option<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: Option<R>,
+    ) -> Result<String, ReadStrErr> {
         let block = self.read_fortran_block_bounded_option(size_range)?;
         Ok(String::from_utf8(block)?)
     }
 
-    fn read_fortran_block_bounded_option<R: RangeBounds<usize>>(&mut self, size_range: Option<R>) -> Result<Vec<u8>, ReadBlockErr> {
+    fn read_fortran_block_bounded_option<R: RangeBounds<usize>>(
+        &mut self,
+        size_range: Option<R>,
+    ) -> Result<Vec<u8>, ReadBlockErr> {
         let len = self.read_u32::<LittleEndian>()?;
         let prefix_len = usize::try_from(len).map_err(|x| ReadBlockErr::InvalidLength(len, x))?;
 
         if let Some(range) = size_range {
             if !range.contains(&prefix_len) {
-                return Err(ReadBlockErr::SizeOutOfRange(prefix_len, range.start_bound().cloned(), range.end_bound().cloned()));
+                return Err(ReadBlockErr::SizeOutOfRange(
+                    prefix_len,
+                    range.start_bound().cloned(),
+                    range.end_bound().cloned(),
+                ));
             }
         }
 
@@ -93,11 +117,14 @@ impl<T: Read> ReadExt for T {
             .map_err(|err| ReadBlockErr::IoBuf(err, prefix_len))?;
 
         let postfix_len = self.read_u32::<LittleEndian>()?;
-        let postfix_len =
-            usize::try_from(postfix_len).map_err(|x| ReadBlockErr::InvalidLength(postfix_len, x))?;
+        let postfix_len = usize::try_from(postfix_len)
+            .map_err(|x| ReadBlockErr::InvalidLength(postfix_len, x))?;
 
         if postfix_len != prefix_len {
-            return Err(ReadBlockErr::MismatchedPostfixLength(prefix_len, postfix_len));
+            return Err(ReadBlockErr::MismatchedPostfixLength(
+                prefix_len,
+                postfix_len,
+            ));
         }
 
         Ok(buf)
@@ -152,7 +179,10 @@ mod tests {
     }
 
     fn slice_u32_to_u8(bytes: &[u32]) -> Vec<u8> {
-        bytes.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<_>>()
+        bytes
+            .iter()
+            .flat_map(|x| x.to_le_bytes())
+            .collect::<Vec<_>>()
         // Endianness-dependent
         // unsafe { std::mem::transmute::<&[u32], &[u8]>(bytes) }
     }
@@ -185,38 +215,38 @@ mod tests {
 
     #[test]
     fn read_fortran_block() {
-        let data = slice_u32_to_u8(&[3*4, 1, 2, 3, 3*4]);
+        let data = slice_u32_to_u8(&[3 * 4, 1, 2, 3, 3 * 4]);
         let mut rdr = as_reader(&data);
 
-        let block = rdr.read_fortran_block_bounded(3*4..=3*4).unwrap();
+        let block = rdr.read_fortran_block_bounded(3 * 4..=3 * 4).unwrap();
         assert_eq!(block, slice_u32_to_u8(&[1, 2, 3]));
     }
 
     #[test]
     fn read_fortran_block_length_oustide_of_range() {
-        let data = slice_u32_to_u8(&[3*4, 0, 1, 2, 3*4]);
+        let data = slice_u32_to_u8(&[3 * 4, 0, 1, 2, 3 * 4]);
         let mut rdr = as_reader(&data);
 
-        let block = rdr.read_fortran_block_bounded(4*4..=4*4);
+        let block = rdr.read_fortran_block_bounded(4 * 4..=4 * 4);
 
         // TODO: Use assert_matches once it's stable
 
         match block {
             Err(ReadBlockErr::SizeOutOfRange(12, Bound::Included(16), Bound::Included(16))) => (),
-            x => panic!("Unexpected return: {:?}", x)
+            x => panic!("Unexpected return: {:?}", x),
         }
     }
 
     #[test]
     fn read_fortran_block_wrong_postfix() {
-        let data = slice_u32_to_u8(&[3*4, 0, 1, 2, 4*4]);
+        let data = slice_u32_to_u8(&[3 * 4, 0, 1, 2, 4 * 4]);
         let mut rdr = as_reader(&data);
 
-        let block = rdr.read_fortran_block_bounded(3*4..=3*4);
+        let block = rdr.read_fortran_block_bounded(3 * 4..=3 * 4);
 
         match block {
             Err(ReadBlockErr::MismatchedPostfixLength(12, 16)) => (),
-            x => panic!("Unexpected return: {:?}", x)
+            x => panic!("Unexpected return: {:?}", x),
         }
     }
 
@@ -237,7 +267,7 @@ mod tests {
 
         match res {
             Err(ReadValErr::WrongVal(0x12345679, 0x12345678)) => (),
-            x => panic!("Unexpected return: {:?}", x)
+            x => panic!("Unexpected return: {:?}", x),
         }
     }
 }

@@ -1,9 +1,9 @@
-use crate::common::series::{TimeSeries2, Series1};
+use crate::common::series::TimeSeries2;
 use crate::formats::read_ext::{ReadExt, U32Ext};
 use crate::formats::smoke::parse_err::ParseErr;
-use crate::geom::{Bounds3I, Dimension3D, Point3I, Point2U, Point2};
+use crate::geom::{Bounds3I, Dimension3D, Point2, Point2U, Point3I};
 use byteorder::ReadBytesExt;
-use ndarray::{Array3, s, Array2, Array1, Axis};
+use ndarray::{Array1, Array2, Array3, Axis};
 use std::io::Read;
 
 use super::slice_frame::SliceFrame;
@@ -148,10 +148,17 @@ impl TimeSeries2 {
 
         for (i, frame) in frames.into_iter().enumerate() {
             time_arr[i] = frame.time.value;
-            values_arr.index_axis_mut(Axis(0), 0).assign(&Array2::from_shape_vec((area.x, area.y), frame.values)?);
+            values_arr
+                .index_axis_mut(Axis(0), 0)
+                .assign(&Array2::from_shape_vec((area.x, area.y), frame.values)?);
         }
 
-        Ok(TimeSeries2::new(info.short_name.clone(), info.units.clone(), time_arr.into(), values_arr.into()))
+        Ok(TimeSeries2::new(
+            info.short_name.clone(),
+            info.units.clone(),
+            time_arr.into(),
+            values_arr.into(),
+        ))
     }
 }
 

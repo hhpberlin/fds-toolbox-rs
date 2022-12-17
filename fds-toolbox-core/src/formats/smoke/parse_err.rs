@@ -3,7 +3,7 @@ use std::num::TryFromIntError;
 use ndarray::ShapeError;
 use thiserror::Error;
 
-use crate::formats::read_ext::{ReadStrErr, ReadBlockErr, ReadValErr};
+use crate::formats::read_ext::{ReadBlockErr, ReadStrErr, ReadValErr};
 
 #[derive(Error, Debug)]
 pub enum ParseErr {
