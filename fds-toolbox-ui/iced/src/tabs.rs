@@ -1,6 +1,6 @@
 use iced::{Command, Element};
 
-use crate::{plot_2d::plot_tab::PlotTab, Simulations};
+use crate::{plot_2d::plot_tab::PlotTab, Simulations, slice::slice_tab::SliceTab};
 
 pub trait Tab<Model> {
     type Message;
@@ -12,15 +12,19 @@ pub trait Tab<Model> {
 }
 
 // TODO: This is very boilerplate-y
+//       Use enum_dispatch?
+//       Just Box<dyn Tab<Simulations>> kind of stuff? How would message types work seeing as they're associated types?
 
 #[derive(Debug)]
 pub enum FdsToolboxTab {
-    Overview(PlotTab),
+    Plot(PlotTab),
+    Slice(SliceTab),
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum FdsToolboxTabMessage {
-    Overview(<PlotTab as Tab<Simulations>>::Message),
+    Plot(<PlotTab as Tab<Simulations>>::Message),
+    Slice(<SliceTab as Tab<Simulations>>::Message),
 }
 
 impl Tab<Simulations> for FdsToolboxTab {
@@ -28,7 +32,8 @@ impl Tab<Simulations> for FdsToolboxTab {
 
     fn title(&self) -> String {
         match self {
-            FdsToolboxTab::Overview(tab) => tab.title(),
+            FdsToolboxTab::Plot(tab) => tab.title(),
+            FdsToolboxTab::Slice(tab) => tab.title(),
         }
     }
 
@@ -38,15 +43,24 @@ impl Tab<Simulations> for FdsToolboxTab {
         message: Self::Message,
     ) -> Command<Self::Message> {
         match (self, message) {
-            (FdsToolboxTab::Overview(tab), FdsToolboxTabMessage::Overview(msg)) => {
-                tab.update(model, msg).map(FdsToolboxTabMessage::Overview)
+            (FdsToolboxTab::Plot(tab), FdsToolboxTabMessage::Plot(msg)) => {
+                tab.update(model, msg).map(FdsToolboxTabMessage::Plot)
+            }
+            (FdsToolboxTab::Slice(tab), FdsToolboxTabMessage::Slice(msg)) => {
+                tab.update(model, msg).map(FdsToolboxTabMessage::Slice)
+            }
+            (tab, msg) => {
+                panic!("Unhandled message: {:?} for tab: {:?}", msg, tab);
+                // log::warn!("Unhandled message: {:?} for tab: {:?}", msg, tab);
+                // Command::none()
             }
         }
     }
 
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
         match self {
-            FdsToolboxTab::Overview(tab) => tab.view(model).map(FdsToolboxTabMessage::Overview),
+            FdsToolboxTab::Plot(tab) => tab.view(model).map(FdsToolboxTabMessage::Plot),
+            FdsToolboxTab::Slice(tab) => tab.view(model).map(FdsToolboxTabMessage::Slice),
         }
     }
 }

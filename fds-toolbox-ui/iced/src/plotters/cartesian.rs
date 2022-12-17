@@ -174,10 +174,10 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(x_range: RangeIncl<f32>, y_range: RangeIncl<f32>) -> Self {
         Self {
-            x_range: RangeIncl::new(0.0, 100.0),
-            y_range: RangeIncl::new(0.0, 100.0),
+            x_range,
+            y_range,
             hovered_point: None,
             coord_spec: RefCell::new(None),
             mouse_down: false,
@@ -260,11 +260,11 @@ pub fn cartesian<'a>(
         .into()
 }
 
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for State {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl Position {
     pub fn into_data_coords(self, coord_spec: &Cartesian2df32) -> Option<PosF> {

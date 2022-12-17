@@ -8,13 +8,14 @@ use std::fmt::Debug;
 
 use fds_toolbox_core::formats::csv::devc::Devices;
 
-use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx};
+use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx, SliceSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use iced::widget::{Column, Container, Text};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
+use slice::slice_tab::SliceTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;
@@ -58,7 +59,7 @@ impl FdsToolbox {
 
     fn open_some_tabs(&mut self) {
         self.tabs
-            .push(FdsToolboxTab::Overview(PlotTab::new(vec![SimulationIdx(
+            .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
                 0,
                 TimeSeriesIdx::Device(
                     self.simulations[0]
@@ -68,7 +69,7 @@ impl FdsToolbox {
                 ),
             )])));
         self.tabs
-            .push(FdsToolboxTab::Overview(PlotTab::new(vec![SimulationIdx(
+            .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
                 0,
                 TimeSeriesIdx::Device(
                     self.simulations[0]
@@ -77,13 +78,17 @@ impl FdsToolbox {
                         .unwrap(),
                 ),
             )])));
-        self.tabs.push(FdsToolboxTab::Overview(PlotTab::new(
+        self.tabs.push(FdsToolboxTab::Plot(PlotTab::new(
             self.simulations[0]
                 .devc
                 .iter_device_named_ids()
                 .map(|(_, idx)| SimulationIdx(0, TimeSeriesIdx::Device(idx)))
                 .collect::<Vec<_>>(),
         )));
+        self.tabs.push(FdsToolboxTab::Slice(SliceTab::new(SimulationIdx(
+            0,
+            SliceSeriesIdx(0),
+        ))));
     }
 }
 

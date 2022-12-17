@@ -38,5 +38,6 @@ pub enum TimeSeriesIdx {
     Device(DeviceIdx),
 }
 
+// TODO: This is a hack
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SliceSeriesIdx(pub usize);

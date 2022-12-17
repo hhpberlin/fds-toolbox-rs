@@ -36,6 +36,7 @@ impl IdSource for SliceTab {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Message {
     Plot(cartesian::Message),
     // AddSlice(SliceFile),
@@ -46,7 +47,7 @@ impl SliceTab {
         Self {
             slice,
             frame: 0, // TODO
-            plot_state: RefCell::new(cartesian::State::default()),
+            plot_state: RefCell::new(cartesian::State::new((0.0..=10.0).into(), (0.0..=10.0).into())),
         }
     }
 }
@@ -55,7 +56,7 @@ impl Tab<Simulations> for SliceTab {
     type Message = Message;
 
     fn title(&self) -> String {
-        "Slice".to_string()
+        "Slice Plot".to_string()
     }
 
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Message> {
@@ -71,6 +72,11 @@ impl Tab<Simulations> for SliceTab {
         _model: &mut Simulations,
         _message: Self::Message,
     ) -> Command<Self::Message> {
-        todo!()
+        match _message {
+            Message::Plot(_) => {
+                // self.plot_state.borrow_mut().update(msg);
+                Command::none()
+            }
+        }
     }
 }

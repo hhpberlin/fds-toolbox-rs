@@ -1,6 +1,6 @@
 use std::{
     hash::Hash,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Div, Mul, Sub, RangeInclusive},
 };
 
 use serde::{Deserialize, Serialize};
@@ -128,5 +128,11 @@ impl<N: PartialOrd + Copy> RangeIncl<N> {
 impl<N> From<RangeIncl<N>> for std::ops::Range<N> {
     fn from(range: RangeIncl<N>) -> Self {
         range.into_range()
+    }
+}
+
+impl<N: Clone> From<RangeInclusive<N>> for RangeIncl<N> {
+    fn from(range: RangeInclusive<N>) -> Self {
+        Self::new(range.start().clone(), range.end().clone())
     }
 }

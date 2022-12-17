@@ -67,7 +67,7 @@ impl PlotTab {
                     .map(|series| (series.idx, series))
                     .collect(),
             ),
-            plot_state: RefCell::new(cartesian::State::new()),
+            plot_state: RefCell::new(cartesian::State::new((0.0..=100.0).into(), (0.0..=100.0).into())),
         }
     }
 
@@ -122,7 +122,7 @@ impl Tab<Simulations> for PlotTab {
         // TODO: Give a more descriptive name
         //       Maybe list the names of the selected time series?
         // Sub-TODO: Ellispisize long names? Here or generally?
-        "Plot 2D".to_string()
+        "Line Plot".to_string()
     }
 
     fn update(
