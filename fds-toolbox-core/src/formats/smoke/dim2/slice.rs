@@ -48,13 +48,17 @@ impl Slice {
     pub fn from_reader(mut rdr: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be annotated with added context?
         let quantity = rdr.read_fortran_string()?;
+        // TODO: Not technically neccessary double allocation
+        let quantity = quantity.trim().to_string();
+
         let short_name = rdr.read_fortran_string()?;
+        let short_name = short_name.trim().to_string();
+
         let units = rdr.read_fortran_string()?;
-        
+        let units = units.trim().to_string();
+
         // Size of the bounds
         rdr.read_fixed_u32(6 * 4)?;
-
-        //let a = reader.read_i32::<byteorder::BigEndian>()?;
 
         let bounds = {
             let vals = [
@@ -95,6 +99,8 @@ impl Slice {
         };
 
         let mut frames = Vec::new();
+
+        dbg!(&slice_info);
 
         loop {
             match SliceFrame::from_reader(&mut rdr, &slice_info, volume) {
