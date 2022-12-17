@@ -7,8 +7,56 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug - iced",
-            "program": "${workspaceFolder}/target/debug/fds-toolbox-ui-iced",
+            "name": "Debug unit tests in library 'fds-toolbox-core'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=fds-toolbox-core"
+                ],
+                "filter": {
+                    "name": "fds-toolbox-core",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'fds-toolbox-ui-iced'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=fds-toolbox-ui-iced",
+                    "--package=fds-toolbox-ui-iced"
+                ],
+                "filter": {
+                    "name": "fds-toolbox-ui-iced",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'fds-toolbox-ui-iced'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=fds-toolbox-ui-iced",
+                    "--package=fds-toolbox-ui-iced"
+                ],
+                "filter": {
+                    "name": "fds-toolbox-ui-iced",
+                    "kind": "bin"
+                }
+            },
             "args": [],
             "cwd": "${workspaceFolder}"
         }
