@@ -46,12 +46,12 @@ impl SliceInfo {
 
 impl Slice {
     pub fn from_reader(mut reader: impl Read) -> Result<Slice, ParseErr> {
-        // TODO: Should the underlying error be propagated?
-        let quantity = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        // TODO: Should the underlying error be annotated with added context?
+        let quantity = reader.read_string()?;
         reader.skip(1)?;
-        let short_name = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        let short_name = reader.read_string()?;
         reader.skip(1)?;
-        let units = reader.read_string().map_err(|_| ParseErr::BadBlock)?;
+        let units = reader.read_string()?;
         reader.skip(2)?;
 
         //let a = reader.read_i32::<byteorder::BigEndian>()?;

@@ -5,10 +5,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ReadStrErr {
-    #[error("IO error")]
-    Io(io::Error),
-    #[error("UTF-8 error")]
-    Utf8(std::string::FromUtf8Error),
+    #[error("IO error {0}")]
+    Io(#[from] io::Error),
+    #[error("IO error {0}, expected to read {1} bytes")]
+    IoBuf(io::Error, usize),
+    #[error("UTF-8 error {0}")]
+    Utf8(#[from] std::string::FromUtf8Error),
 }
 
 pub trait ReadExt {
@@ -19,11 +21,13 @@ pub trait ReadExt {
 impl<T: Read> ReadExt for T {
     fn read_string(&mut self) -> Result<String, ReadStrErr> {
         let len = self
-            .read_u32::<byteorder::BigEndian>()
-            .map_err(ReadStrErr::Io)?;
-        let mut buf: Vec<u8> = vec![0u8; len as usize];
-        self.read_exact(&mut buf).map_err(ReadStrErr::Io)?;
-        String::from_utf8(buf).map_err(ReadStrErr::Utf8)
+            .read_u32::<byteorder::BigEndian>()?;
+        let len = len as usize;
+
+        let mut buf: Vec<u8> = vec![0u8; len];
+        self.read_exact(&mut buf).map_err(|err| ReadStrErr::IoBuf(err, len))?;
+        
+        Ok(String::from_utf8(buf)?)
     }
 
     fn skip(&mut self, n: usize) -> Result<(), io::Error> {
