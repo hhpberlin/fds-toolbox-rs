@@ -1,6 +1,6 @@
 use iced::{Command, Element};
 
-use crate::{plot_2d::plot_tab::PlotTab, Simulations, slice::slice_tab::SliceTab};
+use crate::{plot_2d::plot_tab::PlotTab, slice::slice_tab::SliceTab, Simulations};
 
 pub trait Tab<Model> {
     type Message;

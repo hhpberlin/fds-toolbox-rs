@@ -1,6 +1,6 @@
 use std::{
     hash::Hash,
-    ops::{Add, Div, Mul, Sub, RangeInclusive},
+    ops::{Add, Div, Mul, RangeInclusive, Sub},
 };
 
 use serde::{Deserialize, Serialize};

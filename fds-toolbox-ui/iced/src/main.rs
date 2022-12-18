@@ -8,7 +8,7 @@ use std::fmt::Debug;
 
 use fds_toolbox_core::formats::csv::devc::Devices;
 
-use fds_toolbox_core::formats::simulation::{Simulation, TimeSeriesIdx, SliceSeriesIdx};
+use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use iced::widget::{Column, Container, Text};
@@ -85,10 +85,11 @@ impl FdsToolbox {
                 .map(|(_, idx)| SimulationIdx(0, TimeSeriesIdx::Device(idx)))
                 .collect::<Vec<_>>(),
         )));
-        self.tabs.push(FdsToolboxTab::Slice(SliceTab::new(SimulationIdx(
-            0,
-            SliceSeriesIdx(0),
-        ))));
+        self.tabs
+            .push(FdsToolboxTab::Slice(SliceTab::new(SimulationIdx(
+                0,
+                SliceSeriesIdx(0),
+            ))));
     }
 }
 

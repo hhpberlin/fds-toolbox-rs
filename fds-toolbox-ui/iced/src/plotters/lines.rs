@@ -129,6 +129,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
                             + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
                     },
                 ))
+                // TODO: Fix this unwrap
                 .unwrap();
 
             // crosshair
@@ -138,6 +139,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
                     [(state.x_range.min, y), (state.x_range.max, y)],
                     RED.stroke_width(1),
                 ))
+                // TODO: Fix this unwrap
                 .unwrap();
 
             chart
@@ -145,6 +147,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
                     [(x, state.y_range.min), (x, state.y_range.max)],
                     RED.stroke_width(1),
                 ))
+                // TODO: Fix this unwrap
                 .unwrap();
         }
     }

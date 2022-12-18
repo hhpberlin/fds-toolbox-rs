@@ -46,8 +46,11 @@ impl SliceTab {
     pub fn new(slice: SimulationIdx<SliceSeriesIdx>) -> Self {
         Self {
             slice,
-            frame: 0, // TODO
-            plot_state: RefCell::new(cartesian::State::new((0.0..=10.0).into(), (0.0..=10.0).into())),
+            frame: 500, // TODO
+            plot_state: RefCell::new(cartesian::State::new(
+                (0.0..=10.0).into(),
+                (0.0..=10.0).into(),
+            )),
         }
     }
 }
@@ -62,7 +65,7 @@ impl Tab<Simulations> for SliceTab {
     fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
-            cartesian(Heatmap::new(model, self), &self.plot_state).map(Message::Plot),
+            cartesian(Heatmap::new(model, self, self.frame), &self.plot_state).map(Message::Plot),
         ]
         .into()
     }

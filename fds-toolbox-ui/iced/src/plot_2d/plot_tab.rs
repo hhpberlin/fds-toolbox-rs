@@ -67,7 +67,10 @@ impl PlotTab {
                     .map(|series| (series.idx, series))
                     .collect(),
             ),
-            plot_state: RefCell::new(cartesian::State::new((0.0..=100.0).into(), (0.0..=100.0).into())),
+            plot_state: RefCell::new(cartesian::State::new(
+                (0.0..=100.0).into(),
+                (0.0..=100.0).into(),
+            )),
         }
     }
 

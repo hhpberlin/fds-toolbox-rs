@@ -183,12 +183,11 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
             .map(|(t, v)| (t, v))
     }
 
-    pub fn frame(
+    pub fn view_frame(
         &'a self,
         frame_num: usize,
     ) -> Option<TimeSeriesFrame<'a, Value, Ix::Smaller, Time>>
     where
-        Self: 'a,
         Ix: RemoveAxis,
     {
         let len = self.values.data.len_of(Axis(0));
@@ -213,7 +212,7 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
         Self: 'a,
         Ix: RemoveAxis,
     {
-        self.frame(index).expect("Indexed out of bounds")
+        self.view_frame(index).expect("Indexed out of bounds")
     }
 }
 
