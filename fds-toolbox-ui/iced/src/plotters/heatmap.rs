@@ -62,7 +62,8 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id =
                             Rectangle::new(
                                 [(x, y), (x + 1., y + 1.)],
                                 HSLColor(
-                                    240.0 / 360.0 - 240.0 / 360.0 * (v as f64 / 20.0),
+                                    // 240.0 / 360.0 - 240.0 / 360.0 * (v as f64 / 20.0),
+                                    v as f64 * 2000.0,
                                     0.7,
                                     0.1 + 0.4 * v as f64 / 20.0,
                                 )

@@ -46,7 +46,7 @@ impl SliceTab {
     pub fn new(slice: SimulationIdx<SliceSeriesIdx>) -> Self {
         Self {
             slice,
-            frame: 500, // TODO
+            frame: 200, // TODO
             plot_state: RefCell::new(cartesian::State::new(
                 (0.0..=10.0).into(),
                 (0.0..=10.0).into(),

@@ -148,6 +148,7 @@ impl TimeSeries2 {
 
         for (i, frame) in frames.into_iter().enumerate() {
             time_arr[i] = frame.time.value;
+            // dbg!(&frame.values);
             values_arr
                 .index_axis_mut(Axis(0), 0)
                 .assign(&Array2::from_shape_vec((area.x, area.y), frame.values)?);
@@ -170,6 +171,7 @@ mod test {
     fn parses_example() {
         let data = include_bytes!("../../../../../demo-house/DemoHaus2_0004_39.sf");
         let slice = Slice::from_reader(&data[..]).unwrap();
+        // dbg!(&slice);
 
         assert_eq!(slice.info.quantity, "SOOT OPTICAL DENSITY");
         assert_eq!(slice.info.short_name, "OD_C0.9H0.1");

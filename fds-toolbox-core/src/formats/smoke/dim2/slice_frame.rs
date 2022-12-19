@@ -52,6 +52,7 @@ impl SliceFrame {
         debug_assert_eq!(values.len(), len_i * len_j);
 
         rdr.read_f32_into::<byteorder::LittleEndian>(&mut values[..])?;
+        // dbg!(values.iter().enumerate().find(|(_, &x)| x>0.));
 
         let block_size_postfix = rdr.read_u32::<byteorder::LittleEndian>()?;
         let block_size_postfix = block_size_postfix.try_into_usize()?;

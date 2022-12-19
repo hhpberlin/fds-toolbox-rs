@@ -105,9 +105,9 @@ impl<'a, T: Copy, Ix: Dimension, Ref> SeriesView<'a, T, Ix, Ref> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
-    time_in_seconds: Series1<Time>,
+    pub time_in_seconds: Series1<Time>,
     /// Axis 0 is time
-    values: Series<Value, Ix>,
+    pub values: Series<Value, Ix>,
     unit: String,
     name: String,
 }
@@ -145,6 +145,14 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
             .iter()
             .zip(self.values.iter())
             .map(|(t, v)| (t, v))
+    }
+
+    pub fn len(&self) -> usize {
+        self.time_in_seconds.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

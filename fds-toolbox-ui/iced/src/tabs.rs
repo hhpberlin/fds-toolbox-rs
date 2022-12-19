@@ -49,10 +49,13 @@ impl Tab<Simulations> for FdsToolboxTab {
             (FdsToolboxTab::Slice(tab), FdsToolboxTabMessage::Slice(msg)) => {
                 tab.update(model, msg).map(FdsToolboxTabMessage::Slice)
             }
-            (tab, msg) => {
-                panic!("Unhandled message: {:?} for tab: {:?}", msg, tab);
+            (_tab, _msg) => {
+                // TODO: Actually do stuff here
+
+                // panic!("Unhandled message: {:?} for tab: {:?}", msg, tab);
+
                 // log::warn!("Unhandled message: {:?} for tab: {:?}", msg, tab);
-                // Command::none()
+                Command::none()
             }
         }
     }

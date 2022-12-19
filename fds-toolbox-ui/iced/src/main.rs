@@ -11,8 +11,12 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
+use iced::event::Status;
 use iced::widget::{Column, Container, Text};
-use iced::{executor, Application, Command, Element, Length, Settings, Theme};
+use iced::{
+    executor, keyboard, subscription, Application, Command, Element, Event, Length, Settings,
+    Subscription, Theme,
+};
 use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
 use slice::slice_tab::SliceTab;
@@ -47,9 +51,30 @@ struct FdsToolbox {
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy)]
 enum Message {
-    TabSelected(usize),
-    TabClosed(usize),
+    TabSelected(TabIdx),
+    TabClosed(TabIdx),
     TabMessage(FdsToolboxTabMessage),
+}
+
+#[derive(Debug, Clone, Copy)]
+enum TabIdx {
+    Absolute(usize),
+    RelativeToActive(isize),
+}
+
+impl TabIdx {
+    fn _to_absolute(self, active: usize, len: usize) -> usize {
+        match self {
+            TabIdx::Absolute(idx) => idx,
+            TabIdx::RelativeToActive(offset) => {
+                (active as isize + offset).rem_euclid(len as isize) as usize
+            }
+        }
+    }
+
+    pub fn to_absolute(self, tbx: &FdsToolbox) -> usize {
+        self._to_absolute(tbx.active_tab, tbx.tabs.len())
+    }
 }
 
 impl FdsToolbox {
@@ -91,6 +116,41 @@ impl FdsToolbox {
                 SliceSeriesIdx(0),
             ))));
     }
+
+    fn subscription(event: Event, status: Status) -> Option<Message> {
+        if let Status::Captured = status {
+            return None;
+        }
+        dbg!(&event);
+        match event {
+            // Event::Mouse(mouse_event) => match mouse_event {
+            //     mouse::Event::ButtonPressed(mouse::Button::Left) => Some(Message::MouseClick),
+            //     mouse::Event::CursorMoved { position } => Some(Message::MouseMove(position)),
+            //     _ => None,
+            // },
+            Event::Keyboard(keyboard_event) => match keyboard_event {
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::Tab,
+                    modifiers,
+                } => {
+                    // TODO: Find out why bitflags didn't like matching on the modifiers and then use match instead if possible
+                    if modifiers == keyboard::Modifiers::CTRL {
+                        Some(Message::TabSelected(TabIdx::RelativeToActive(1)))
+                    } else if modifiers == keyboard::Modifiers::SHIFT | keyboard::Modifiers::CTRL {
+                        Some(Message::TabSelected(TabIdx::RelativeToActive(-1)))
+                    } else {
+                        None
+                    }
+                }
+                keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::W,
+                    modifiers: keyboard::Modifiers::CTRL,
+                } => Some(Message::TabClosed(TabIdx::RelativeToActive(0))),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 impl Application for FdsToolbox {
@@ -110,7 +170,7 @@ impl Application for FdsToolbox {
                 )
                 .unwrap(),
                 slcf: vec![Slice::from_reader(
-                    include_bytes!("../../../demo-house/DemoHaus2_0004_39.sf").as_ref(),
+                    include_bytes!("../../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
                 )
                 .unwrap()],
             }]),
@@ -125,9 +185,9 @@ impl Application for FdsToolbox {
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::TabSelected(tab) => self.active_tab = tab,
-            Message::TabClosed(tab) => {
-                self.tabs.remove(tab);
+            Message::TabSelected(idx) => self.active_tab = idx.to_absolute(self),
+            Message::TabClosed(idx) => {
+                self.tabs.remove(idx.to_absolute(self));
             }
             // We can't actually use self.active_tab() here because of the borrow checker :(
             Message::TabMessage(msg) => match self.tabs.get_mut(self.active_tab) {
@@ -150,7 +210,9 @@ impl Application for FdsToolbox {
                 .tabs
                 .iter()
                 .fold(
-                    TabBar::new(self.active_tab, Message::TabSelected),
+                    TabBar::new(self.active_tab, |x| {
+                        Message::TabSelected(TabIdx::Absolute(x))
+                    }),
                     |tab_bar, tab| {
                         let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
                         tab_bar.push(TabLabel::Text(tab_label))
@@ -161,7 +223,7 @@ impl Application for FdsToolbox {
                     //     column.push(Text::new(tab_label))
                     // },
                 )
-                .on_close(Message::TabClosed)
+                .on_close(|x| Message::TabSelected(TabIdx::Absolute(x)))
                 .tab_width(Length::Shrink)
                 .spacing(5)
                 .padding(5)
@@ -183,5 +245,9 @@ impl Application for FdsToolbox {
                 ),
             )
             .into()
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        subscription::events_with(Self::subscription)
     }
 }
