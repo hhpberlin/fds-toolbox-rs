@@ -53,6 +53,49 @@ impl SliceTab {
             )),
         }
     }
+
+    // fn view_sidebar<'a>(
+    //     mut series: RefMut<'a, HashMap<SimulationIdx<SliceSeriesIdx>, PlotTabSeries>>,
+    //     model: &'a Simulations,
+    // ) -> Element<'a, Message> {
+    //     let mut sidebar = Column::new();
+
+    //     for (idx, device) in model
+    //         .simulations
+    //         .iter()
+    //         .flat_map(|x| x.devc.enumerate_devices())
+    //     {
+    //         // TODO: This does not work with multiple simulations
+    //         let global_idx = SimulationIdx(0, TimeSeriesIdx::Device(idx));
+
+    //         let info = series
+    //             .entry(global_idx)
+    //             .or_insert_with(|| PlotTabSeries::new(global_idx));
+
+    //         sidebar = sidebar
+    //             .push(row![
+    //                 container(checkbox(
+    //                     format!("{} ({})", device.name, device.unit),
+    //                     info.selected,
+    //                     move |checked| {
+    //                         if checked {
+    //                             Message::Add(global_idx)
+    //                         } else {
+    //                             Message::Remove(global_idx)
+    //                         }
+    //                     },
+    //                 ))
+    //                 .width(Length::Shrink),
+    //                 horizontal_space(Length::Fill),
+    //                 container(array_stats_vis(device.values.stats))
+    //                     .width(Length::Units(100))
+    //                     .height(Length::Units(20)),
+    //             ])
+    //             .max_width(400);
+    //     }
+
+    //     scrollable(sidebar).into()
+    // }
 }
 
 impl Tab<Simulations> for SliceTab {
@@ -73,9 +116,9 @@ impl Tab<Simulations> for SliceTab {
     fn update(
         &mut self,
         _model: &mut Simulations,
-        _message: Self::Message,
+        message: Self::Message,
     ) -> Command<Self::Message> {
-        match _message {
+        match message {
             Message::Plot(_) => {
                 // self.plot_state.borrow_mut().update(msg);
                 Command::none()

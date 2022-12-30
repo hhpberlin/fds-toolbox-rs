@@ -1,5 +1,23 @@
 // TODO: Re-enable and fix the following clippy lints:
 // #![warn(clippy::pedantic)]
+// #![warn(clippy::nursery)]
+// #![warn(clippy::cargo)]
+// #![warn(clippy::complexity)]
+// #![warn(clippy::correctness)]
+// #![warn(clippy::perf)]
+// #![warn(clippy::style)]
+// #![warn(clippy::restriction)]
+#![warn(clippy::suspicious)]
+// #![warn(clippy::todo)]
+// #![warn(clippy::unimplemented)]
+// #![warn(clippy::dbg_macro)]
+// #![warn(clippy::print_stdout)]
+// #![warn(clippy::print_stderr)]
+// #![warn(clippy::unreachable)]
+// #![warn(clippy::panic)]
+
+// #![warn(clippy::unwrap_used)]
+// #![warn(clippy::expect_used)]
 
 // TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
@@ -31,6 +49,9 @@ pub mod tabs;
 mod array_stats_vis;
 mod select_list;
 
+/// # Errors
+///
+/// Errors if UI fails to start
 pub fn main() -> iced::Result {
     FdsToolbox::run(Settings {
         antialiasing: true,

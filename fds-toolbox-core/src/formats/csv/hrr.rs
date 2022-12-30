@@ -132,7 +132,7 @@ impl HRRStep {
 
         for (i, (unit, name)) in units.iter().zip(names.iter()).enumerate() {
             // TODO: Is this really the best way to do this?
-            // The get_fac::<> invocations are *not* type-checked due to producing a simple f32, so be careful here
+            // The get_fac::<>()?.value invocations are *not* type-checked due to producing a simple f32, so be careful here
             buf.clear();
             buf.push_str("1 ");
             buf.push_str(unit);
