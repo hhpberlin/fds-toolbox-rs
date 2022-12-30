@@ -90,6 +90,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
 
     #[inline]
     fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
+        // TODO: This might panic
         self.state.borrow().cache.draw(bounds, draw_fn)
     }
 
@@ -99,6 +100,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
 
+        // TODO: This might panic
         let state = self.state.borrow();
 
         let mut chart = chart
@@ -110,6 +112,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
 
         state
             .coord_spec
+            // TODO: This might panic
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
 
@@ -130,6 +133,8 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
         bounds: iced::Rectangle,
         cursor: Cursor,
     ) -> (Status, Option<Message>) {
+        // TODO: Handle touch events
+
         let event = match event {
             Event::Mouse(m) => m,
             // TODO: Support touch events

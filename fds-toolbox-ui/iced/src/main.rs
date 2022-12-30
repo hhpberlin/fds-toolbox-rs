@@ -61,12 +61,19 @@ pub fn main() -> iced::Result {
     })
 }
 
+#[derive(Debug)]
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     simulations: Simulations,
+    keyboard_info: KeyboardInfo,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct KeyboardInfo {
+    modifiers: keyboard::Modifiers,
 }
 
 // There will be future messages not relating to tabs, so this is only temporary
@@ -144,6 +151,7 @@ impl FdsToolbox {
         if let Status::Captured = status {
             return None;
         }
+        
         dbg!(&event);
         match event {
             // Event::Mouse(mouse_event) => match mouse_event {
@@ -197,6 +205,7 @@ impl Application for FdsToolbox {
                 )
                 .unwrap()],
             }]),
+            keyboard_info: KeyboardInfo::default(),
         };
         Self::open_some_tabs(&mut this);
         (this, Command::none())

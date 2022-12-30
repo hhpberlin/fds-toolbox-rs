@@ -66,8 +66,8 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
             let color = Palette99::pick(hash as usize);
 
             // TODO: Extrapolate to the edges of the plot
-            let data_iter = data.iter().filter(|(x, _y)| {
-                state.x_range.contains(*x)
+            let data_iter = data.iter().filter(|(x, y)| {
+                state.x_range.contains(*x) && state.y_range.contains(*y)
                 // TODO: This would cause a flat line between the surrounding points to be drawn
                 // && self.state.y_range.contains(*y)
             });
