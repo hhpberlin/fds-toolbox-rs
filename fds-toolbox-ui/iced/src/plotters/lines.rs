@@ -52,7 +52,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
         let data = self
             .id_source
             .iter_ids()
-            .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)));
+            .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)).ok());
 
         for (id, data) in data {
             // TODO: This could be better, but it works for now

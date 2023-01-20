@@ -3,7 +3,7 @@ use std::ops::Index;
 use ndarray::Dimension;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeriesView, TimeSeriesViewSource};
+use crate::common::series::{PotentialResult, TimeSeriesView, TimeSeriesViewSource, Missing};
 
 use super::simulation::Simulation;
 
@@ -41,8 +41,14 @@ impl<Idx, Value: Copy, Ix: Dimension, Time: Copy>
 where
     Simulation: TimeSeriesViewSource<Idx, Value, Ix, Time>,
 {
-    fn get_time_series(&self, idx: SimulationIdx<Idx>) -> Option<TimeSeriesView<Value, Ix, Time>> {
+    fn get_time_series(
+        &self,
+        idx: SimulationIdx<Idx>,
+    ) -> PotentialResult<TimeSeriesView<Value, Ix, Time>> {
         let SimulationIdx(idx, inner) = idx;
-        self.simulations.get(idx)?.get_time_series(inner)
+        self.simulations
+            .get(idx)
+            .ok_or(Missing::InvalidKey)?
+            .get_time_series(inner)
     }
 }

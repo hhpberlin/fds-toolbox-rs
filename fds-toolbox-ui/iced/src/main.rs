@@ -50,6 +50,7 @@ pub mod tabs;
 
 mod array_stats_vis;
 mod select_list;
+mod store;
 
 /// # Errors
 ///

@@ -6,7 +6,8 @@ use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
 use crate::common::series::{
-    Series, Series1, Series1View, TimeSeries0View, TimeSeriesView, TimeSeriesViewSource,
+    PotentialResult, Series, Series1, Series1View, TimeSeries0View, TimeSeriesView,
+    TimeSeriesViewSource, Missing,
 };
 
 // TODO: Use 2d-array instead?
@@ -204,9 +205,10 @@ impl Devices {
 }
 
 impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
-    fn get_time_series(&self, id: DeviceIdx) -> Option<TimeSeries0View> {
+    fn get_time_series(&self, id: DeviceIdx) -> PotentialResult<TimeSeries0View> {
         self.get_device_by_idx(id)
             .map(|x| x.view(self.time_in_seconds.view()))
+            .ok_or(Missing::InvalidKey)
     }
 }
 

@@ -291,8 +291,20 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesFrame<'a, Value, Ix, 
 //     }
 // }
 
+// TODO: Name this better
+pub type PotentialResult<T> = Result<T, Missing>;
+
+pub enum Missing {
+    InFlight { progress: f32 },
+    Requested,
+    RequestError(Box<dyn std::error::Error>),
+    InvalidKey,
+}
+
 pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time: Copy = f32> {
-    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>>;
+    // fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>>;
+
+    fn get_time_series(&self, id: Id) -> PotentialResult<TimeSeriesView<Value, Ix, Time>>;
 
     // fn get_time_series_iter(&self, ids: impl Iterator<Item = Id>) -> impl Iterator<Item = TimeSeriesView> {
     //     ids.filter_map(move |id| self.get_time_series(id))
@@ -304,7 +316,7 @@ pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time:
 impl<Id, T: TimeSeriesViewSource<Id, Value, Ix, Time>, Value: Copy, Ix: Dimension, Time: Copy>
     TimeSeriesViewSource<Id, Value, Ix, Time> for &T
 {
-    fn get_time_series(&self, id: Id) -> Option<TimeSeriesView<Value, Ix, Time>> {
+    fn get_time_series(&self, id: Id) -> PotentialResult<TimeSeriesView<Value, Ix, Time>> {
         (*self).get_time_series(id)
     }
 }
@@ -312,7 +324,7 @@ impl<Id, T: TimeSeriesViewSource<Id, Value, Ix, Time>, Value: Copy, Ix: Dimensio
 impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesViewSource<(), Value, Ix, Time>
     for TimeSeries<Value, Ix, Time>
 {
-    fn get_time_series(&self, _: ()) -> Option<TimeSeriesView<Value, Ix, Time>> {
-        Some(self.view())
+    fn get_time_series(&self, _: ()) -> PotentialResult<TimeSeriesView<Value, Ix, Time>> {
+        Ok(self.view())
     }
 }

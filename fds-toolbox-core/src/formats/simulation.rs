@@ -1,7 +1,9 @@
 use ndarray::{Ix1, Ix3};
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{TimeSeries0View, TimeSeries2View, TimeSeriesViewSource};
+use crate::common::series::{
+    PotentialResult, TimeSeries0View, TimeSeries2View, TimeSeriesViewSource, Missing,
+};
 
 use super::{
     csv::devc::{DeviceIdx, Devices},
@@ -16,7 +18,7 @@ pub struct Simulation {
 }
 
 impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
-    fn get_time_series(&self, idx: TimeSeriesIdx) -> Option<TimeSeries0View> {
+    fn get_time_series(&self, idx: TimeSeriesIdx) -> PotentialResult<TimeSeries0View> {
         match idx {
             TimeSeriesIdx::Device(idx) => self.devc.get_time_series(idx),
         }
@@ -24,8 +26,11 @@ impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
 }
 
 impl TimeSeriesViewSource<SliceSeriesIdx, f32, Ix3> for Simulation {
-    fn get_time_series(&self, idx: SliceSeriesIdx) -> Option<TimeSeries2View> {
-        self.slcf.get(idx.0).map(|slice| slice.data.view())
+    fn get_time_series(&self, idx: SliceSeriesIdx) -> PotentialResult<TimeSeries2View> {
+        self.slcf
+            .get(idx.0)
+            .map(|slice| slice.data.view())
+            .ok_or(Missing::InvalidKey)
     }
 }
 

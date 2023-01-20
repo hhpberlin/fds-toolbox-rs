@@ -34,7 +34,10 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id =
 
         for id in data {
             let data = self.data_source.get_time_series(id);
-            let Some(data) = data else { continue; };
+            let Ok(data) = data else { 
+                // TODO: Visualize progress / display errors
+                continue;
+            };
 
             let hash = {
                 let mut hasher = DefaultHasher::new();
