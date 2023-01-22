@@ -1,7 +1,6 @@
 use crate::lazy_data::{
     remote::test_remote::TestRemote,
     serialization::{CompressedSerializer, MessagePackSerializer, Serializer, ZstdCompressor},
-    store::Store,
 };
 
 type Data = String;
