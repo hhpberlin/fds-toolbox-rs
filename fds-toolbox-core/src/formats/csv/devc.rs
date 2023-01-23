@@ -6,8 +6,8 @@ use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
 use crate::common::series::{
-    PotentialResult, Series, Series1, Series1View, TimeSeries0View, TimeSeriesView,
-    TimeSeriesViewSource, Missing,
+    Missing, PotentialResult, Series, Series1, Series1View, TimeSeries0View, TimeSeriesView,
+    TimeSeriesViewSource,
 };
 
 // TODO: Use 2d-array instead?

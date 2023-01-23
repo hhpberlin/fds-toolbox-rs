@@ -8,10 +8,8 @@
 #![warn(clippy::perf)]
 #![warn(clippy::style)]
 #![warn(clippy::suspicious)]
-
 #![warn(clippy::print_stdout)]
 #![warn(clippy::print_stderr)]
-
 // #![warn(clippy::todo)]
 // #![warn(clippy::unimplemented)]
 // #![warn(clippy::dbg_macro)]
@@ -50,7 +48,6 @@ pub mod tabs;
 
 mod array_stats_vis;
 mod select_list;
-mod store;
 
 /// # Errors
 ///
@@ -152,7 +149,7 @@ impl FdsToolbox {
         if let Status::Captured = status {
             return None;
         }
-        
+
         dbg!(&event);
         match event {
             // Event::Mouse(mouse_event) => match mouse_event {

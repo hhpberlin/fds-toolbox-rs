@@ -2,7 +2,7 @@ use ndarray::{Ix1, Ix3};
 use serde::{Deserialize, Serialize};
 
 use crate::common::series::{
-    PotentialResult, TimeSeries0View, TimeSeries2View, TimeSeriesViewSource, Missing,
+    Missing, PotentialResult, TimeSeries0View, TimeSeries2View, TimeSeriesViewSource,
 };
 
 use super::{

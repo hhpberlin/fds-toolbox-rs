@@ -34,7 +34,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id =
 
         for id in data {
             let data = self.data_source.get_time_series(id);
-            let Ok(data) = data else { 
+            let Ok(data) = data else {
                 // TODO: Visualize progress / display errors
                 continue;
             };

@@ -8,10 +8,8 @@
 #![warn(clippy::perf)]
 #![warn(clippy::style)]
 #![warn(clippy::suspicious)]
-
 #![warn(clippy::print_stdout)]
 #![warn(clippy::print_stderr)]
-
 // #![warn(clippy::todo)]
 // #![warn(clippy::unimplemented)]
 // #![warn(clippy::dbg_macro)]

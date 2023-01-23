@@ -1,15 +1,19 @@
 mod map_cache;
-mod cached_error;
 
 // #[cfg(test)]
 // mod store_test;
 
-use std::{future::{IntoFuture, Future}, pin::Pin};
+use std::{
+    future::{Future, IntoFuture},
+    pin::Pin,
+};
 
 pub type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + 'a>>;
 
 pub trait FutureCache<Key, Value> {
-    fn from_future_source<Fut: IntoFuture<Output = Value>>(source: impl Fn(Key) -> Fut + Send + Sync) -> Self;
+    fn from_future_source<Fut: IntoFuture<Output = Value>>(
+        source: impl Fn(Key) -> Fut + Send + Sync,
+    ) -> Self;
     fn request(&self, key: Key) -> PotentialResult<Value>;
 }
 
@@ -21,4 +25,3 @@ pub enum Missing {
     RequestError(Box<dyn std::error::Error>),
     InvalidKey,
 }
-
