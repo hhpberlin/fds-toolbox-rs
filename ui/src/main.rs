@@ -195,11 +195,11 @@ impl Application for FdsToolbox {
             simulations: Simulations::new(vec![Simulation {
                 // TODO: Prompt for files, this is all for testing
                 devc: Devices::from_reader(
-                    include_bytes!("../../../demo-house/DemoHaus2_devc.csv").as_ref(),
+                    include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
                 )
                 .unwrap(),
                 slcf: vec![Slice::from_reader(
-                    include_bytes!("../../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
+                    include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
                 )
                 .unwrap()],
             }]),

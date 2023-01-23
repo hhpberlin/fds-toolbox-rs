@@ -1,8 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "fds-toolbox-core",
-    "fds-toolbox-ui/iced",
+    "core",
+    "request-dedup",
+    "ui",
 ]
 
 [profile.release]

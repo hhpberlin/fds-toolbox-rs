@@ -1,4 +1,5 @@
-mod map_cache;
+pub mod map_cache;
+// pub(crate) mod sync;
 
 // #[cfg(test)]
 // mod store_test;

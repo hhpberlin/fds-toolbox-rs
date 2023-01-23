@@ -1,13 +1,12 @@
 use std::{
     hash::Hash,
     sync::{Arc, Weak},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use color_eyre::Report;
 use dashmap::DashMap;
 use tokio::sync::broadcast;
-use tracing::debug;
 
 use super::BoxFut;
 
@@ -20,14 +19,16 @@ where
     inner: DashMap<Key, Cached<Value>>,
 }
 
+// TODO: Is color_eyre::Report appropriate here? And should it really be Arc?
+type EyreResult<Value> = Result<Value, Arc<Report>>;
+
 #[derive(Debug, Clone)]
 struct Cached<Value>
 where
     Value: Clone + Send + Sync + 'static,
 {
     cached_value: Option<(Instant, Value)>,
-    // TODO: Is color_eyre::Report appropriate here? And should it really be Arc?
-    inflight: Option<Weak<broadcast::Sender<Result<Value, Arc<Report>>>>>,
+    inflight: Option<Weak<broadcast::Sender<EyreResult<Value>>>>,
 }
 
 impl<T> Default for Cached<T>
@@ -47,7 +48,7 @@ where
     K: Clone + Send + Sync + Eq + Hash + 'static,
     V: Clone + Send + Sync + 'static,
 {
-    pub fn new(refresh_interval: Duration) -> Self {
+    pub fn new() -> Self {
         Self {
             inner: Default::default(),
         }
@@ -62,7 +63,7 @@ where
             // only sync code in this block
             let mut inner = self.inner.entry(key.clone()).or_default();
 
-            if let Some((fetched_at, value)) = inner.cached_value.as_ref() {
+            if let Some((_fetched_at, value)) = inner.cached_value.as_ref() {
                 // TODO
                 // if fetched_at.elapsed() < self.refresh_interval {
                 return Ok(value.clone());
@@ -107,9 +108,18 @@ where
 
         // if we reached here, we're waiting for an in-flight request (we weren't
         // able to serve from cache)
-        Ok(rx
-            .recv()
+        rx.recv()
             .await
-            .map_err(|err| color_eyre::eyre::eyre!("In-Flight request panicked: {:#}", err))??)
+            .map_err(|err| color_eyre::eyre::eyre!("In-Flight request panicked: {:#}", err))?
+    }
+}
+
+impl<K, V> Default for MapCache<K, V>
+where
+    K: Clone + Send + Sync + Eq + Hash + 'static,
+    V: Clone + Send + Sync + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }

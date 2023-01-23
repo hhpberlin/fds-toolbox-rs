@@ -1,7 +1,7 @@
 use std::{hash::Hash, net::SocketAddr};
 
 use async_trait::async_trait;
-use color_eyre::Report;
+// use color_eyre::Report;
 use quinn::{Connection, Endpoint};
 
 use super::Remote;
@@ -29,7 +29,10 @@ impl<Key: Eq + Hash + Clone + Send + Sync> Remote<Key> for QuicRemote<'_> {
 }
 
 impl QuicRemote<'_> {
-    pub async fn connect(connection_info: ConnectionInfo<'_>) -> Result<QuicRemote<'_>, Report> {
+    // TODO
+    pub async fn connect(
+        connection_info: ConnectionInfo<'_>,
+    ) -> Result<QuicRemote<'_>, Box<dyn std::error::Error>> {
         // Bind this endpoint to a UDP socket on the given client address.
         let endpoint = Endpoint::client(connection_info.local_addr).unwrap();
 
