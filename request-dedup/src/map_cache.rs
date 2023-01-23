@@ -8,7 +8,44 @@ use color_eyre::Report;
 use dashmap::DashMap;
 use tokio::sync::broadcast;
 
+use crate::FutureCache;
+
 use super::BoxFut;
+
+pub struct MapCacheFn<'a, K, V>
+where
+    K: Clone + Send + Sync + Eq + Hash + 'static,
+    V: Clone + Send + Sync + 'static,
+{
+    inner: MapCache<K, V>,
+    f: Arc<dyn Fn(K) -> BoxFut<'a, Result<V, Arc<Report>>> + Send + Sync + 'a>,
+}
+
+impl<'a, K, V> FutureCache<'a, K, V> for MapCacheFn<'a, K, V>
+where
+    K: Clone + Send + Sync + Eq + Hash + 'static,
+    V: Clone + Send + Sync + 'static,
+{
+    fn from_future_source<F, E>(source: F) -> Self
+    where
+        F: Fn(K) -> BoxFut<'a, Result<V, E>> + Send + Sync + 'a,
+        E: std::error::Error + Sync + Send + 'static {
+        Self {
+            inner: MapCache::new(),
+            f: Arc::new(move |key| {
+                let fut = source(key);
+                Box::pin(async move {
+                    let res = fut.await.map_err(|e| Arc::new(e.into()));
+                    res
+                })
+            }),
+        }
+    }
+
+    fn request(&self, key: K) -> crate::PotentialResult<V> {
+        self.inner.get_cached(key, self.f.clone()).await
+    }
+}
 
 #[derive(Clone)]
 pub struct MapCache<Key, Value>

@@ -29,7 +29,9 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
+use fds_toolbox_request_dedup::map_cache::MapCache;
 use iced::event::Status;
+use iced::futures::future::Map;
 use iced::widget::{Column, Container, Text};
 use iced::{
     executor, keyboard, subscription, Application, Command, Element, Event, Length, Settings,
@@ -91,7 +93,7 @@ enum TabIdx {
 }
 
 impl TabIdx {
-    fn _to_absolute(self, active: usize, len: usize) -> usize {
+    fn to_absolute_core(self, active: usize, len: usize) -> usize {
         match self {
             TabIdx::Absolute(idx) => idx,
             TabIdx::RelativeToActive(offset) => {
@@ -101,7 +103,7 @@ impl TabIdx {
     }
 
     pub fn to_absolute(self, tbx: &FdsToolbox) -> usize {
-        self._to_absolute(tbx.active_tab, tbx.tabs.len())
+        self.to_absolute_core(tbx.active_tab, tbx.tabs.len())
     }
 }
 
@@ -189,10 +191,7 @@ impl Application for FdsToolbox {
     type Theme = Theme;
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut this = FdsToolbox {
-            active_tab: 0,
-            tabs: vec![],
-            simulations: Simulations::new(vec![Simulation {
+        let simulations = Simulations::new(vec![Simulation {
                 // TODO: Prompt for files, this is all for testing
                 devc: Devices::from_reader(
                     include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
@@ -202,7 +201,14 @@ impl Application for FdsToolbox {
                     include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
                 )
                 .unwrap()],
-            }]),
+            }]);
+
+        let simulations = MapCache::new();
+
+        let mut this = FdsToolbox {
+            active_tab: 0,
+            tabs: vec![],
+            simulations,
             keyboard_info: KeyboardInfo::default(),
         };
         Self::open_some_tabs(&mut this);
