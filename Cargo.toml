@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "core",
-    "request-dedup",
+    "lazy-data",
     "ui",
 ]
 

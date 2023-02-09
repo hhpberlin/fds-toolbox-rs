@@ -29,7 +29,7 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
-use fds_toolbox_request_dedup::map_cache::MapCache;
+use fds_toolbox_lazy_data::moka::sync::Cache as MokaCache;
 use iced::event::Status;
 use iced::futures::future::Map;
 use iced::widget::{Column, Container, Text};
@@ -69,6 +69,7 @@ struct FdsToolbox {
     keyboard_info: KeyboardInfo,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
+    moka_cache: MokaStore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

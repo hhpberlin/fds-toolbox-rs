@@ -6,10 +6,9 @@ edition = "2021"
 [dependencies]
 iced = { version = "0.7", features = ["canvas", "tokio"] }
 # Track git until they bump the version number
-iced_aw = { version = "0.3", git = "https://github.com/iced-rs/iced_aw", branch = "main", default-features = false, features = ["tabs", "tab_bar"] }
+iced_aw = { version = "0.3", default-features = false, features = ["tabs", "tab_bar"] }
 
 plotters = "0.3"
-# TODO: Try to make PR to merge this into the official crate
 plotters-iced = "0.6"
 
 # makima_spline = "1.1"
@@ -18,4 +17,4 @@ tracing = "0.1"
 ndarray = "0.15"
 
 fds-toolbox-core = { path = "../core" }
-fds-toolbox-request-dedup = { path = "../request-dedup" }
+fds-toolbox-lazy-data = { path = "../lazy-data" }

@@ -1,10 +1,10 @@
-use crate::sync::RwLock;
+use tokio::sync::RwLock;
 use std::{collections::HashMap, hash::Hash};
 
 use async_trait::async_trait;
 use thiserror::Error;
 
-use crate::lazy_data::remote::Remote;
+use crate::remote::Remote;
 
 pub struct TestRemote<Key: Eq + Hash + Clone + Send> {
     data: HashMap<Key, Vec<u8>>,

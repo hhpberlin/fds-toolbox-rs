@@ -25,7 +25,7 @@
 pub mod common;
 pub mod formats;
 pub(crate) mod geom;
-pub(crate) mod lazy_data;
+// pub(crate) mod lazy_data;
 
 pub(crate) mod sync;
 

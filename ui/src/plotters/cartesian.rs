@@ -23,7 +23,7 @@ pub type Cartesian2df32 = Cartesian2d<RangedCoordf32, RangedCoordf32>;
 pub enum Message {
     Zoom { center: Position, factor: f32 },
     Hover { position: Point },
-    Mouse { down: bool },
+    MousePress { down: bool },
     Invalidate,
 }
 
@@ -147,14 +147,14 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
         };
 
         let message = match event {
-            mouse::Event::CursorEntered => Some(Message::Mouse { down: false }),
-            mouse::Event::CursorLeft => Some(Message::Mouse { down: false }),
+            mouse::Event::CursorEntered => Some(Message::MousePress { down: false }),
+            mouse::Event::CursorLeft => Some(Message::MousePress { down: false }),
             mouse::Event::CursorMoved { position: _ } => Some(Message::Hover { position: p }),
             mouse::Event::ButtonPressed(iced::mouse::Button::Left) => {
-                Some(Message::Mouse { down: true })
+                Some(Message::MousePress { down: true })
             }
             mouse::Event::ButtonReleased(iced::mouse::Button::Left) => {
-                Some(Message::Mouse { down: false })
+                Some(Message::MousePress { down: false })
             }
             mouse::Event::ButtonPressed(_) => None,
             mouse::Event::ButtonReleased(_) => None,
@@ -241,7 +241,7 @@ impl State {
                     }
                 }
             }
-            Message::Mouse { down } => {
+            Message::MousePress { down } => {
                 self.mouse_down = down;
             }
             Message::Invalidate => {
