@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
-use fds_toolbox_core::{formats::{simulation::{TimeSeriesIdx, SliceSeriesIdx}, simulations::SimulationIdx}, common::series::{TimeSeries0, TimeSeries2}};
+use fds_toolbox_core::{
+    common::series::{TimeSeries0, TimeSeries2},
+    formats::{
+        simulation::{SliceSeriesIdx, TimeSeriesIdx},
+        simulations::SimulationIdx,
+    },
+};
 use moka::sync::Cache;
 
 #[derive(Debug)]
@@ -18,6 +24,4 @@ impl MokaStore {
             // s3d: Cache::new(max_capacity),
         }
     }
-
-
 }

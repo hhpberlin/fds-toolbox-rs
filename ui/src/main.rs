@@ -31,7 +31,7 @@ use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use fds_toolbox_lazy_data::moka::MokaStore;
 use iced::event::Status;
-use iced::futures::future::Map;
+
 use iced::widget::{Column, Container, Text};
 use iced::{
     executor, keyboard, subscription, Application, Command, Element, Event, Length, Settings,

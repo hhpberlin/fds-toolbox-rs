@@ -1,5 +1,5 @@
-use tokio::sync::RwLock;
 use std::{collections::HashMap, hash::Hash};
+use tokio::sync::RwLock;
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -37,6 +37,7 @@ async fn basic_retrieval() {
     let remote = simple_remote();
     assert_eq!(remote.get_async(&"key1").await, Ok(vec![1, 2, 3]));
     assert_eq!(remote.get_async(&"key2").await, Ok(vec![4, 5, 6]));
+    assert_eq!(remote.get_request_count().await, 2);
 }
 
 #[tokio::test]

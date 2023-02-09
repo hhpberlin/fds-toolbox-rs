@@ -233,7 +233,7 @@ mod tests {
 
         match block {
             Err(ReadBlockErr::SizeOutOfRange(12, Bound::Included(16), Bound::Included(16))) => (),
-            x => panic!("Unexpected return: {:?}", x),
+            x => panic!("Unexpected return: {x:?}"),
         }
     }
 
@@ -246,7 +246,7 @@ mod tests {
 
         match block {
             Err(ReadBlockErr::MismatchedPostfixLength(12, 16)) => (),
-            x => panic!("Unexpected return: {:?}", x),
+            x => panic!("Unexpected return: {x:?}"),
         }
     }
 
@@ -267,7 +267,7 @@ mod tests {
 
         match res {
             Err(ReadValErr::WrongVal(0x12345679, 0x12345678)) => (),
-            x => panic!("Unexpected return: {:?}", x),
+            x => panic!("Unexpected return: {x:?}"),
         }
     }
 }
