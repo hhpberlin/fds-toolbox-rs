@@ -29,7 +29,7 @@ use fds_toolbox_core::formats::csv::devc::Devices;
 use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
-use fds_toolbox_lazy_data::moka::sync::Cache as MokaCache;
+use fds_toolbox_lazy_data::moka::MokaStore;
 use iced::event::Status;
 use iced::futures::future::Map;
 use iced::widget::{Column, Container, Text};
@@ -69,7 +69,7 @@ struct FdsToolbox {
     keyboard_info: KeyboardInfo,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
-    moka_cache: MokaStore,
+    moka_store: MokaStore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -193,23 +193,24 @@ impl Application for FdsToolbox {
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let simulations = Simulations::new(vec![Simulation {
-                // TODO: Prompt for files, this is all for testing
-                devc: Devices::from_reader(
-                    include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
-                )
-                .unwrap(),
-                slcf: vec![Slice::from_reader(
-                    include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
-                )
-                .unwrap()],
-            }]);
+            // TODO: Prompt for files, this is all for testing
+            devc: Devices::from_reader(
+                include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
+            )
+            .unwrap(),
+            slcf: vec![Slice::from_reader(
+                include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
+            )
+            .unwrap()],
+        }]);
 
-        let simulations = MapCache::new();
+        let moka_store = MokaStore::new(10_000); // TODO: Read this capacity from a config file?
 
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
             simulations,
+            moka_store,
             keyboard_info: KeyboardInfo::default(),
         };
         Self::open_some_tabs(&mut this);
