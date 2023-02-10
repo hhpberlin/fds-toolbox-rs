@@ -24,4 +24,8 @@ impl MokaStore {
             // s3d: Cache::new(max_capacity),
         }
     }
+    
+    pub fn get(&self) {
+        //self.s0d.get_with(key, init)
+    }
 }
