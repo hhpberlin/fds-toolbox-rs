@@ -16,7 +16,7 @@ struct Simulation {
     input_file: String,
     revision: String,
     chid: String,
-    solid_ht3d: f64, // TODO: Float or int?
+    solid_ht3d: i32, // TODO: Is this the correct type?
 }
 
 #[derive(Debug, Error)]
@@ -27,13 +27,26 @@ enum Error<'a> {
     MissingLine(Span<'a>),
     #[error("Failed to parse invalid number: {0}")]
     InvalidInt(Span<'a>, ParseIntError),
+    // TODO: Using enum worth it?
+    #[error("Missing section: {0}")]
+    MissingSection(&'static str),
 }
 
-fn parse<'a, T: FromStr<Err = SourceErr>, SourceErr: Into<FnInErr>, FnInErr, FnOutErr: Into<TargetErr>, TargetErr>(
+fn parse<
+    'a,
+    T: FromStr<Err = SourceErr>,
+    SourceErr: Into<FnInErr>,
+    FnInErr,
+    FnOutErr: Into<TargetErr>,
+    TargetErr,
+>(
     i: Span<'a>,
     f: impl FnOnce(Span<'a>, FnInErr) -> TargetErr,
 ) -> Result<T, TargetErr> {
-    i.fragment().parse().map_err(|x: SourceErr| f(i, x.into()).into())
+    i.fragment()
+        .trim()
+        .parse()
+        .map_err(|x: SourceErr| f(i, x.into()).into())
 }
 
 impl Simulation {
@@ -55,10 +68,8 @@ impl Simulation {
             }
 
             let next = || {
-                lines
-                    .next()
-                    .ok_or_else(|| Error::MissingLine(line))
-                    .map(|x| x. x.trim())
+                lines.next().ok_or_else(|| Error::MissingLine(line))
+                // .map(|x| x.trim())
             };
 
             match *line.fragment() {
@@ -68,9 +79,7 @@ impl Simulation {
                 "INPF" => input_file = Some(next()?),
                 "REVISION" => revision = Some(next()?),
                 "CHID" => chid = Some(next()?),
-                "SOLID_HT3D" => {
-                    solid_ht3d = Some(parse(next()?, Error::InvalidInt)?)
-                }
+                "SOLID_HT3D" => solid_ht3d = Some(parse(next()?, Error::InvalidInt)?),
                 "CSVF" => {
                     // TODO
                     let name = next()?;
@@ -78,11 +87,20 @@ impl Simulation {
                     csv_files.insert(name, file);
                 }
                 "NMESHES" => {
-                    num_meshes = Some(next()?.parse().map_err(|x| Error::InvalidInt(x))?)
+                    num_meshes = Some(parse(next()?, Error::InvalidInt)?);
                 }
             }
         }
 
-        Ok(())
+        Ok(Simulation {
+            title: title.ok_or(Error::MissingSection("TITLE"))?.to_string(),
+            fds_version: fds_version.ok_or(Error::MissingSection("FDSVERSION"))?.to_string(),
+            end_version: end_file.ok_or(Error::MissingSection("ENDF"))?.to_string(),
+            input_file: input_file.ok_or(Error::MissingSection("INPF"))?.to_string(),
+            revision: revision.ok_or(Error::MissingSection("REVISION"))?.to_string(),
+            chid: chid.ok_or(Error::MissingSection("CHID"))?.to_string(),
+            solid_ht3d: solid_ht3d.ok_or(Error::MissingSection("SOLID_HT3D"))?,
+
+        })
     }
 }
