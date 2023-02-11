@@ -1,9 +1,11 @@
 //pub type Input<'a> = &'a [u8];
 //pub type Result<'a, T> = nom::IResult<Input<'a>, T, ()>;
 
-use std::{collections::HashMap, num::{ParseIntError, ParseFloatError}, str::FromStr};
+use std::{
+    collections::HashMap,
+    num::{ParseFloatError, ParseIntError},
+};
 
-use nom::{IResult, sequence::{tuple, Tuple}, bytes::complete::take_while, combinator::{map_res, map}};
 use nom_locate::LocatedSpan;
 use thiserror::Error;
 
@@ -33,19 +35,10 @@ enum Error<'a> {
     // TODO: Using enum worth it?
     #[error("Missing section: {0}")]
     MissingSection(&'static str),
-    // // TODO
-    // #[error("Nom error: {0}")]
-    // NomError(#[from] nom::Err<Span<'static>>),
     #[error("Wrong number of values {1}, expected {2}: {0}")]
     WrongNumberOfValues(Span<'a>, usize, usize),
 }
 
-// fn parse<'a, T: FromStr<Err = SourceErr>, SourceErr, TargetErr>(
-//     i: Span<'a>,
-//     f: impl FnOnce(Span<'a>, SourceErr) -> TargetErr,
-// ) -> Result<T, TargetErr> {
-//     i.fragment().trim().parse().map_err(|x| f(i, x))
-// }
 
 macro_rules! parse {
     ($i:expr => $t:ty | $err:expr) => {
@@ -67,15 +60,6 @@ macro_rules! parse {
     ($i:expr => str) => { $i.fragment().trim_start() };
     ($i:expr => $t:ident) => { compile_error!(concat!("Unknown type: ", stringify!($t))) };
 }
-
-
-// macro_rules! assign_all {
-//     ($i:expr, $($t:expr)*) => {
-//         $(
-//             $t = $i();
-//         )*
-//     };
-// }
 
 impl Simulation {
     pub fn parse<'a>(lines: impl Iterator<Item = Span<'a>>) -> Result<Self, Error<'a>> {
@@ -142,19 +126,3 @@ impl Simulation {
         })
     }
 }
-
-
-// fn parse_one<T: FromStr>(i: Span<'_>) -> IResult<Span<'_>, T> {
-//     let parse = map_res(not_ws, |s| {
-//         s.fragment().parse().map_err(|e| e.into())
-//     });
-//     map(tuple((ws, parse, ws)), |(_, v, _)| v)(i)
-// }
-
-// fn parse_non_ws<T: FromStr>(i: Span<'_>) -> IResult<Span<'_>, T> {
-//     map_res(not_ws, |s: Span<'_>| s.fragment().parse())(i)
-// }
-
-fn not_ws(i: Span<'_>) -> IResult<Span<'_>, Span<'_>> { take_while(|c: char| !c.is_whitespace())(i) }
-
-fn ws(i: Span<'_>) -> IResult<Span<'_>, Span<'_>> { take_while(|c: char| c.is_whitespace())(i) }
