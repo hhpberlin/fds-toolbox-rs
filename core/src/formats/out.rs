@@ -1,7 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
 use uom::si::f32::{Power, Time};
 
-use crate::geom::Point3;
+use crate::geom::Vec3;
 
 pub struct FdsOut {
     job_id: String,
@@ -44,7 +44,7 @@ pub struct MeshStep {
 }
 
 pub struct PositionedValue<T> {
-    pos: Point3<u32>,
+    pos: Vec3<u32>,
     value: T,
 }
 

@@ -1,7 +1,7 @@
 use crate::common::series::TimeSeries2;
 use crate::formats::read_ext::{ReadExt, U32Ext};
 use crate::formats::smoke::parse_err::ParseErr;
-use crate::geom::{Bounds3I, Dimension3D, Point2, Point2U, Point3I};
+use crate::geom::{Bounds3I, Dim3D, Vec2, Vec2U, Vec3I};
 use byteorder::ReadBytesExt;
 use ndarray::{Array1, Array2, Array3, Axis};
 use std::io::Read;
@@ -11,7 +11,7 @@ use super::slice_frame::SliceFrame;
 #[derive(Debug)]
 pub struct SliceInfo {
     pub bounds: Bounds3I,
-    pub flat_dim: Dimension3D,
+    pub flat_dim: Dim3D,
     pub quantity: String,
     pub short_name: String,
     pub units: String,
@@ -24,19 +24,19 @@ pub struct Slice {
 }
 
 impl SliceInfo {
-    pub fn dim_i(&self) -> Dimension3D {
-        if self.flat_dim == Dimension3D::X {
-            Dimension3D::Y
+    pub fn dim_i(&self) -> Dim3D {
+        if self.flat_dim == Dim3D::X {
+            Dim3D::Y
         } else {
-            Dimension3D::X
+            Dim3D::X
         }
     }
 
-    pub fn dim_j(&self) -> Dimension3D {
-        if self.flat_dim == Dimension3D::Z {
-            Dimension3D::Y
+    pub fn dim_j(&self) -> Dim3D {
+        if self.flat_dim == Dim3D::Z {
+            Dim3D::Y
         } else {
-            Dimension3D::Z
+            Dim3D::Z
         }
     }
 
@@ -52,8 +52,8 @@ impl SliceInfo {
         self.bounds.area()[self.dim_j()]
     }
 
-    pub fn area(&self) -> Point2U {
-        Point2U::new(self.dim_i_len(), self.dim_j_len())
+    pub fn area(&self) -> Vec2U {
+        Vec2U::new(self.dim_i_len(), self.dim_j_len())
     }
 }
 
@@ -84,9 +84,9 @@ impl Slice {
                 rdr.read_i32::<byteorder::LittleEndian>()?,
             ];
 
-            let min = Point3I::new(vals[0], vals[2], vals[4]);
-            let max = Point3I::new(vals[1], vals[3], vals[5]);
-            let max = max + Point3I::ONE;
+            let min = Vec3I::new(vals[0], vals[2], vals[4]);
+            let max = Vec3I::new(vals[1], vals[3], vals[5]);
+            let max = max + Vec3I::ONE;
 
             Bounds3I::new(min, max)
         };
@@ -141,7 +141,7 @@ impl TimeSeries2 {
     fn from_frames(info: &SliceInfo, frames: Vec<SliceFrame>) -> Result<Self, ParseErr> {
         let area = info.area();
         // TODO: Store usize directly?
-        let area = Point2::new(area.x.try_into_usize()?, area.y.try_into_usize()?);
+        let area = Vec2::new(area.x.try_into_usize()?, area.y.try_into_usize()?);
 
         let mut time_arr = Array1::zeros(frames.len());
         let mut values_arr = Array3::zeros((frames.len(), area.x, area.y));
@@ -177,9 +177,9 @@ mod test {
         assert_eq!(slice.info.short_name, "OD_C0.9H0.1");
         assert_eq!(slice.info.units, "1/m");
 
-        assert_eq!(slice.info.bounds.min, Point3I::new(0, 0, 43));
-        assert_eq!(slice.info.bounds.max, Point3I::new(34, 34, 44));
+        assert_eq!(slice.info.bounds.min, Vec3I::new(0, 0, 43));
+        assert_eq!(slice.info.bounds.max, Vec3I::new(34, 34, 44));
 
-        assert_eq!(slice.info.flat_dim, Dimension3D::Z);
+        assert_eq!(slice.info.flat_dim, Dim3D::Z);
     }
 }
