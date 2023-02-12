@@ -17,10 +17,12 @@ tracing = "0.1"
 
 nom = "7.1"
 nom_locate = "4.1"
+chumsky = "0.9"
+ariadne = { version = "0.1" }
 
 chrono = "0.4"
 derive_more = "*"
-uom = { version = "0.33", features = ["use_serde"] }
+uom = { version = "0.34", features = ["use_serde"] }
 csv = "1.1"
 ndarray = { version = "0.15", features = ["serde"] }
 byteorder = "1.4"

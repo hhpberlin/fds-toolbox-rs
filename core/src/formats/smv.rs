@@ -9,6 +9,8 @@ use std::{
 use nom_locate::LocatedSpan;
 use thiserror::Error;
 
+use crate::geom::Vec3F;
+
 type Span<'a> = LocatedSpan<&'a str>;
 
 #[derive(Debug)]
@@ -72,11 +74,13 @@ macro_rules! parse {
     ($i:expr ; $sp:expr => i32) => { parse!($i ; $sp => i32 else Error::InvalidInt) };
     ($i:expr ; $sp:expr => u32) => { parse!($i ; $sp => u32 else Error::InvalidInt) };
     ($i:expr ; $sp:expr => str) => { $i.fragment().trim_start() };
-    ($i:expr ; $sp:expr => Vec3F) => { parse!($i ; $sp => (f32, f32, f32)).into::<Vec3F>() };
+    ($i:expr ; $sp:expr => Vec3F) => { Vec3F::from(parse!($i ; $sp => (f32, f32, f32))) };
     ($i:expr ; $sp:expr => $t:ident) => { compile_error!(concat!("Unknown type: ", stringify!($t))) };
     ($sp:expr => $t:ident) => { parse!($sp.fragment() ; $sp => $t) };
     ($sp:expr => ( $($t:ident),+ )) => { parse!($sp.fragment() ; $sp => ( $($t),+ )) };
 }
+
+
 
 // fn split_whitespace_span(i: Span<'_>) -> impl Iterator<Item = Span<'_>> {
 //     // i.fragment().split_whitespace().map(move |x| i.(x))
