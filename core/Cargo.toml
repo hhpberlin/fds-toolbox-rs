@@ -16,8 +16,6 @@ thiserror = "1.0"
 tracing = "0.1"
 
 nom = "7.1"
-nom_locate = "4.1"
-chumsky = "0.9"
 ariadne = { version = "0.1" }
 
 chrono = "0.4"

@@ -32,11 +32,8 @@ use nom::{
     multi::count,
     number::complete::float,
     sequence::tuple,
-    IResult, Parser, error::{VerboseError, convert_error},
+    IResult, Parser,
 };
-use nom_locate::LocatedSpan;
-
-type Span<'a> = LocatedSpan<&'a str>;
 
 struct Stuff {
     hrrpuvcut: Vec<f32>,
@@ -48,18 +45,18 @@ struct Ramp {
     values: Vec<(f32, f32)>,
 }
 
-fn nl(i: Span<'_>) -> IResult<Span<'_>, ()> {
+fn nl(i: &str) -> IResult<&str, ()> {
     tuple((line_ending, space0)).map(|(_, _)| ()).parse(i)
 }
 
 // Parse the file using nom combinators
-fn parse_all(i: Span<'_>) -> IResult<Span<'_>, Stuff> {
+fn parse_all(i: &str) -> IResult<&str, Stuff> {
     let (i, hrrpuvcut) = parse_hrrpuvcut(i)?;
     let (i, ramp) = parse_ramp(i)?;
     Ok((i, Stuff { hrrpuvcut, ramp }))
 }
 
-fn parse_hrrpuvcut(i: Span<'_>) -> IResult<Span<'_>, Vec<f32>> {
+fn parse_hrrpuvcut(i: &str) -> IResult<&str, Vec<f32>> {
     let (i, _) = tag("HRRPUVCUT")(i)?;
     let (i, _) = nl(i)?;
     let (i, num) = int(i)?;
@@ -69,14 +66,14 @@ fn parse_hrrpuvcut(i: Span<'_>) -> IResult<Span<'_>, Vec<f32>> {
     Ok((i, values))
 }
 
-fn int<I: FromStr>(i: Span<'_>) -> IResult<Span<'_>, I> {
+fn int<I: FromStr>(i: &str) -> IResult<&str, I> {
     map_res(
         take_while1(|c: char| c.is_ascii_digit() || "-+".contains(c)),
-        |x: Span<'_>| x.fragment().parse::<I>(),
+        |x: &str| x.parse::<I>(),
     )(i)
 }
 
-fn parse_ramp(i: Span<'_>) -> IResult<Span<'_>, Vec<Ramp>> {
+fn parse_ramp(i: &str) -> IResult<&str, Vec<Ramp>> {
     let (i, _) = tag("RAMP")(i)?;
     let (i, _) = nl(i)?;
     let (i, num) = int(i)?;
@@ -85,7 +82,7 @@ fn parse_ramp(i: Span<'_>) -> IResult<Span<'_>, Vec<Ramp>> {
     Ok((i, ramps))
 }
 
-fn parse_ramp_block(i: Span<'_>) -> IResult<Span<'_>, Ramp> {
+fn parse_ramp_block(i: &str) -> IResult<&str, Ramp> {
     let (i, (name, _, _)) = tuple((tag("RAMP:"), space1, not_line_ending))(i)?;
     let (i, _) = nl(i)?;
     let (i, num) = int(i)?;

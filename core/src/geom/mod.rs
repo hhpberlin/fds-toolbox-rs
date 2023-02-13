@@ -99,6 +99,7 @@ pub struct Bounds3<T> {
 }
 
 pub type Bounds3I = Bounds3<i32>;
+pub type Bounds3F = Bounds3<f32>;
 
 impl Bounds3I {
     pub fn area(&self) -> Vec3U {
