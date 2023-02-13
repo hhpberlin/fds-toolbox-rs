@@ -4,18 +4,17 @@
 use std::{
     collections::HashMap,
     num::{ParseFloatError, ParseIntError},
-    str::FromStr,
 };
 
 use nom::{
-    bytes::complete::{tag, take_while1, is_not},
+    bytes::complete::{is_not, tag},
     combinator::{map, opt},
     sequence::tuple,
-    IResult, Parser, branch::alt,
+    IResult, Parser,
 };
 
 use super::util::{from_str_ws_preceded, non_ws, ws};
-use crate::geom::{Bounds3F, Bounds3I, Vec3F, Vec3I};
+use crate::geom::{Bounds3F, Vec3F, Vec3I};
 use nom::sequence::preceded;
 
 #[derive(Debug)]
@@ -174,7 +173,9 @@ impl Simulation {
 
             match line {
                 "TITLE" => title = Some(parse!(next()? => full_line_string)?),
-                "VERSION" | "FDSVERSION" => fds_version = Some(parse!(next()? => full_line_string)?),
+                "VERSION" | "FDSVERSION" => {
+                    fds_version = Some(parse!(next()? => full_line_string)?)
+                }
                 "ENDF" => end_file = Some(parse!(next()? => full_line_string)?),
                 "INPF" => input_file = Some(parse!(next()? => full_line_string)?),
                 "REVISION" => revision = Some(parse!(next()? => full_line_string)?),
@@ -195,46 +196,50 @@ impl Simulation {
                 "SURFDEF" => surfdef = Some(parse!(next()? => full_line_string)),
                 "SURFACE" => {
                     // TODO
-                    let name = parse!(next()? => full_line_string)?;
-                    let (a, b) = parse!(next()? => f32 f32)?;
-                    let (c, bounds) = parse!(next()? => f32 bounds3f)?;
+                    let _name = parse!(next()? => full_line_string)?;
+                    let (_a, _b) = parse!(next()? => f32 f32)?;
+                    let (_c, _bounds) = parse!(next()? => f32 bounds3f)?;
                     let _ = parse!(next()? => "null" ws)?;
                     todo!();
                 }
                 "MATERIAL" => {
                     // TODO
-                    let name = parse!(next()? => full_line_string)?;
-                    let rgb = parse!(next()? => vec3f)?;
+                    let _name = parse!(next()? => full_line_string)?;
+                    let _rgb = parse!(next()? => vec3f)?;
                     todo!();
                 }
                 "OUTLINE" => outlines = Some(repeat(next, |next| parse!(next()? => bounds3f))?),
                 "TOFFSET" => t_offset = Some(parse!(next()? => vec3f)?),
-                "RAMP" => ramps = Some(repeat(next, |next| {
-                    // TODO
-                    let (_, name) = parse!(next()? => "RAMP:" full_line_string)?;
-                    // TODO: next is &mut &mut here, remove double indirection
-                    let vals = repeat(next, |next| parse!(next()? => f32 f32))?;
-                    Ok((name, vals))
-                })?),
+                "RAMP" => {
+                    ramps = Some(repeat(next, |next| {
+                        // TODO
+                        let (_, name) = parse!(next()? => "RAMP:" full_line_string)?;
+                        // TODO: next is &mut &mut here, remove double indirection
+                        let vals = repeat(next, |next| parse!(next()? => f32 f32))?;
+                        Ok((name, vals))
+                    })?)
+                }
                 "PROP" => {
                     todo!();
                 }
                 "DEVICE" => {
                     let name = map(is_not("%"), |x: &str| x.trim().to_string());
-                    let (name, _, unit) = parse!(next()? => name "%" full_line_string)?;
+                    let (_name, _, _unit) = parse!(next()? => name "%" full_line_string)?;
 
                     // TODO: This is a bit ugly
                     let close = map(tuple((tag("%"), ws, tag("null"))), |_| ());
                     let second_bounds = map(tuple((tag("#"), bounds3f)), |(_, x)| x);
                     let second_bounds = map(tuple((ws, opt(second_bounds), close)), |(_, x, _)| x);
 
-                    let (bounds, a, b, second_bounds) = parse!(next()? => bounds3f f32 f32 second_bounds)?; 
+                    let (_bounds, _a, _b, _second_bounds) =
+                        parse!(next()? => bounds3f f32 f32 second_bounds)?;
                     todo!();
                 }
                 "OFFSET" => offset = Some(parse!(next()? => vec3f)?),
                 line if line.starts_with("GRID") => {
-                    let mesh_name = parse!(line => "GRID" ws full_line_string)?;
-                    let (bounds, a) = parse!(next()? => bounds3f i32)?;
+                    let _mesh_name = parse!(line => "GRID" ws full_line_string)?;
+                    let (_bounds, _a) = parse!(next()? => bounds3f i32)?;
+                    todo!();
                 }
                 _ => return Err(err(line, ErrorKind::UnknownSection)),
             }

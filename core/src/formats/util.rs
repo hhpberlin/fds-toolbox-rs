@@ -3,8 +3,7 @@ use std::str::FromStr;
 use nom::{
     bytes::complete::take_while1,
     combinator::map_res,
-    error::ParseError,
-    sequence::{tuple, Tuple, preceded}, character::complete::space1,
+    sequence::{preceded, Tuple},
 };
 
 // These handle non-ascci whitespace as well, as opposed to the nom whitespace parsers
@@ -23,4 +22,3 @@ pub fn from_str<T: FromStr>(i: &str) -> nom::IResult<&str, T> {
 pub fn from_str_ws_preceded<T: FromStr>(i: &str) -> nom::IResult<&str, T> {
     preceded(ws, from_str)(i)
 }
-
