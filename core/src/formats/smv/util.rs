@@ -122,3 +122,25 @@ pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<&'a str, Error<'a>>>(
 ) -> Result<Vec<T>, Error<'a>> {
     (0..n).map(|i| parse(&mut src, i)).collect()
 }
+
+/// Checks if the current line matches the given tag or returns a fitting error
+///
+/// # Arguments
+///
+/// * `header` - The header of the current section, used for error messages
+/// * `next` - The next function to get the next line
+/// * `tag` - The tag to match
+pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
+    header: &'a str,
+    mut next: Src,
+    tag: &'static str,
+) -> Result<(), Error<'a>> {
+    let err = Error::MissingSubSection {
+        parent: header,
+        name: tag,
+    };
+    match next() {
+        Ok(next_line) => match_tag(next_line, tag, err),
+        Err(_) => Err(err),
+    }
+}
