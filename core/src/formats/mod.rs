@@ -5,5 +5,4 @@ pub mod simulation;
 pub mod simulations;
 pub mod smoke;
 pub mod smv;
-mod smv2;
 mod util;
