@@ -5,11 +5,32 @@ use std::ops::Index;
 
 use derive_more::{Add, Constructor, Mul, Sub, Sum};
 
+#[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Dim3D {
-    X,
-    Y,
-    Z,
+    X = 0,
+    Y = 1,
+    Z = 2,
+}
+
+pub struct Dim3DSigned {
+    pub is_positive: bool,
+    pub dim: Dim3D,
+}
+
+impl Dim3DSigned {
+    pub fn new(is_positive: bool, dim: Dim3D) -> Self {
+        Self { is_positive, dim }
+    }
+
+    pub fn iter() -> impl Iterator<Item = Dim3DSigned> {
+        [Dim3DSigned::new(true, Dim3D::X), Dim3DSigned::new(false, Dim3D::X), Dim3DSigned::new(true, Dim3D::Y), Dim3DSigned::new(false, Dim3D::Y), Dim3DSigned::new(true, Dim3D::Z), Dim3DSigned::new(false, Dim3D::Z)].into_iter()
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        // TODO: Is this correct?
+        (self.dim as u8) + if self.is_positive { 0 } else { 3 }
+    }
 }
 
 impl Dim3D {
@@ -28,9 +49,23 @@ pub struct Vec2<T> {
 pub type Vec2I = Vec2<i32>;
 pub type Vec2U = Vec2<u32>;
 
+pub type Vec2F = Vec2<f32>;
+
 impl Vec2I {
     pub const ZERO: Vec2I = Vec2I { x: 0, y: 0 };
     pub const ONE: Vec2I = Vec2I { x: 1, y: 1 };
+}
+
+impl<T> From<(T, T)> for Vec2<T> {
+    fn from((x, y): (T, T)) -> Self {
+        Vec2 { x, y }
+    }
+}
+
+impl<T> From<Vec2<T>> for (T, T) {
+    fn from(v: Vec2<T>) -> Self {
+        (v.x, v.y)
+    }
 }
 
 #[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
@@ -117,4 +152,15 @@ impl Bounds3I {
             (min.y..=max.y).flat_map(move |y| (min.z..=max.z).map(move |z| Vec3::new(x, y, z)))
         })
     }
+}
+
+// Not using Bounds3 so bounds for arithmetic operations can be applied to Bounds3 later, without restricting this ones type arguments
+#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
+pub struct Surfaces3<T> {
+    pub neg_x: T,
+    pub pos_x: T,
+    pub neg_y: T,
+    pub pos_y: T,
+    pub neg_z: T,
+    pub pos_z: T,
 }

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use nom::{
     bytes::complete::take_while1,
     combinator::map_res,
-    sequence::{preceded, Tuple},
+    sequence::preceded,
 };
 
 // These handle non-ascci whitespace as well, as opposed to the nom whitespace parsers
