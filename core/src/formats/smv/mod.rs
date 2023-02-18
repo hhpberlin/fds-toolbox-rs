@@ -11,6 +11,7 @@ use std::{
 };
 
 use nom::{
+    branch::alt,
     bytes::complete::{is_not, tag},
     combinator::{map, opt, success},
     sequence::tuple,
@@ -35,6 +36,85 @@ struct Simulation {
     solid_ht3d: i32, // TODO: Is this the correct type?
 }
 
+#[derive(Debug)]
+struct Surface {
+    name: String,
+    // TODO: What is this? Better name
+    tmpm: f32,
+    material_emissivity: f32,
+    surface_type: i32,
+    texture_width: f32,
+    texture_height: f32,
+    rgb: Vec3F,
+    transparency: f32,
+    texture: Option<String>,
+}
+
+#[derive(Debug)]
+struct Material {
+    name: String,
+    rgb: Vec3F,
+}
+
+#[derive(Debug)]
+struct Device {
+    name: String,
+    unit: String,
+    position: Vec3F,
+    orientation: Vec3F,
+    a: i32,
+    b: i32,
+    bounds: Option<Bounds3F>,
+    activations: Vec<DeviceActivation>,
+}
+
+#[derive(Debug)]
+struct DeviceActivation {
+    // TODO: Find out what these names mean and give them better names
+    a: i32,
+    b: f32,
+    c: i32,
+}
+
+#[derive(Debug)]
+enum Smoke3DType {
+    // TODO: Find out what these names mean and give them better names
+    F,
+    G,
+}
+
+#[derive(Debug)]
+struct Smoke3D {
+    num: i32,
+    file_name: String,
+    quantity: String,
+    name: String,
+    unit: String,
+    smoke_type: Smoke3DType,
+}
+
+#[derive(Debug)]
+struct Slice {
+    mesh_index: i32,
+    file_name: String,
+    quantity: String,
+    name: String,
+    unit: String,
+    cell_centered: bool,
+    // TODO: Find all options
+    slice_type: String,
+    bounds: Bounds3I,
+}
+
+#[derive(Debug)]
+struct Plot3D {
+    num: i32,
+    file_name: String,
+    quantity: String,
+    name: String,
+    unit: String,
+}
+
 enum Error<'a> {
     WrongSyntax { pos: &'a str, err: ErrorKind },
     Nom(nom::Err<nom::error::Error<&'a str>>),
@@ -42,6 +122,7 @@ enum Error<'a> {
     // TODO: Using enum instead of a &str worth it?
     MissingSection { name: &'static str },
     MissingSubSection { parent: &'a str, name: &'static str },
+    InvalidKey { parent: &'a str, key: &'a str },
 }
 
 impl<'a> From<nom::Err<nom::error::Error<&'a str>>> for Error<'a> {
@@ -63,17 +144,12 @@ enum ErrorKind {
     InvalidInt(ParseIntError),
     InvalidFloat(ParseFloatError),
     // TODO: Expected is currently a lower bound, not an exact value because of the way the macro is written
-    WrongNumberOfValues {
-        expected: usize,
-        got: usize,
-    },
+    WrongNumberOfValues { expected: usize, got: usize },
     TrailingCharacters,
     UnknownSection,
-    MismatchedIndex {
-        expected: usize,
-        got: usize,
-    },
+    MismatchedIndex { expected: usize, got: usize },
     Mesh(mesh::ErrorKind),
+    InvalidSection,
 }
 
 fn err(pos: &str, kind: ErrorKind) -> Error {
@@ -102,6 +178,12 @@ impl Simulation {
         let mut default_texture_origin = None;
         let mut ramps = None;
         let mut meshes = Vec::new();
+        let mut surfaces = Vec::new();
+        let mut materials = Vec::new();
+        let mut devices = HashMap::new();
+        let mut smoke3d = Vec::new();
+        let mut slices = Vec::new();
+        let mut pl3d = Vec::new();
 
         let mut lines = lines.filter(|x| !x.trim_start().is_empty());
 
@@ -135,17 +217,30 @@ impl Simulation {
                 "SURFDEF" => surfdef = Some(parse!(next()? => full_line_string)),
                 "SURFACE" => {
                     // TODO
-                    let _name = parse!(next()? => full_line_string)?;
-                    let (_a, _b) = parse!(next()? => f32 f32)?;
-                    let (_c, _bounds) = parse!(next()? => f32 bounds3f)?;
-                    let _ = parse!(next()? => "null" ws)?;
-                    todo!();
+                    let name = parse!(next()? => full_line_string)?;
+                    let (tmpm, material_emissivity) = parse!(next()? => f32 f32)?;
+                    let (surface_type, texture_width, texture_height, rgb, transparency) =
+                        parse!(next()? => i32 f32 f32 vec3f f32)?;
+                    let texture = alt((map(tag("null"), |_| None), map(full_line_string, Some)));
+                    let texture = parse!(next()? => texture)?;
+                    let surface = Surface {
+                        name,
+                        tmpm,
+                        material_emissivity,
+                        surface_type,
+                        texture_width,
+                        texture_height,
+                        rgb,
+                        transparency,
+                        texture,
+                    };
+                    surfaces.push(surface);
                 }
                 "MATERIAL" => {
                     // TODO
-                    let _name = parse!(next()? => full_line_string)?;
-                    let _rgb = parse!(next()? => vec3f)?;
-                    todo!();
+                    let name = parse!(next()? => full_line_string)?;
+                    let rgb = parse!(next()? => vec3f)?;
+                    materials.push(Material { name, rgb });
                 }
                 "OUTLINE" => outlines = Some(repeat(next, |next, _| parse!(next()? => bounds3f))?),
                 // TODO: This is called offset but fdsreader treats it as the default texture origin
@@ -161,28 +256,145 @@ impl Simulation {
                     })?)
                 }
                 "PROP" => {
-                    todo!();
+                    // TODO: This is probably wrong, based on a sample size of two
+                    let _ = parse!(next()? => "null")?;
+                    let _ = parse!(next()? => "1")?;
+                    let _ = parse!(next()? => "sensor")?;
+                    let _ = parse!(next()? => "0")?;
                 }
                 "DEVICE" => {
                     let name = map(is_not("%"), |x: &str| x.trim().to_string());
-                    let (_name, _, _unit) = parse!(next()? => name "%" full_line_string)?;
+                    let unit = map(tuple((tag("%"), full_line_string)), |(_, x)| x);
+                    let (name, unit) = parse!(next()? => name unit)?;
 
                     // TODO: This is a bit ugly
                     let close = map(tuple((tag("%"), ws, tag("null"))), |_| ());
-                    let second_bounds = map(tuple((tag("#"), bounds3f)), |(_, x)| x);
-                    let second_bounds = map(tuple((ws, opt(second_bounds), close)), |(_, x, _)| x);
 
-                    let (_bounds, _a, _b, _second_bounds) =
-                        parse!(next()? => bounds3f f32 f32 second_bounds)?;
-                    todo!();
+                    // TODO: idk what this is
+                    let bounds = map(tuple((tag("#"), bounds3f)), |(_, x)| x);
+                    let bounds = map(tuple((ws, opt(bounds), close)), |(_, x, _)| x);
+
+                    // TODO: what are a and b?
+                    let (position, orientation, a, b, bounds) =
+                        parse!(next()? => vec3f vec3f i32 i32 bounds)?;
+
+                    devices.insert(name.clone(), Device {
+                        name,
+                        unit,
+                        position,
+                        orientation,
+                        a,
+                        b,
+                        bounds,
+                        activations: Vec::new(),
+                    });
                 }
-                line if line.starts_with("GRID") => {
-                    let default_texture_origin =
-                        default_texture_origin.ok_or(Error::MissingSection { name: "TOFFSET" })?;
-                    let mesh = mesh::parse_mesh(line, default_texture_origin, next)?;
-                    meshes.push(mesh);
+                line => {
+                    let Some(line_first) = line.split_whitespace().next() else {
+                        return Err(err(line, ErrorKind::InvalidSection));
+                    };
+
+                    match line_first {
+                        "GRID" => {
+                            let default_texture_origin = default_texture_origin
+                                .ok_or(Error::MissingSection { name: "TOFFSET" })?;
+                            let mesh = mesh::parse_mesh(line, default_texture_origin, next)?;
+                            meshes.push(mesh);
+                        }
+                        "SMOKF3D" | "SMOKG3D" => {
+                            let tag = tag(line_first);
+                            let (_, num) = parse!(line => tag i32)?;
+
+                            let smoke_type = match line_first {
+                                "SMOKF3D" => Smoke3DType::F,
+                                "SMOKG3D" => Smoke3DType::G,
+                                _ => unreachable!(),
+                            };
+
+                            let file_name = parse!(next()? => full_line_string)?;
+                            let quantity = parse!(next()? => full_line_string)?;
+                            let name = parse!(next()? => full_line_string)?;
+                            let unit = parse!(next()? => full_line_string)?;
+
+                            smoke3d.push(Smoke3D {
+                                smoke_type,
+                                num,
+                                file_name,
+                                quantity,
+                                name,
+                                unit,
+                            });
+                        }
+                        "SLCF" | "SLCC" => {
+                            // TODO: a lot, this is completely different from fdsreaders implementation
+                            let tag = tag(line_first);
+                            let (_, mesh_index, _, slice_type, _, bounds) =
+                                parse!(line => tag i32 "#" string "&" bounds3i)?;
+
+                            let cell_centered = match line_first {
+                                "SLCF" => false,
+                                "SLCC" => true,
+                                _ => unreachable!(),
+                            };
+
+                            let file_name = parse!(next()? => full_line_string)?;
+                            let quantity = parse!(next()? => full_line_string)?;
+                            let name = parse!(next()? => full_line_string)?;
+                            let unit = parse!(next()? => full_line_string)?;
+
+                            slices.push(Slice {
+                                mesh_index,
+                                slice_type,
+                                bounds,
+                                cell_centered,
+                                file_name,
+                                quantity,
+                                name,
+                                unit,
+                            });
+                        }
+                        "DEVICE_ACT" => {
+                            let (_, device) = parse!(line => "DEVICE_ACT" full_line_string)?;
+
+                            let Some(device) = devices.get_mut(&device) else {
+                                return Err(Error::InvalidKey {
+                                    parent: line,
+                                    key: line.split,
+                                });
+                            };
+
+                            let (a, b, c) = parse!(line => i32 f32 i32)?;
+
+                            device.activations.push(DeviceActivation { a, b, c });
+                        }
+                        "OPEN_VENT" | "CLOSE_VENT" => {
+                            let tag = tag(line_first);
+                            let (_, mesh_index) = parse!(line => tag i32)?;
+                            let (_a, _b) = parse!(line => i32 f32)?;
+
+                            // TODO
+                        }
+                        "PL3D" => {
+                            let (_, _a, num) = parse!(line => "PL3D" f32 i32)?;
+
+                            let file_name = parse!(next()? => full_line_string)?;
+                            let quantity = parse!(next()? => full_line_string)?;
+                            let name = parse!(next()? => full_line_string)?;
+                            let unit = parse!(next()? => full_line_string)?;
+
+                            // TODO: lines missing
+
+                            pl3d.push(Plot3D {
+                                num,
+                                file_name,
+                                quantity,
+                                name,
+                                unit,
+                            });
+                        }
+                        _ => return Err(err(line, ErrorKind::UnknownSection)),
+                    }
                 }
-                _ => return Err(err(line, ErrorKind::UnknownSection)),
             }
         }
 
