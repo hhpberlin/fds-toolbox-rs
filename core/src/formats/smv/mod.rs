@@ -4,6 +4,8 @@
 mod util;
 use util::*;
 mod mesh;
+#[cfg(test)]
+mod tests;
 
 use std::{
     collections::HashMap,
