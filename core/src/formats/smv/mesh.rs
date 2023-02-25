@@ -1,23 +1,22 @@
-use super::{util::*, err, Error, ErrorKind as SupErrorKind};
+use super::{err, util::*, Error, ErrorKind as SupErrorKind};
 
 use std::{
     collections::HashMap,
     num::{ParseFloatError, ParseIntError},
 };
 
-use nom::{
-    bytes::complete::{is_not, tag},
-    combinator::{map, opt, success, map_res},
-    sequence::tuple,
-    IResult, Parser,
-};
+use miette::Diagnostic;
+use winnow::{combinator::opt, IResult, Parser, character::space0};
 
-use super::super::util::{from_str_ws_preceded, non_ws, ws};
+use super::super::util::{f32, i32, non_ws, u32, usize, word};
+use super::util::*;
 use crate::{
-    geom::{Bounds3, Bounds3F, Bounds3I, Surfaces3, Vec2, Vec2F, Vec2I, Vec3, Vec3F, Vec3I, Vec3U, Dim3D},
-    parse,
+    geom::{
+        Bounds3, Bounds3F, Bounds3I, Dim3D, Surfaces3, Vec2, Vec2F, Vec2I, Vec3, Vec3F, Vec3I,
+        Vec3U,
+    },
+    parse, ws_separated,
 };
-use nom::sequence::preceded;
 
 #[derive(Debug)]
 pub struct Obst {
@@ -72,7 +71,8 @@ pub struct Mesh {
     circular_vents: Vec<CircularVent>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error, Diagnostic)]
+#[error("oops!")]
 pub enum ErrorKind {
     // An obst with an id of 0 was given (or .signum() returned a value other than -1, 0, or 1)
     UnexpectedObstIdSign(i32),
@@ -89,11 +89,11 @@ pub enum ErrorKind {
     },
 }
 
-pub(super) fn parse_mesh<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
+pub(super) fn parse_mesh<'a, Src: FnMut() -> Result<&'a str, Error>>(
     header: &'a str,
     default_texture_origin: Vec3F,
     mut next: Src,
-) -> Result<Mesh, Error<'a>> {
+) -> Result<Mesh, Error> {
     let (_, mesh_name) = parse!(header => "GRID" full_line_string)?;
     let (dimensions, _a) = parse!(next()? => vec3u i32)?;
 
@@ -160,10 +160,10 @@ pub(super) fn parse_mesh<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
     })
 }
 
-fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
+fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, Error>>(
     mut next: Src,
     default_texture_origin: Vec3<f32>,
-) -> Result<Vec<Obst>, Error<'a>> {
+) -> Result<Vec<Obst>, Error> {
     // Stores obstacles as they are defined in the first half
     // Since obstacles are defined like this:
     //
@@ -191,10 +191,11 @@ fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
 
             // The id is signed, but the sign only represents if it's a hole or not
             // The absolute values are the actual id
-            let id = map_res(i32, |x| match x.signum() {
+            let id = i32.map_res(|x| match x.signum() {
                 -1 => Ok((true, x.unsigned_abs())),
                 1 => Ok((false, x.unsigned_abs())),
                 _ => Err(err(
+                    src,
                     // TODO: I don't like this, spans should be tracked more nicely
                     next.split_whitespace().nth(6).unwrap_or(next),
                     SupErrorKind::Mesh(ErrorKind::UnexpectedObstIdSign(x)),
@@ -202,11 +203,11 @@ fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
             });
 
             // There may be a name appended at the end of the line after a "!"
-            let name = opt(map(tuple((ws, tag("!"), full_line_string)), |(_, _, x)| x));
+            let name = opt((space0, "!", full_line_string).map(|(_, _, x)| x));
 
             // The texture origin is optional, if it's not present the default value is used
             // TODO: As per the TODO above, should this be a global offset or the default value?
-            let texture_origin = map(opt(vec3f), |x| x.unwrap_or(default_texture_origin));
+            let texture_origin = opt(vec3f).map(|x| x.unwrap_or(default_texture_origin));
 
             // Full line looks like this:
             // bounds3f (6xf32) id (i32) surfaces3i (6xi32) optional[texture_origin (3xf32)] optional[name (string)]
@@ -259,9 +260,9 @@ fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
     Ok(obsts)
 }
 
-fn parse_vents<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
+fn parse_vents<'a, Src: FnMut() -> Result<&'a str, Error>>(
     mut next: Src,
-) -> Result<Vec<Vent>, Error<'a>> {
+) -> Result<Vec<Vent>, Error> {
     let (num_vents, num_dummies) = parse!(next()? => usize usize)?;
     let num_non_dummies = num_vents - num_dummies;
 
@@ -308,7 +309,7 @@ fn parse_vents<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
         .into_iter()
         .map(|vent| {
             let next = next()?;
-            let rgba = opt(tuple((vec3f, f32)));
+            let rgba = opt((vec3f, f32));
             let (bounds_idx, color_index, draw_type, rgba) = parse!(next => bounds3i i32 i32 rgba)?;
 
             Ok(Vent {
@@ -327,9 +328,9 @@ fn parse_vents<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
     Ok(vents)
 }
 
-fn parse_circular_vents<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
+fn parse_circular_vents<'a, Src: FnMut() -> Result<&'a str, Error>>(
     mut next: Src,
-) -> Result<Vec<CircularVent>, Error<'a>> {
+) -> Result<Vec<CircularVent>, Error> {
     let num_vents = parse!(next()? => usize)?;
 
     struct HalfCircularVent {
@@ -364,7 +365,7 @@ fn parse_circular_vents<'a, Src: FnMut() -> Result<&'a str, Error<'a>>>(
         .into_iter()
         .map(|vent| {
             let next = next()?;
-            let rgba = opt(tuple((vec3f, f32)));
+            let rgba = opt((vec3f, f32));
             let (bounds_idx, color_index, draw_type, rgba) = parse!(next => bounds3i i32 i32 rgba)?;
 
             Ok(CircularVent {

@@ -133,6 +133,19 @@ pub struct Bounds3<T> {
     pub max: Vec3<T>,
 }
 
+impl<T> Bounds3<T> {
+    pub fn from_fds_notation(min_x: T, max_x: T, min_y: T, max_y: T, min_z: T, max_z: T) -> Self {
+        Bounds3::new(
+            Vec3::new(min_x, min_y, min_z),
+            Vec3::new(max_x, max_y, max_z),
+        )
+    }
+
+    pub fn from_fds_notation_tuple(tuple: (T, T, T, T, T, T)) -> Self {
+        Self::from_fds_notation(tuple.0, tuple.1, tuple.2, tuple.3, tuple.4, tuple.5)
+    }
+}
+
 pub type Bounds3I = Bounds3<i32>;
 pub type Bounds3F = Bounds3<f32>;
 

@@ -1,24 +1,57 @@
-use std::str::FromStr;
+use std::{fmt::Debug, ops::Range, str::FromStr};
 
-use nom::{
-    bytes::complete::take_while1,
-    combinator::map_res,
+use winnow::{
+    bytes::{take_while0, take_while1, take_till1},
+    character::space0,
     sequence::preceded,
+    stream::{AsChar, Stream, StreamIsPartial},
+    IResult, Parser, Located,
 };
 
-// These handle non-ascci whitespace as well, as opposed to the nom whitespace parsers
-pub fn non_ws(i: &str) -> nom::IResult<&str, &str> {
-    take_while1(|c: char| !c.is_whitespace())(i)
+pub fn non_ws<I>(i: I) -> IResult<I, I::Slice>
+where
+    I: StreamIsPartial + Stream,
+    <I as Stream>::Token: AsChar,
+{
+    take_till1(AsChar::is_space)
+        .context("non_ws")
+        .parse_next(i)
 }
 
-pub fn ws(i: &str) -> nom::IResult<&str, &str> {
-    take_while1(|c: char| c.is_whitespace())(i)
+pub fn word<I>(i: I) -> IResult<I, I::Slice>
+where
+    I: StreamIsPartial + Stream,
+    <I as Stream>::Token: AsChar,
+{
+    preceded(space0, non_ws).parse_next(i)
 }
 
-pub fn from_str<T: FromStr>(i: &str) -> nom::IResult<&str, T> {
-    map_res(non_ws, |x: &str| x.parse::<T>())(i)
+pub fn from_str<I, T: FromStr>(i: I, context: impl Debug + Clone) -> IResult<I, T>
+where
+    I: StreamIsPartial + Stream,
+    <I as Stream>::Token: AsChar,
+{
+    non_ws
+        .map_res(|x: I::Slice| x.parse::<T>())
+        .context(context)
+        .parse_next(i)
 }
 
-pub fn from_str_ws_preceded<T: FromStr>(i: &str) -> nom::IResult<&str, T> {
-    preceded(ws, from_str)(i)
+// pub fn substr_to_span(full: &str, substr: &str) -> Range<usize> {
+//     let offset = full.offset(substr);
+//     offset..offset + substr.len()
+// }
+
+macro_rules! from_str_impl {
+    ($($t:ident),+) => {
+        $(pub fn $t<I>(i: I) -> IResult<I, $t>
+        where
+            I: StreamIsPartial + Stream,
+            <I as Stream>::Token: AsChar,
+        {
+            from_str(i, stringify!($t))
+        })+
+    };
 }
+
+from_str_impl!(f32, i32, u32, usize);

@@ -2,6 +2,8 @@
 //pub type Result<'a, T> = nom::IResult<Input<'a>, T, ()>;
 
 mod util;
+use miette::{Diagnostic, SourceSpan};
+use thiserror::Error;
 use util::*;
 mod mesh;
 #[cfg(test)]
@@ -12,20 +14,14 @@ use std::{
     num::{ParseFloatError, ParseIntError},
 };
 
-use nom::{
-    branch::alt,
-    bytes::complete::{is_not, tag},
-    combinator::{map, opt, success},
-    sequence::tuple,
-    IResult, Parser,
-};
+use winnow::{branch::alt, combinator::opt, IResult, Parser, bytes::{take_till0, tag}, character::space0};
 
-use super::util::{from_str_ws_preceded, non_ws, ws};
+use super::util::{f32, i32, non_ws, substr_to_span, u32, usize, word};
 use crate::{
     geom::{Bounds3, Bounds3F, Bounds3I, Surfaces3, Vec2, Vec2F, Vec2I, Vec3, Vec3F, Vec3I, Vec3U},
-    parse,
+    parse, ws_separated,
 };
-use nom::sequence::preceded;
+use util::*;
 
 #[derive(Debug)]
 struct Simulation {
@@ -117,29 +113,44 @@ struct Plot3D {
     unit: String,
 }
 
-enum Error<'a> {
-    WrongSyntax { pos: &'a str, err: ErrorKind },
-    Nom(nom::Err<nom::error::Error<&'a str>>),
-    NomV(nom::Err<nom::error::VerboseError<&'a str>>),
+#[derive(Debug, Error, Diagnostic)]
+// #[error("oops!")]
+// #[diagnostic(
+//     // code(oops::my::bad),
+//     // url(docsrs),
+//     // help("try doing it better next time?")
+// )]
+enum Error {
+    #[error("oops!")]
+    WrongSyntax {
+        #[label("here")]
+        pos: SourceSpan,
+        #[source]
+        #[diagnostic_source]
+        err: ErrorKind,
+    },
+    #[error("oops!")]
+    Nom(#[from] winnow::Err<winnow::error::Error<String>>),
     // TODO: Using enum instead of a &str worth it?
+    #[error("oops!")]
     MissingSection { name: &'static str },
-    MissingSubSection { parent: &'a str, name: &'static str },
-    InvalidKey { parent: &'a str, key: &'a str },
+    #[error("oops!")]
+    MissingSubSection {
+        parent: SourceSpan,
+        name: &'static str,
+    },
+    #[error("oops!")]
+    InvalidKey { parent: SourceSpan, key: SourceSpan },
 }
 
-impl<'a> From<nom::Err<nom::error::Error<&'a str>>> for Error<'a> {
-    fn from(err: nom::Err<nom::error::Error<&'a str>>) -> Self {
-        Error::Nom(err)
+impl From<winnow::Err<winnow::error::Error<&str>>> for Error {
+    fn from(err: winnow::Err<winnow::error::Error<&str>>) -> Self {
+        Error::Nom(err.to_owned())
     }
 }
 
-impl<'a> From<nom::Err<nom::error::VerboseError<&'a str>>> for Error<'a> {
-    fn from(err: nom::Err<nom::error::VerboseError<&'a str>>) -> Self {
-        Error::NomV(err)
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Error, Diagnostic)]
+#[error("oops!")]
 enum ErrorKind {
     UnexpectedWhitespace,
     MissingLine,
@@ -154,12 +165,17 @@ enum ErrorKind {
     InvalidSection,
 }
 
-fn err(pos: &str, kind: ErrorKind) -> Error {
-    Error::WrongSyntax { pos, err: kind }
+fn err(src: &str, pos: &str, kind: ErrorKind) -> Error {
+    Error::WrongSyntax {
+        pos: substr_to_span(src, pos).into(),
+        err: kind,
+    }
 }
 
 impl Simulation {
-    pub fn parse<'a>(lines: impl Iterator<Item = &'a str>) -> Result<Self, Error<'a>> {
+    pub fn parse<'a>(file: &str) -> Result<Self, Error> {
+        let lines = file.lines();
+
         let mut title = None;
         let mut fds_version = None;
         let mut end_file = None;
@@ -223,7 +239,7 @@ impl Simulation {
                     let (tmpm, material_emissivity) = parse!(next()? => f32 f32)?;
                     let (surface_type, texture_width, texture_height, rgb, transparency) =
                         parse!(next()? => i32 f32 f32 vec3f f32)?;
-                    let texture = alt((map(tag("null"), |_| None), map(full_line_string, Some)));
+                    let texture = alt(("null".map(|_| None), full_line_string.map(Some)));
                     let texture = parse!(next()? => texture)?;
                     let surface = Surface {
                         name,
@@ -265,31 +281,34 @@ impl Simulation {
                     let _ = parse!(next()? => "0")?;
                 }
                 "DEVICE" => {
-                    let name = map(is_not("%"), |x: &str| x.trim().to_string());
-                    let unit = map(tuple((tag("%"), full_line_string)), |(_, x)| x);
+                    let name = take_till0("%").map(|x: &str| x.trim().to_string());
+                    let unit = ("%", full_line_string).map(|(_, x)| x);
                     let (name, unit) = parse!(next()? => name unit)?;
 
                     // TODO: This is a bit ugly
-                    let close = map(tuple((tag("%"), ws, tag("null"))), |_| ());
+                    let close = ws_separated!("%", "null").recognize();
 
                     // TODO: idk what this is
-                    let bounds = map(tuple((tag("#"), bounds3f)), |(_, x)| x);
-                    let bounds = map(tuple((ws, opt(bounds), close)), |(_, x, _)| x);
+                    let bounds = ws_separated!("#", bounds3f).map(|(_, x)| x);
+                    let bounds = ws_separated!(opt(bounds), close).map(|(x, _)| x);
 
                     // TODO: what are a and b?
                     let (position, orientation, a, b, bounds) =
                         parse!(next()? => vec3f vec3f i32 i32 bounds)?;
 
-                    devices.insert(name.clone(), Device {
-                        name,
-                        unit,
-                        position,
-                        orientation,
-                        a,
-                        b,
-                        bounds,
-                        activations: Vec::new(),
-                    });
+                    devices.insert(
+                        name.clone(),
+                        Device {
+                            name,
+                            unit,
+                            position,
+                            orientation,
+                            a,
+                            b,
+                            bounds,
+                            activations: Vec::new(),
+                        },
+                    );
                 }
                 line => {
                     let Some(line_first) = line.split_whitespace().next() else {
@@ -356,12 +375,12 @@ impl Simulation {
                             });
                         }
                         "DEVICE_ACT" => {
-                            let (_, device) = parse!(line => "DEVICE_ACT" full_line_string)?;
+                            let (_, device) = parse!(line => "DEVICE_ACT" full_line_str)?;
 
-                            let Some(device) = devices.get_mut(&device) else {
+                            let Some(device) = devices.get_mut(device) else {
                                 return Err(Error::InvalidKey {
                                     parent: line,
-                                    key: line.split,
+                                    key: device,
                                 });
                             };
 

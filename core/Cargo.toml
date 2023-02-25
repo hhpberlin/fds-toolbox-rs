@@ -15,8 +15,10 @@ crossbeam = "0.8"
 thiserror = "1.0"
 tracing = "0.1"
 
-nom = "7.1"
-ariadne = { version = "0.1" }
+# nom = "7.1"
+miette = { version = "5.5.0", features = ["fancy"] }
+winnow = { version = "0.3.3", features = ["debug"] }
+# ariadne = { version = "0.1" }
 
 chrono = "0.4"
 derive_more = "*"
