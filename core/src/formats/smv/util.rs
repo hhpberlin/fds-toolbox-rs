@@ -1,7 +1,9 @@
+use miette::SourceSpan;
 use winnow::{
+    character::{not_line_ending, space0},
     sequence::{preceded, terminated},
-    stream::{AsChar, Stream, StreamIsPartial},
-    IResult, Parser, character::space0,
+    stream::{AsBStr, AsChar, Compare, Location, Stream, StreamIsPartial},
+    IResult, Located, Parser,
 };
 
 use crate::geom::{
@@ -10,14 +12,14 @@ use crate::geom::{
 
 use super::{
     super::util::{f32, i32, non_ws, u32, usize, word},
-    err, Error, ErrorKind,
+    err, err::Error, err::ErrorKind,
 };
 
-/// Convenience macro for parsing to omit tuple() and similar boilerplate
-#[macro_export]
-macro_rules! parse {
-    ($i:expr => $($t:expr)+) => { parse($i, ws_separated!($($t),+)) };
-}
+// /// Convenience macro for parsing to omit tuple() and similar boilerplate
+// #[macro_export]
+// macro_rules! parse {
+//     ($i:expr => $($t:expr)+) => { parse($i, ws_separated!($($t),+)) };
+// }
 
 #[macro_export]
 macro_rules! ws_separated {
@@ -32,10 +34,11 @@ macro_rules! impl_from {
         where
             I: StreamIsPartial + Stream,
             <I as Stream>::Token: AsChar,
+            <I as Stream>::Slice: AsRef<str>,
         {
             ws_separated!($($t),+)
-            .map($e)
-            .parse_next(i)
+                .map($e)
+                .parse_next(i)
         }
     };
     ($name:ident ( $($t:expr),+ ) -> $ret:ident) => {
@@ -62,36 +65,40 @@ impl_from!(surfaces3i(i32, i32, i32, i32, i32, i32) -> Surfaces3<i32> {
     }
 });
 
-impl_from!(bounds3f(i32, i32, i32, i32, i32, i32) -> Bounds3I { Bounds3::from_fds_notation_tuple });
-impl_from!(bounds3i(f32, f32, f32, f32, f32, f32) -> Bounds3F { Bounds3::from_fds_notation_tuple });
+impl_from!(bounds3i(i32, i32, i32, i32, i32, i32) -> Bounds3I { Bounds3::from_fds_notation_tuple });
+impl_from!(bounds3f(f32, f32, f32, f32, f32, f32) -> Bounds3F { Bounds3::from_fds_notation_tuple });
 
 pub fn string<I>(i: I) -> IResult<I, String>
 where
     I: StreamIsPartial + Stream,
     <I as Stream>::Token: AsChar,
+    <I as Stream>::Slice: AsRef<str>,
 {
-    non_ws.map(|s: char| s.to_string()).parse_next(i)
+    non_ws
+        .map(|s: I::Slice| s.as_ref().to_string())
+        .parse_next(i)
 }
 
-pub fn full_line_str<I>(i: I) -> IResult<I, I::Slice>
+pub fn full_line_str<'a, I>(i: I) -> IResult<I, &'a str>
 where
-    I: StreamIsPartial + Stream,
+    I: StreamIsPartial + Stream + 'a,
+    I: Compare<&'static str> + AsBStr,
     <I as Stream>::Token: AsChar,
+    <I as Stream>::Slice: AsRef<str>,
 {
-    let string = i.trim();
-    // Take empty subslice at the end of the string
-    // this makes sure the pointer still points into the original string
-    // incase we want to use it for error reporting
-    Ok((&i[i.len()..], string))
+    not_line_ending
+        .map(|s: I::Slice| s.as_ref().trim())
+        .parse_next(i)
 }
 
-pub fn full_line_string<I>(i: I) -> IResult<I, String>
-where
-    I: StreamIsPartial + Stream,
-    <I as Stream>::Token: AsChar,
-{
-    full_line_string.map(|s| s.to_string()).parse_next(i)
-}
+// pub fn full_line_string<I>(i: I) -> IResult<I, String>
+// where
+//     I: StreamIsPartial + Stream,
+//     <I as Stream>::Token: AsChar,
+//     <I as Stream>::Slice: AsRef<str>,
+// {
+//     full_line_str.map(|s| s.to_string()).parse_next(i)
+// }
 
 pub(super) fn match_tag<'a>(i: &'a str, tag: &'a str, error: Error) -> Result<(), Error> {
     if i.trim().eq(tag) {
@@ -101,36 +108,39 @@ pub(super) fn match_tag<'a>(i: &'a str, tag: &'a str, error: Error) -> Result<()
     }
 }
 
-pub(super) fn parse<'a, T, E>(
-    src: &'a str,
-    i: &'a str,
-    mut parser: impl Parser<&'a str, T, E>,
-) -> Result<T, Error>
+pub(super) fn parse<'a, I, T, E>(i: I, mut parser: impl Parser<I, T, E>) -> Result<T, Error>
 where
+    I: StreamIsPartial + Stream + Location,
+    <I as Stream>::Token: AsChar,
+    <I as Stream>::Slice: AsRef<str>,
     Error: From<winnow::Err<E>>,
+    E: winnow::error::ParseError<I>,
 {
-    let (i, o) = parser.parse(i)?;
+    let parser = parser.with_span();
+    let (i, (o, s)) = parser.parse_next(i)?;
 
-    if i.is_empty() {
-        Ok(o)
-    } else {
-        Err(err(src, i, ErrorKind::TrailingCharacters))
-    }
+    // TODO
+    // if i.eof_offset() !=  {
+    Ok(o)
+    // } else {
+    //     Err(err(s.into(), ErrorKind::TrailingCharacters))
+    // }
 }
 
-pub(super) fn repeat<'a, T, Src: FnMut() -> Result<&'a str, Error>>(
-    mut src: Src,
-    parse: impl Fn(&mut Src, usize) -> Result<T, Error>,
-) -> Result<Vec<T>, Error> {
-    let n = parse!(src()? => usize)?;
-    repeat_n(src, parse, n)
-}
+// pub(super) fn repeat<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
+//     mut src: Src,
+//     parse: impl Fn(&mut Src, usize) -> Result<T, err::Error>,
+// ) -> Result<Vec<T>, err::Error>
+// {
+//     let n = parse!(src()? => usize)?;
+//     repeat_n(src, parse, n)
+// }
 
-pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<&'a str, Error>>(
+pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
     mut src: Src,
-    parse: impl Fn(&mut Src, usize) -> Result<T, Error>,
+    parse: impl Fn(&mut Src, usize) -> Result<T, err::Error>,
     n: usize,
-) -> Result<Vec<T>, Error> {
+) -> Result<Vec<T>, err::Error> {
     (0..n).map(|i| parse(&mut src, i)).collect()
 }
 
@@ -141,17 +151,17 @@ pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<&'a str, Error>>(
 /// * `header` - The header of the current section, used for error messages
 /// * `next` - The next function to get the next line
 /// * `tag` - The tag to match
-pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<&'a str, Error>>(
-    header: &'a str,
+pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
+    header: SourceSpan,
     mut next: Src,
     tag: &'static str,
-) -> Result<(), Error> {
-    let err = Error::MissingSubSection {
+) -> Result<(), err::Error> {
+    let err = err::Error::MissingSubSection {
         parent: header,
         name: tag,
     };
     match next() {
-        Ok(next_line) => match_tag(next_line, tag, err),
+        Ok(next_line) => match_tag(next_line.as_ref(), tag, err),
         Err(_) => Err(err),
     }
 }
