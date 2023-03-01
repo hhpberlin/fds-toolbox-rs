@@ -1,12 +1,191 @@
-use std::{fmt::Debug, ops::Range, str::FromStr};
+use std::{fmt::Debug, ops::Range, str::FromStr, num::{ParseIntError, ParseFloatError}, error::Error};
 
+use miette::{SourceSpan, Diagnostic};
+use thiserror::Error;
 use winnow::{
     bytes::{take_while0, take_while1, take_till1},
     character::space0,
     sequence::preceded,
-    stream::{AsChar, Stream, StreamIsPartial},
-    IResult, Parser, Located,
+    stream::{AsChar, Stream, StreamIsPartial, Offset},
+    IResult, Parser, Located, error::{ErrorKind, FromExternalError, ContextError}, FinishIResult,
 };
+
+// Stolen from [kdl-rs](https://github.com/kdl-org/kdl-rs/blob/main/src/parser.rs)
+
+/// Stores the entire input to work out where in the file errors occured.
+///
+/// All of our parsing subroutines want to hold onto some global information
+/// to generate things like spans, so instead of making them simple free
+/// functions, we wrap their bodies in closures that take in a [InputLocator](self::InputLocator).
+/// The free functions then becoming constructors that return those closures.
+/// This is basically the same idea behind winnow combinators like [many0](winnow::multi::many0) which
+/// take an input to configure the combinator and then return a function.
+pub struct InputLocator<'a> {
+    pub full_input: &'a str,
+}
+
+#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
+#[error("{kind}")]
+pub struct ParseError<ErrKind: Error> {
+    /// Source string for the KDL document that failed to parse.
+    #[source_code]
+    pub input: String,
+
+    /// Offset in chars of the error.
+    #[label("{}", label.unwrap_or("here"))]
+    pub span: SourceSpan,
+
+    /// Label text for this span. Defaults to `"here"`.
+    pub label: Option<&'static str>,
+
+    /// Suggestion for fixing the parser error.
+    #[help]
+    pub help: Option<&'static str>,
+
+    /// Specific error kind for this parser error.
+    pub kind: GenericParseErrorKind<ErrKind>,
+}
+
+/// A type reprenting additional information specific to the type of error being returned.
+#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
+pub enum ParseErrorKind {
+    /// An error occurred while parsing an integer.
+    #[error(transparent)]
+    #[diagnostic(code(kdl::parse_int))]
+    ParseIntError(ParseIntError),
+
+    /// An error occurred while parsing a floating point number.
+    #[error(transparent)]
+    #[diagnostic(code(kdl::parse_float))]
+    ParseFloatError(ParseFloatError),
+
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct SyntaxParseError<I, ErrorKind: Error> {
+    pub(crate) input: I,
+    pub(crate) context: Option<&'static str>,
+    pub(crate) len: usize,
+    pub(crate) label: Option<&'static str>,
+    pub(crate) help: Option<&'static str>,
+    pub(crate) kind: Option<ErrorKind>,
+    pub(crate) touched: bool,
+}
+
+/// A type reprenting additional information specific to the type of error being returned.
+#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
+enum GenericParseErrorKind<Kind: Error> {
+    #[error(transparent)]
+    Specific(#[from] Kind),
+
+    /// Generic parsing error. The given context string denotes the component
+    /// that failed to parse.
+    #[error("Expected {0}.")]
+    #[diagnostic(code(kdl::parse_component))]
+    Context(&'static str),
+
+    /// Generic unspecified error. If this is returned, the call site should
+    /// be annotated with context, if possible.
+    #[error("An unspecified error occurred.")]
+    #[diagnostic(code(kdl::other))]
+    Other,
+}
+
+impl<'a> InputLocator<'a> {
+    pub fn new(full_input: &'a str) -> Self {
+        Self { full_input }
+    }
+
+    pub fn parse<T, P, ErrKind: Error>(&self, parser: P) -> Result<T, ParseError<ErrKind>>
+    where
+        P: Parser<&'a str, T, SyntaxParseError<&'a str, ErrKind>>,
+    {
+        parser.parse_next(self.full_input)
+            .finish()
+            // .map(|(_, arg)| arg)
+            .map_err(|e| {
+                let span_substr = &e.input[..e.len];
+                ParseError {
+                    input: self.full_input.into(),
+                    span: self.span_from_substr(span_substr),
+                    help: e.help,
+                    label: e.label,
+                    kind: if let Some(kind) = e.kind {
+                        GenericParseErrorKind::Specific(kind)
+                    } else if let Some(ctx) = e.context {
+                        GenericParseErrorKind::Context(ctx)
+                    } else {
+                        GenericParseErrorKind::Other
+                    },
+                }
+            })
+    }
+
+    /// Creates a span for an item using two substrings of self.full_input:
+    ///
+    /// * before: the remainder of the input before parsing the item
+    /// * after: the remainder input after parsing the item
+    ///
+    /// All we really care about are the addresses of the strings, the lengths don't matter
+    fn span_from_before_and_after(&self, before: &str, after: &str) -> SourceSpan {
+        let base_addr = self.full_input.as_ptr() as usize;
+        let before_addr = before.as_ptr() as usize;
+        let after_addr = after.as_ptr() as usize;
+        assert!(
+            before_addr >= base_addr,
+            "tried to get the span of a non-substring!"
+        );
+        assert!(
+            after_addr >= before_addr,
+            "subslices were in wrong order for spanning!"
+        );
+
+        let start = before_addr - base_addr;
+        let end = after_addr - base_addr;
+        SourceSpan::from(start..end)
+    }
+
+    /// Creates a span for an item using a substring of self.full_input
+    ///
+    /// Note that substr must be a literal substring, as in it must be
+    /// a pointer into the same string!
+    pub fn span_from_substr(&self, substr: &str) -> SourceSpan {
+        let base_addr = self.full_input.as_ptr() as usize;
+        let substr_addr = substr.as_ptr() as usize;
+        assert!(
+            substr_addr >= base_addr,
+            "tried to get the span of a non-substring!"
+        );
+        let start = substr_addr - base_addr;
+        let end = start + substr.len();
+        SourceSpan::from(start..end)
+    }
+}
+
+impl<I, ErrKind: Error> winnow::error::ParseError<I> for SyntaxParseError<I, ErrKind> {
+    fn from_error_kind(input: I, _kind: ErrorKind) -> Self {
+        Self {
+            input,
+            len: 0,
+            label: None,
+            help: None,
+            context: None,
+            kind: None,
+            touched: false,
+        }
+    }
+
+    fn append(self, _input: I, _kind: ErrorKind) -> Self {
+        self
+    }
+}
+
+impl<I, ErrKind: Error> ContextError<I> for SyntaxParseError<I, ErrKind> {
+    fn add_context(self, _input: I, ctx: &'static str) -> Self {
+        self.context = self.context.or(Some(ctx));
+        self
+    }
+}
 
 pub fn non_ws<I>(i: I) -> IResult<I, I::Slice>
 where
@@ -30,9 +209,10 @@ pub fn from_str<I, T: FromStr>(i: I, context: impl Debug + Clone) -> IResult<I, 
 where
     I: StreamIsPartial + Stream,
     <I as Stream>::Token: AsChar,
+    <I as Stream>::Slice: AsRef<str>,
 {
     non_ws
-        .map_res(|x: I::Slice| x.parse::<T>())
+        .map_res(|x: I::Slice| x.as_ref().parse::<T>())
         .context(context)
         .parse_next(i)
 }
@@ -48,6 +228,7 @@ macro_rules! from_str_impl {
         where
             I: StreamIsPartial + Stream,
             <I as Stream>::Token: AsChar,
+            <I as Stream>::Slice: AsRef<str>,
         {
             from_str(i, stringify!($t))
         })+
