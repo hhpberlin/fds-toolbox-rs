@@ -1,7 +1,8 @@
 use miette::SourceSpan;
 use winnow::{
+    branch::alt,
     character::{not_line_ending, space0},
-    sequence::{preceded, terminated},
+    sequence::{preceded, terminated, tuple},
     stream::{AsBStr, AsChar, Compare, Location, Stream, StreamIsPartial},
     IResult, Located, Parser,
 };
@@ -12,7 +13,9 @@ use crate::geom::{
 
 use super::{
     super::util::{f32, i32, non_ws, u32, usize, word},
-    err, err::Error, err::ErrorKind,
+    err,
+    err::Error,
+    err::ErrorKind,
 };
 
 // /// Convenience macro for parsing to omit tuple() and similar boilerplate
@@ -27,6 +30,10 @@ macro_rules! ws_separated {
         winnow::sequence::terminated(($(winnow::sequence::preceded(winnow::character::space0, $t)),+), winnow::character::space0)
     };
 }
+
+// fn ws_sep(l: impl List) {
+//     tuple()
+// }
 
 macro_rules! impl_from {
     ($name:ident ( $($t:expr),+ ) -> $ret:ty { $e:expr }) => {
@@ -151,17 +158,27 @@ pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Erro
 /// * `header` - The header of the current section, used for error messages
 /// * `next` - The next function to get the next line
 /// * `tag` - The tag to match
-pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
+pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<&'a str, err::Error>>(
     header: SourceSpan,
     mut next: Src,
     tag: &'static str,
 ) -> Result<(), err::Error> {
-    let err = err::Error::MissingSubSection {
-        parent: header,
-        name: tag,
-    };
-    match next() {
-        Ok(next_line) => match_tag(next_line.as_ref(), tag, err),
-        Err(_) => Err(err),
+    if let Ok(next_line) = next() {
+        if next_line.trim().eq(tag) {
+            Ok(())
+        } else {
+            Err(err::Error::MissingSubSection {
+                parent: header,
+                name: tag,
+                // found: next_line,
+                found: None,
+            })
+        }
+    } else {
+        Err(err::Error::MissingSubSection {
+            parent: header,
+            name: tag,
+            found: None,
+        })
     }
 }

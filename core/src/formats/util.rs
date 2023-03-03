@@ -1,13 +1,20 @@
-use std::{fmt::Debug, ops::Range, str::FromStr, num::{ParseIntError, ParseFloatError}, error::Error};
+use std::{
+    error::Error,
+    fmt::Debug,
+    num::{ParseFloatError, ParseIntError},
+    ops::Range,
+    str::FromStr,
+};
 
-use miette::{SourceSpan, Diagnostic};
+use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 use winnow::{
-    bytes::{take_while0, take_while1, take_till1},
+    bytes::{take_till1, take_while0, take_while1},
     character::space0,
+    error::{ContextError, ErrorKind, FromExternalError},
     sequence::preceded,
-    stream::{AsChar, Stream, StreamIsPartial, Offset},
-    IResult, Parser, Located, error::{ErrorKind, FromExternalError, ContextError}, FinishIResult,
+    stream::{AsChar, Offset, Stream, StreamIsPartial},
+    FinishIResult, IResult, Located, Parser,
 };
 
 // Stolen from [kdl-rs](https://github.com/kdl-org/kdl-rs/blob/main/src/parser.rs)
@@ -24,102 +31,80 @@ pub struct InputLocator<'a> {
     pub full_input: &'a str,
 }
 
-#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
-#[error("{kind}")]
-pub struct ParseError<ErrKind: Error> {
-    /// Source string for the KDL document that failed to parse.
-    #[source_code]
-    pub input: String,
+// /// A type reprenting additional information specific to the type of error being returned.
+// #[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
+// pub enum ParseErrorKind {
+//     /// An error occurred while parsing an integer.
+//     #[error(transparent)]
+//     #[diagnostic(code(kdl::parse_int))]
+//     ParseIntError(ParseIntError),
 
-    /// Offset in chars of the error.
-    #[label("{}", label.unwrap_or("here"))]
-    pub span: SourceSpan,
+//     /// An error occurred while parsing a floating point number.
+//     #[error(transparent)]
+//     #[diagnostic(code(kdl::parse_float))]
+//     ParseFloatError(ParseFloatError),
 
-    /// Label text for this span. Defaults to `"here"`.
-    pub label: Option<&'static str>,
+// }
 
-    /// Suggestion for fixing the parser error.
-    #[help]
-    pub help: Option<&'static str>,
+// #[derive(Debug, Clone, Eq, PartialEq)]
+// pub(crate) struct SyntaxParseError<I, ErrorKind: Error> {
+//     pub(crate) input: I,
+//     pub(crate) context: Option<&'static str>,
+//     pub(crate) len: usize,
+//     pub(crate) label: Option<&'static str>,
+//     pub(crate) help: Option<&'static str>,
+//     pub(crate) kind: Option<ErrorKind>,
+//     pub(crate) touched: bool,
+// }
 
-    /// Specific error kind for this parser error.
-    pub kind: GenericParseErrorKind<ErrKind>,
-}
+// /// A type reprenting additional information specific to the type of error being returned.
+// #[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
+// enum GenericParseErrorKind<Kind: Error> {
+//     #[error(transparent)]
+//     Specific(#[from] Kind),
 
-/// A type reprenting additional information specific to the type of error being returned.
-#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
-pub enum ParseErrorKind {
-    /// An error occurred while parsing an integer.
-    #[error(transparent)]
-    #[diagnostic(code(kdl::parse_int))]
-    ParseIntError(ParseIntError),
+//     /// Generic parsing error. The given context string denotes the component
+//     /// that failed to parse.
+//     #[error("Expected {0}.")]
+//     #[diagnostic(code(kdl::parse_component))]
+//     Context(&'static str),
 
-    /// An error occurred while parsing a floating point number.
-    #[error(transparent)]
-    #[diagnostic(code(kdl::parse_float))]
-    ParseFloatError(ParseFloatError),
-
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct SyntaxParseError<I, ErrorKind: Error> {
-    pub(crate) input: I,
-    pub(crate) context: Option<&'static str>,
-    pub(crate) len: usize,
-    pub(crate) label: Option<&'static str>,
-    pub(crate) help: Option<&'static str>,
-    pub(crate) kind: Option<ErrorKind>,
-    pub(crate) touched: bool,
-}
-
-/// A type reprenting additional information specific to the type of error being returned.
-#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
-enum GenericParseErrorKind<Kind: Error> {
-    #[error(transparent)]
-    Specific(#[from] Kind),
-
-    /// Generic parsing error. The given context string denotes the component
-    /// that failed to parse.
-    #[error("Expected {0}.")]
-    #[diagnostic(code(kdl::parse_component))]
-    Context(&'static str),
-
-    /// Generic unspecified error. If this is returned, the call site should
-    /// be annotated with context, if possible.
-    #[error("An unspecified error occurred.")]
-    #[diagnostic(code(kdl::other))]
-    Other,
-}
+//     /// Generic unspecified error. If this is returned, the call site should
+//     /// be annotated with context, if possible.
+//     #[error("An unspecified error occurred.")]
+//     #[diagnostic(code(kdl::other))]
+//     Other,
+// }
 
 impl<'a> InputLocator<'a> {
     pub fn new(full_input: &'a str) -> Self {
         Self { full_input }
     }
 
-    pub fn parse<T, P, ErrKind: Error>(&self, parser: P) -> Result<T, ParseError<ErrKind>>
-    where
-        P: Parser<&'a str, T, SyntaxParseError<&'a str, ErrKind>>,
-    {
-        parser.parse_next(self.full_input)
-            .finish()
-            // .map(|(_, arg)| arg)
-            .map_err(|e| {
-                let span_substr = &e.input[..e.len];
-                ParseError {
-                    input: self.full_input.into(),
-                    span: self.span_from_substr(span_substr),
-                    help: e.help,
-                    label: e.label,
-                    kind: if let Some(kind) = e.kind {
-                        GenericParseErrorKind::Specific(kind)
-                    } else if let Some(ctx) = e.context {
-                        GenericParseErrorKind::Context(ctx)
-                    } else {
-                        GenericParseErrorKind::Other
-                    },
-                }
-            })
-    }
+    // pub fn parse<T, P, ErrKind: Error>(&self, parser: P) -> Result<T, ParseError<ErrKind>>
+    // where
+    //     P: Parser<&'a str, T, SyntaxParseError<&'a str, ErrKind>>,
+    // {
+    //     parser.parse_next(self.full_input)
+    //         .finish()
+    //         // .map(|(_, arg)| arg)
+    //         .map_err(|e| {
+    //             let span_substr = &e.input[..e.len];
+    //             ParseError {
+    //                 input: self.full_input.into(),
+    //                 span: self.span_from_substr(span_substr),
+    //                 help: e.help,
+    //                 label: e.label,
+    //                 kind: if let Some(kind) = e.kind {
+    //                     GenericParseErrorKind::Specific(kind)
+    //                 } else if let Some(ctx) = e.context {
+    //                     GenericParseErrorKind::Context(ctx)
+    //                 } else {
+    //                     GenericParseErrorKind::Other
+    //                 },
+    //             }
+    //         })
+    // }
 
     /// Creates a span for an item using two substrings of self.full_input:
     ///
@@ -162,39 +147,37 @@ impl<'a> InputLocator<'a> {
     }
 }
 
-impl<I, ErrKind: Error> winnow::error::ParseError<I> for SyntaxParseError<I, ErrKind> {
-    fn from_error_kind(input: I, _kind: ErrorKind) -> Self {
-        Self {
-            input,
-            len: 0,
-            label: None,
-            help: None,
-            context: None,
-            kind: None,
-            touched: false,
-        }
-    }
+// impl<I, ErrKind: Error> winnow::error::ParseError<I> for SyntaxParseError<I, ErrKind> {
+//     fn from_error_kind(input: I, _kind: ErrorKind) -> Self {
+//         Self {
+//             input,
+//             len: 0,
+//             label: None,
+//             help: None,
+//             context: None,
+//             kind: None,
+//             touched: false,
+//         }
+//     }
 
-    fn append(self, _input: I, _kind: ErrorKind) -> Self {
-        self
-    }
-}
+//     fn append(self, _input: I, _kind: ErrorKind) -> Self {
+//         self
+//     }
+// }
 
-impl<I, ErrKind: Error> ContextError<I> for SyntaxParseError<I, ErrKind> {
-    fn add_context(self, _input: I, ctx: &'static str) -> Self {
-        self.context = self.context.or(Some(ctx));
-        self
-    }
-}
+// impl<I, ErrKind: Error> ContextError<I> for SyntaxParseError<I, ErrKind> {
+//     fn add_context(self, _input: I, ctx: &'static str) -> Self {
+//         self.context = self.context.or(Some(ctx));
+//         self
+//     }
+// }
 
 pub fn non_ws<I>(i: I) -> IResult<I, I::Slice>
 where
     I: StreamIsPartial + Stream,
     <I as Stream>::Token: AsChar,
 {
-    take_till1(AsChar::is_space)
-        .context("non_ws")
-        .parse_next(i)
+    take_till1(AsChar::is_space).context("non_ws").parse_next(i)
 }
 
 pub fn word<I>(i: I) -> IResult<I, I::Slice>

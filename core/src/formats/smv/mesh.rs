@@ -1,4 +1,4 @@
-use super::{err, util::*, err::Error, err::ErrorKind as SupErrorKind};
+use super::{err, err::Error, err::ErrorKind as SupErrorKind, util::*};
 
 use std::{
     collections::HashMap,
@@ -7,7 +7,11 @@ use std::{
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
-use winnow::{combinator::{opt, rest}, IResult, Parser, character::space0, Located};
+use winnow::{
+    character::space0,
+    combinator::{opt, rest},
+    IResult, Located, Parser,
+};
 
 use super::super::util::{f32, i32, non_ws, u32, usize, word};
 use super::util::*;
