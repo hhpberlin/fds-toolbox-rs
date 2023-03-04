@@ -1,9 +1,5 @@
-//pub type Input<'a> = &'a [u8];
-//pub type Result<'a, T> = nom::IResult<Input<'a>, T, ()>;
-
 mod util;
-use miette::Diagnostic;
-use thiserror::Error;
+
 use util::*;
 mod mesh;
 #[cfg(test)]
@@ -13,23 +9,20 @@ use std::collections::HashMap;
 
 use winnow::{
     branch::alt,
-    bytes::{tag, take_till0, take_till1},
+    bytes::{tag, take_till0},
     character::{line_ending, multispace0, not_line_ending, space0},
-    combinator::{opt, success, value},
-    dispatch,
+    combinator::opt,
     error::{ContextError, ErrMode, ParseError},
     multi::count,
     sequence::{delimited, preceded, terminated},
-    stream::{AsChar, Stream},
-    IResult, Located, Parser,
+    IResult, Parser,
 };
 
-use super::util::{f32, i32, non_ws, u32, usize, word, InputLocator};
+use super::util::{f32, i32, non_ws, u32, usize, InputLocator};
 use crate::{
-    geom::{Bounds3, Bounds3F, Bounds3I, Surfaces3, Vec2, Vec2F, Vec2I, Vec3, Vec3F, Vec3I, Vec3U},
+    geom::{Bounds3F, Bounds3I, Vec3F},
     ws_separated,
 };
-use util::*;
 
 #[derive(Debug)]
 struct Simulation {
@@ -325,6 +318,8 @@ impl SimulationParser<'_> {
 
         let mut input = self.located_parser.full_input;
 
+        // TODO: Error on unexpected setions repetitons (2 titles for example)
+
         while !input.is_empty() {
             let word = parse(&mut input, preceded(multispace0, non_ws))?;
             // let (input, addendum) =
@@ -335,7 +330,7 @@ impl SimulationParser<'_> {
 
             // }
 
-            if let Ok(_) = parse(&mut input, line_ending::<_, ()>) {
+            if parse(&mut input, line_ending::<_, ()>).is_ok() {
                 match word {
                     "TITLE" => title = Some(parse_line(&mut input, full_line)?),
                     "VERSION" | "FDSVERSION" => {
@@ -486,7 +481,7 @@ impl SimulationParser<'_> {
                             num,
                             smoke_type,
                             file_name: file_name.to_string(),
-                            quantity
+                            quantity,
                         });
                     }
                     "SLCF" | "SLCC" => {
@@ -530,10 +525,10 @@ impl SimulationParser<'_> {
                         device.activations.push(DeviceActivation { a, b, c });
                     }
                     "OPEN_VENT" | "CLOSE_VENT" => {
-                        let mesh_index = parse_line(&mut input, i32)?;
+                        let _mesh_index = parse_line(&mut input, i32)?;
                         let (_a, _b) = parse_line(&mut input, ws_separated!(i32, f32))?;
 
-                        let open = match word {
+                        let _open = match word {
                             "OPEN_VENT" => true,
                             "CLOSE_VENT" => false,
                             _ => unreachable!(),
@@ -542,7 +537,7 @@ impl SimulationParser<'_> {
                         // todo!()
                     }
                     "PL3D" => {
-                        let (time, mesh_index) = parse_line(&mut input, ws_separated!(f32, i32))?;
+                        let (_time, mesh_index) = parse_line(&mut input, ws_separated!(f32, i32))?;
 
                         let file_name = parse_line(&mut input, full_line)?;
 
@@ -571,26 +566,34 @@ impl SimulationParser<'_> {
             }
         }
 
+        let title = title
+            .ok_or(err::Error::MissingSection { name: "TITLE" })?
+            .to_string();
+        let fds_version = fds_version
+            .ok_or(err::Error::MissingSection { name: "FDSVERSION" })?
+            .to_string();
+        let end_version = end_file
+            .ok_or(err::Error::MissingSection { name: "ENDF" })?
+            .to_string();
+        let input_file = input_file
+            .ok_or(err::Error::MissingSection { name: "INPF" })?
+            .to_string();
+        let revision = revision
+            .ok_or(err::Error::MissingSection { name: "REVISION" })?
+            .to_string();
+        let chid = chid
+            .ok_or(err::Error::MissingSection { name: "CHID" })?
+            .to_string();
+        let solid_ht3d = solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?;
+
         Ok(Simulation {
-            title: title
-                .ok_or(err::Error::MissingSection { name: "TITLE" })?
-                .to_string(),
-            fds_version: fds_version
-                .ok_or(err::Error::MissingSection { name: "FDSVERSION" })?
-                .to_string(),
-            end_version: end_file
-                .ok_or(err::Error::MissingSection { name: "ENDF" })?
-                .to_string(),
-            input_file: input_file
-                .ok_or(err::Error::MissingSection { name: "INPF" })?
-                .to_string(),
-            revision: revision
-                .ok_or(err::Error::MissingSection { name: "REVISION" })?
-                .to_string(),
-            chid: chid
-                .ok_or(err::Error::MissingSection { name: "CHID" })?
-                .to_string(),
-            solid_ht3d: solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?,
+            title,
+            fds_version,
+            end_version,
+            input_file,
+            revision,
+            chid,
+            solid_ht3d,
         })
     }
 }

@@ -1,22 +1,13 @@
-use miette::SourceSpan;
 use winnow::{
-    branch::alt,
-    character::{not_line_ending, space0},
-    sequence::{preceded, terminated, tuple},
-    stream::{AsBStr, AsChar, Compare, Location, Stream, StreamIsPartial},
-    IResult, Located, Parser,
+    stream::{AsChar, Stream, StreamIsPartial},
+    IResult, Parser,
 };
 
 use crate::geom::{
-    Bounds3, Bounds3F, Bounds3I, Surfaces3, Vec2F, Vec2I, Vec2U, Vec3, Vec3F, Vec3I, Vec3U,
+    Bounds3, Bounds3F, Bounds3I, Surfaces3, Vec2F, Vec2I, Vec2U, Vec3F, Vec3I, Vec3U,
 };
 
-use super::{
-    super::util::{f32, i32, non_ws, u32, usize, word},
-    err,
-    err::Error,
-    err::ErrorKind,
-};
+use super::super::util::{f32, i32, u32};
 
 // /// Convenience macro for parsing to omit tuple() and similar boilerplate
 // #[macro_export]
@@ -29,7 +20,7 @@ macro_rules! ws_separated {
     // (@step $(lhs:expr),* ; $head:expr, $($tail:expr),*) =>
     // ($($t:expr),+ ; $($t_copy:expr),+) => {
     //     let res = winnow::sequence::preceded(
-    //         winnow::character::space0, 
+    //         winnow::character::space0,
     //         $t.context(concat!("ws_separated.", i, stringify!($t)))
     //     );
     // },
@@ -39,7 +30,7 @@ macro_rules! ws_separated {
                 (
                     $(
                         winnow::sequence::preceded(
-                            winnow::character::space0, 
+                            winnow::character::space0,
                             $t
                                 // .context(concat!("ws_separated.", stringify!($t)))
                         )

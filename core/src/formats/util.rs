@@ -1,20 +1,13 @@
-use std::{
-    error::Error,
-    fmt::Debug,
-    num::{ParseFloatError, ParseIntError},
-    ops::Range,
-    str::FromStr,
-};
+use std::{fmt::Debug, str::FromStr};
 
-use miette::{Diagnostic, SourceSpan};
-use thiserror::Error;
+use miette::SourceSpan;
+
 use winnow::{
-    bytes::{take_till1, take_while0, take_while1},
+    bytes::take_till1,
     character::space0,
-    error::{ContextError, ErrorKind, FromExternalError},
     sequence::preceded,
-    stream::{AsChar, Offset, Stream, StreamIsPartial},
-    FinishIResult, IResult, Located, Parser,
+    stream::{AsChar, Stream, StreamIsPartial},
+    IResult, Parser,
 };
 
 // Stolen from [kdl-rs](https://github.com/kdl-org/kdl-rs/blob/main/src/parser.rs)

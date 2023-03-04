@@ -1,25 +1,13 @@
 use super::*;
 
-use std::{
-    collections::HashMap,
-    num::{ParseFloatError, ParseIntError},
-};
-
-use miette::{Diagnostic, SourceSpan};
+use miette::Diagnostic;
 use thiserror::Error;
-use winnow::{
-    character::space0,
-    combinator::{opt, rest},
-    IResult, Located, Parser,
-};
+use winnow::{combinator::opt, Parser};
 
-use super::super::util::{f32, i32, non_ws, u32, usize, word};
-use super::util::*;
+use super::super::util::{f32, i32, usize};
+
 use crate::{
-    geom::{
-        Bounds3, Bounds3F, Bounds3I, Dim3D, Surfaces3, Vec2, Vec2F, Vec2I, Vec3, Vec3F, Vec3I,
-        Vec3U,
-    },
+    geom::{Bounds3F, Bounds3I, Dim3D, Surfaces3, Vec3, Vec3F, Vec3U},
     ws_separated,
 };
 
