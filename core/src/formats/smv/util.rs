@@ -151,4 +151,3 @@ impl_from!(bounds3f(f32, f32, f32, f32, f32, f32) -> Bounds3F { Bounds3::from_fd
 // ) -> Result<Vec<T>, err::Error> {
 //     (0..n).map(|i| parse(&mut src, i)).collect()
 // }
-

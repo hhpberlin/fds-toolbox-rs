@@ -14,12 +14,12 @@ use std::collections::HashMap;
 use winnow::{
     branch::alt,
     bytes::{tag, take_till0, take_till1},
-    character::{line_ending, multispace0, space0, not_line_ending},
+    character::{line_ending, multispace0, not_line_ending, space0},
     combinator::{opt, success, value},
     dispatch,
     error::{ContextError, ErrMode, ParseError},
     multi::count,
-    sequence::{preceded, terminated, delimited},
+    sequence::{delimited, preceded, terminated},
     stream::{AsChar, Stream},
     IResult, Located, Parser,
 };
@@ -216,7 +216,11 @@ mod test {
     fn ws_separated() {
         let mut input = "lorem 1 ipsum 5.3";
         assert_eq!(
-            parse::<_, _, winnow::error::Error<_>>(&mut input, ws_separated!("lorem", i32, "ipsum", f32)).unwrap(),
+            parse::<_, _, winnow::error::Error<_>>(
+                &mut input,
+                ws_separated!("lorem", i32, "ipsum", f32)
+            )
+            .unwrap(),
             ("lorem", 1, "ipsum", 5.3),
         );
     }
@@ -291,7 +295,7 @@ impl SimulationParser<'_> {
                         // TODO: Find out what this is
                         let _ = parse_line(&mut input, i32)?;
                         hrrpuv_cutoff = Some(parse_line(&mut input, f32)?)
-                    },
+                    }
                     "VIEWTIMES" => {
                         view_times = Some(parse_line(&mut input, ws_separated!(f32, f32, i32))?)
                     }
@@ -305,8 +309,10 @@ impl SimulationParser<'_> {
                             parse_line(&mut input, ws_separated!(f32, f32))?;
                         let (surface_type, texture_width, texture_height, rgb, transparency) =
                             parse_line(&mut input, ws_separated!(i32, f32, f32, vec3f, f32))?;
-                        let texture =
-                            parse(&mut input, alt((tag("null").value(None), full_line.map(Some))))?;
+                        let texture = parse(
+                            &mut input,
+                            alt((tag("null").value(None), full_line.map(Some))),
+                        )?;
                         surfaces.push(Surface {
                             name: name.to_string(),
                             tmpm,
@@ -333,7 +339,7 @@ impl SimulationParser<'_> {
                     "TOFFSET" => default_texture_origin = Some(parse_line(&mut input, vec3f)?),
                     "RAMP" => {
                         let ramp = (
-                            line(("RAMP:", full_line)), 
+                            line(("RAMP:", full_line)),
                             repeat(line(ws_separated!(f32, f32))),
                         );
                         ramps = Some(parse(&mut input, repeat(ramp))?)
@@ -387,8 +393,8 @@ impl SimulationParser<'_> {
             } else {
                 match word {
                     "GRID" => {
-                        let default_texture_origin =
-                            default_texture_origin.ok_or(err::Error::MissingSection { name: "TOFFSET" })?;
+                        let default_texture_origin = default_texture_origin
+                            .ok_or(err::Error::MissingSection { name: "TOFFSET" })?;
 
                         let mesh;
                         (input, mesh) = self.parse_mesh(&mut input, default_texture_origin)?;
@@ -447,8 +453,8 @@ impl SimulationParser<'_> {
                         let device = parse_line(&mut input, full_line)?;
 
                         let Some(device) = devices.get_mut(device) else {
-                            return Err(err::Error::InvalidKey { 
-                                key: self.located_parser.span_from_substr(device), 
+                            return Err(err::Error::InvalidKey {
+                                key: self.located_parser.span_from_substr(device),
                                 key_type: "DEVICE_ACT",
                              });
                         };

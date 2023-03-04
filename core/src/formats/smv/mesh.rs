@@ -127,7 +127,11 @@ pub enum ErrorKind {
 // }
 
 impl SimulationParser<'_> {
-    pub(super) fn parse_mesh(&self, mut input: &str, default_texture_origin: Vec3F) -> Result<(&str, Mesh), err::Error> {
+    pub(super) fn parse_mesh(
+        &self,
+        mut input: &str,
+        default_texture_origin: Vec3F,
+    ) -> Result<(&str, Mesh), err::Error> {
         let mesh_name = parse_line(&mut input, full_line)?;
         let (dimensions, _a) = parse_line(&mut input, ws_separated!(vec3u, i32))?;
 
@@ -180,7 +184,6 @@ impl SimulationParser<'_> {
         //     parse_trn(&mut input, Dim3D::Y)?,
         //     parse_trn(&mut input, Dim3D::Z)?,
         // );
-
 
         //     parse_subsection_hdr(header, &mut next, "OBST")?;
         //     let obsts = parse_obsts(&mut next, default_texture_origin)?;
