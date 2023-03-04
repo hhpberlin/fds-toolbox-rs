@@ -7,15 +7,6 @@ use thiserror::Error;
 use winnow;
 
 use miette::SourceSpan;
-use winnow::error::FromExternalError;
-use winnow::Parser;
-
-// use crate::formats::util::ParseErrorKind;
-// use crate::formats::util::SyntaxParseError;
-
-use crate::formats::util::word;
-
-use super::mesh;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum Error {
@@ -109,6 +100,12 @@ pub enum Error {
         #[label("here")]
         section: SourceSpan,
     },
+    #[error("Found wrong number of meshes, got {found}, expected {expected}")]
+    #[diagnostic(
+        code(fds_tbx::smv::wrong_number_of_meshes),
+        help("expected {expected} meshes, found {found} meshes")
+    )]
+    WrongNumberOfMeshes { expected: usize, found: usize },
 }
 
 impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {
