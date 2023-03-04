@@ -19,7 +19,7 @@ use winnow::{
     dispatch,
     error::{ContextError, ErrMode, ParseError},
     multi::count,
-    sequence::{preceded, terminated},
+    sequence::{preceded, terminated, delimited},
     stream::{AsChar, Stream},
     IResult, Located, Parser,
 };
@@ -159,7 +159,7 @@ fn parse_line<'ptr, 'input, O, E: ParseError<&'input str> + ContextError<&'input
 fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
     parser: impl Parser<&'a str, O, E>,
 ) -> impl Parser<&'a str, O, E> {
-    terminated(parser, (line_ending, multispace0)).context("line")
+    delimited(space0, parser, (line_ending, multispace0)).context("line")
 }
 
 /// Parses an entire line, but leaves the line ending in the input.
@@ -210,6 +210,15 @@ mod test {
             "sit amet",
         );
         assert_eq!(input, "dolor");
+    }
+
+    #[test]
+    fn ws_separated() {
+        let mut input = "lorem 1 ipsum 5.3";
+        assert_eq!(
+            parse::<_, _, winnow::error::Error<_>>(&mut input, ws_separated!("lorem", i32, "ipsum", f32)).unwrap(),
+            ("lorem", 1, "ipsum", 5.3),
+        );
     }
 }
 
@@ -278,7 +287,11 @@ impl SimulationParser<'_> {
                         csv_files.insert(name, file_name);
                     }
                     "NMESHES" => num_meshes = Some(parse_line(&mut input, u32)?),
-                    "HRRPUVCUT" => hrrpuv_cutoff = Some(parse_line(&mut input, f32)?),
+                    "HRRPUVCUT" => {
+                        // TODO: Find out what this is
+                        let _ = parse_line(&mut input, i32)?;
+                        hrrpuv_cutoff = Some(parse_line(&mut input, f32)?)
+                    },
                     "VIEWTIMES" => {
                         view_times = Some(parse_line(&mut input, ws_separated!(f32, f32, i32))?)
                     }
@@ -317,11 +330,11 @@ impl SimulationParser<'_> {
                     "OUTLINE" => outlines = Some(parse(&mut input, repeat(line(bounds3f)))?),
                     // TODO: This is called offset but fdsreader treats it as the default texture origin
                     //       Check if it actually should be the default value or if it should be a global offset
-                    "TOFFSEF" => default_texture_origin = Some(parse_line(&mut input, vec3f)?),
+                    "TOFFSET" => default_texture_origin = Some(parse_line(&mut input, vec3f)?),
                     "RAMP" => {
                         let ramp = (
                             line(("RAMP:", full_line)), 
-                            repeat(ws_separated!(f32, f32)),
+                            repeat(line(ws_separated!(f32, f32))),
                         );
                         ramps = Some(parse(&mut input, repeat(ramp))?)
                     }
@@ -366,9 +379,10 @@ impl SimulationParser<'_> {
                     }
                     "OFFSET" => {
                         // This always appears before GRID
+                        let _ = parse_line(&mut input, vec3f)?;
                         todo!()
-                        }
-                        _ => todo!(),
+                    }
+                    _ => todo!(),
                 }
             } else {
                 match word {

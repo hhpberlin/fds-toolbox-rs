@@ -177,7 +177,7 @@ where
     I: StreamIsPartial + Stream,
     <I as Stream>::Token: AsChar,
 {
-    take_till1(AsChar::is_space).context("non_ws").parse_next(i)
+    take_till1(|x: <I as Stream>::Token| "\r\n\t ".contains(x.as_char())).context("non_ws").parse_next(i)
 }
 
 pub fn word<I>(i: I) -> IResult<I, I::Slice>

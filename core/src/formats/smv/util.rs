@@ -44,6 +44,7 @@ macro_rules! impl_from {
             <I as Stream>::Slice: AsRef<str>,
         {
             ws_separated!($($t),+)
+                .context(stringify!($name))
                 .map($e)
                 .parse_next(i)
         }
