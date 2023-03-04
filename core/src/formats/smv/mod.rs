@@ -137,12 +137,13 @@ struct SimulationParser<'a> {
 
 /// Convenience function for applying a parser and storing the remaining input into the reference.
 ///
-/// ```
+/// ```no_run
+/// # use fds_toolbox_core::formats::smv::parse;
 /// let mut input = "lorem ipsum";
 /// parse(&mut input, "lorem").unwrap();
 /// assert_eq!(input, " ipsum");
 /// ```
-fn parse<'ptr, I: Copy, O, E>(input: &'ptr mut I, mut parser: impl Parser<I, O, E>) -> Result<O, ErrMode<E>> {
+fn parse<I: Copy, O, E>(input: &mut I, mut parser: impl Parser<I, O, E>) -> Result<O, ErrMode<E>> {
     let (remaining, value) = parser.parse_next(*input)?;
     *input = remaining;
     Ok(value)
@@ -166,7 +167,7 @@ fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
 /// ```
 /// assert_eq!(full_line.parse_next("lorem\nipsum"), Ok(("ipsum", "\nlorem")));
 /// ```
-fn full_line(input: &str) -> IResult<&str, &str> {
+fn full_line<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     // TODO: Which one is better between these two?
     not_line_ending.parse_next(input)
     //take_till1(|c| c == '\r' || c == '\n').parse_next(i)
@@ -181,6 +182,34 @@ fn repeat<'input, O>(
         let (input, num) = line(usize).parse_next(input)?;
         let (input, vec) = count(parser.by_ref(), num).parse_next(input)?;
         Ok((input, vec))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use winnow::error::VerboseError;
+
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let mut input = "lorem ipsum";
+        parse::<_, _, VerboseError<_>>(&mut input, "lorem").unwrap();
+        assert_eq!(input, " ipsum");
+    }
+
+    #[test]
+    fn test_line() {
+        let mut input = "lorem ipsum\nsit amet\r\ndolor";
+        assert_eq!(
+            parse::<_, _, VerboseError<_>>(&mut input, line("lorem ipsum")).unwrap(),
+            "lorem ipsum",
+        );
+        assert_eq!(
+            parse::<_, _, VerboseError<_>>(&mut input, line(full_line)).unwrap(),
+            "sit amet",
+        );
+        assert_eq!(input, "dolor");
     }
 }
 
