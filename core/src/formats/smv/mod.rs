@@ -93,9 +93,7 @@ enum Smoke3DType {
 struct Smoke3D {
     num: i32,
     file_name: String,
-    quantity: String,
-    name: String,
-    unit: String,
+    quantity: Quantity,
     smoke_type: Smoke3DType,
 }
 
@@ -114,10 +112,22 @@ struct Slice {
 
 #[derive(Debug)]
 struct Plot3D {
-    num: i32,
     file_name: String,
-    quantity: String,
+    mesh_index: i32,
+    quantities: [Quantity; 5],
+}
+
+#[derive(Debug)]
+struct Property {
     name: String,
+    smv_ids: Vec<String>,
+    smv_props: Vec<String>,
+}
+
+#[derive(Debug)]
+struct Quantity {
+    label: String,
+    bar_label: String,
     unit: String,
 }
 
@@ -135,16 +145,28 @@ struct SimulationParser<'a> {
     pub located_parser: InputLocator<'a>,
 }
 
+// TODO: Track https://github.com/rust-lang/rust/issues/50784 for doctests of private functions
+
 /// Convenience function for applying a parser and storing the remaining input into the reference.
 ///
-/// ```no_run
+/// ```ignore
 /// # use fds_toolbox_core::formats::smv::parse;
 /// let mut input = "lorem ipsum";
 /// parse(&mut input, "lorem").unwrap();
 /// assert_eq!(input, " ipsum");
 /// ```
 fn parse<I: Copy, O, E>(input: &mut I, mut parser: impl Parser<I, O, E>) -> Result<O, ErrMode<E>> {
-    let (remaining, value) = parser.parse_next(*input)?;
+    // let (remaining, value) = parser.parse_next(*input)?;
+    // *input = remaining;
+    // Ok(value)
+    parse_fn(input, |i| parser.parse_next(i))
+}
+
+fn parse_fn<I: Copy, O, E>(
+    input: &mut I,
+    mut parser: impl FnMut(I) -> Result<(I, O), E>,
+) -> Result<O, E> {
+    let (remaining, value) = parser(*input)?;
     *input = remaining;
     Ok(value)
 }
@@ -164,7 +186,8 @@ fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 /// Parses an entire line, but leaves the line ending in the input.
 ///
-/// ```
+/// ```ignore
+/// # use fds_toolbox_core::formats::smv::parse;
 /// assert_eq!(full_line.parse_next("lorem\nipsum"), Ok(("ipsum", "\nlorem")));
 /// ```
 fn full_line<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -233,8 +256,45 @@ mod test {
 //     parse(input, repeat)
 // }
 
+fn quantity(mut input: &str) -> IResult<&str, Quantity> {
+    let label = parse_line(&mut input, full_line)?;
+    let bar_label = parse_line(&mut input, full_line)?;
+    let unit = parse_line(&mut input, full_line)?;
+    Ok((
+        input,
+        Quantity {
+            label: label.to_string(),
+            bar_label: bar_label.to_string(),
+            unit: unit.to_string(),
+        },
+    ))
+}
+
 impl SimulationParser<'_> {
-    fn parse<'a>(&self) -> Result<Simulation, err::Error> {
+    // fn parse2(&self) -> Result
+    fn map_err(&self, err: err::Error) -> miette::Report {
+        let err = match err {
+            err::Error::SyntaxNonDiagnostic {
+                remaining_length_bytes,
+                kind,
+            } => {
+                let start = self.located_parser.full_input.len() - remaining_length_bytes;
+                let word = self.located_parser.full_input[start..]
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or(&self.located_parser.full_input[start..]);
+
+                err::Error::Syntax {
+                    location: self.located_parser.span_from_substr(word),
+                    kind,
+                }
+            }
+            err => err,
+        };
+        miette::Report::new(err).with_source_code(self.located_parser.full_input.to_string())
+    }
+
+    fn parse(&self) -> Result<Simulation, err::Error> {
         let mut title = None;
         let mut fds_version = None;
         let mut end_file = None;
@@ -261,6 +321,7 @@ impl SimulationParser<'_> {
         let mut smoke3d = Vec::new();
         let mut slices = Vec::new();
         let mut pl3d = Vec::new();
+        let mut properties = Vec::new();
 
         let mut input = self.located_parser.full_input;
 
@@ -346,11 +407,21 @@ impl SimulationParser<'_> {
                     }
                     "PROP" => {
                         // TODO: This is probably wrong, based on a sample size of two
-                        parse(
-                            &mut input,
-                            (line("null"), line("1"), line("sensor"), line("0")),
-                        )?;
-                        todo!()
+                        // parse(
+                        //     &mut input,
+                        //     (line("null"), line("1"), line("sensor"), line("0")),
+                        // )?;
+                        // todo!()
+
+                        let name = parse_line(&mut input, full_line)?;
+                        let smv_ids = parse(&mut input, repeat(line(full_line)))?;
+                        let smv_props = parse(&mut input, repeat(line(full_line)))?;
+
+                        properties.push(Property {
+                            name: name.to_string(),
+                            smv_ids: smv_ids.into_iter().map(str::to_string).collect(),
+                            smv_props: smv_props.into_iter().map(str::to_string).collect(),
+                        });
                     }
                     "DEVICE" => {
                         let name = take_till0("%").map(str::trim);
@@ -383,23 +454,22 @@ impl SimulationParser<'_> {
                             },
                         );
                     }
+                    // GRID always preceded by OFFSET
                     "OFFSET" => {
-                        // This always appears before GRID
-                        let _ = parse_line(&mut input, vec3f)?;
-                        todo!()
-                    }
-                    _ => todo!(),
-                }
-            } else {
-                match word {
-                    "GRID" => {
                         let default_texture_origin = default_texture_origin
                             .ok_or(err::Error::MissingSection { name: "TOFFSET" })?;
 
-                        let mesh;
-                        (input, mesh) = self.parse_mesh(&mut input, default_texture_origin)?;
+                        let mesh = parse_fn(&mut input, self.parse_mesh(default_texture_origin))?;
                         meshes.push(mesh);
                     }
+                    _ => {
+                        return Err(err::Error::UnknownSection {
+                            section: self.located_parser.span_from_substr(word),
+                        })
+                    }
+                }
+            } else {
+                match word {
                     "SMOKF3D" | "SMOKG3D" => {
                         let num = parse_line(&mut input, i32)?;
 
@@ -410,17 +480,13 @@ impl SimulationParser<'_> {
                         };
 
                         let file_name = parse_line(&mut input, full_line)?;
-                        let quantity = parse_line(&mut input, full_line)?;
-                        let name = parse_line(&mut input, full_line)?;
-                        let unit = parse_line(&mut input, full_line)?;
+                        let quantity = parse(&mut input, quantity)?;
 
                         smoke3d.push(Smoke3D {
                             num,
                             smoke_type,
                             file_name: file_name.to_string(),
-                            quantity: quantity.to_string(),
-                            name: name.to_string(),
-                            unit: unit.to_string(),
+                            quantity
                         });
                     }
                     "SLCF" | "SLCC" => {
@@ -473,27 +539,34 @@ impl SimulationParser<'_> {
                             _ => unreachable!(),
                         };
 
-                        todo!()
+                        // todo!()
                     }
                     "PL3D" => {
-                        let (_a, num) = parse_line(&mut input, ws_separated!(f32, i32))?;
+                        let (time, mesh_index) = parse_line(&mut input, ws_separated!(f32, i32))?;
 
                         let file_name = parse_line(&mut input, full_line)?;
-                        let quantity = parse_line(&mut input, full_line)?;
-                        let name = parse_line(&mut input, full_line)?;
-                        let unit = parse_line(&mut input, full_line)?;
 
-                        // TODO: lines missing
-                        todo!();
+                        // TODO: use `try_map` (https://github.com/rust-lang/rust/issues/79711) when it's stable
+                        // let quantities = [(); 5].try_map(|_| {
+                        //     parse(&mut input, quantity)?
+                        // });
+                        let (q1, q2, q3, q4, q5) = parse(
+                            &mut input,
+                            (quantity, quantity, quantity, quantity, quantity),
+                        )?;
+                        let quantities = [q1, q2, q3, q4, q5];
+
                         pl3d.push(Plot3D {
-                            num,
+                            mesh_index,
                             file_name: file_name.to_string(),
-                            quantity: quantity.to_string(),
-                            name: name.to_string(),
-                            unit: unit.to_string(),
+                            quantities,
                         });
                     }
-                    _ => todo!(),
+                    _ => {
+                        return Err(err::Error::UnknownSection {
+                            section: self.located_parser.span_from_substr(word),
+                        })
+                    }
                 }
             }
         }

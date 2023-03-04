@@ -8,55 +8,121 @@ use winnow;
 
 use miette::SourceSpan;
 use winnow::error::FromExternalError;
+use winnow::Parser;
 
 // use crate::formats::util::ParseErrorKind;
 // use crate::formats::util::SyntaxParseError;
+
+use crate::formats::util::word;
 
 use super::mesh;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum Error {
-    #[error("oops!")]
-    Syntax(winnow::error::ErrMode<winnow::error::Error<String>>),
+    #[error("Syntax error")]
+    #[diagnostic(code(fds_tbx::smv::generic_syntax), help("error: {kind:#?}"))]
+    Syntax {
+        #[label("here")]
+        location: SourceSpan,
+        kind: winnow::error::ErrorKind,
+    },
+    #[error("Syntax error")]
+    #[diagnostic(code(fds_tbx::smv::generic_syntax_nd))]
+    SyntaxNonDiagnostic {
+        remaining_length_bytes: usize,
+        kind: winnow::error::ErrorKind,
+    },
+    #[error("File ended early, expected at least {0:#?} more bytes")]
+    #[diagnostic(
+        code(fds_tbx::smv::early_eof),
+        help("expected at least {0:#?} more bytes")
+    )]
+    Incomplete(winnow::error::Needed),
     #[error("Missing sub-section {name}")]
     #[diagnostic(code(fds_tbx::smv::missing_sub_section))]
     MissingSubSection {
-        #[label("In this section")]
+        #[label("in this section")]
         parent: SourceSpan,
-        #[help("Expected a sub-section {name}")]
+        #[help("expected a sub-section {name}")]
         name: &'static str,
-        #[label("Found this instead")]
+        #[label("found this instead")]
         found: Option<SourceSpan>,
     },
     #[error("Missing section {name}")]
     #[diagnostic(code(fds_tbx::smv::missing_section))]
     MissingSection {
-        #[help("Expected a section {name}")]
+        #[help("expected a section {name}")]
         name: &'static str,
     },
     #[error("Reference to undefined {key_type}")]
     #[diagnostic(code(fds_tbx::smv::invalid_key))]
     InvalidKey {
-        #[label("This key is invalid")]
+        #[label("this key is invalid")]
         key: SourceSpan,
-        #[help("Expected a reference to a {name}")]
+        #[help("expected a reference to a {name}")]
         key_type: &'static str,
     },
     #[error("Found an index out of order")]
     #[diagnostic(code(fds_tbx::smv::suspicious_index))]
     SuspiciousIndex {
-        #[label("Inside this sub-section")]
+        #[label("inside this sub-section")]
         inside_subsection: SourceSpan,
-        #[label("This index is suspicious")]
+        #[label("this index is suspicious")]
         index: SourceSpan,
-        #[help("Expected an index of {expected}")]
+        #[help("expected an index of {expected}")]
         expected: usize,
+    },
+    #[error("Obst ID is of sign {signum}. Expected -1 or 1")]
+    #[diagnostic(code(fds_tbx::smv::unexpected_obst_id_sign))]
+    UnexpectedObstIdSign {
+        #[label("this mesh id")]
+        number: SourceSpan,
+        #[help("is of sign {signum}. Expected -1 or 1")]
+        signum: i32,
+    },
+    #[error("Either a color index or an RGB color must be specified")]
+    #[diagnostic(code(fds_tbx::smv::invalid_obst_color))]
+    InvalidObstColor {
+        #[label("specified index")]
+        color_index: SourceSpan,
+        #[label("specified RGB")]
+        rgb: Option<SourceSpan>,
+    },
+    #[error("Texture origin must be specified on all non-dummy vents, and must not be specified on dummy vents")]
+    #[diagnostic(code(fds_tbx::smv::vent_missing_texture_origin))]
+    // #[help("Expected a texture origin for vent {vent_index} of {num_vents_total} vents, because it is within the first {num_non_dummies} vents, which are not dummy vents and must therefore have a texture origin specified.")]
+    VentTextureOrigin {
+        #[label("this vent")]
+        vent: SourceSpan,
+        #[help("theres {num_vents_total} vents in total")]
+        num_vents_total: usize,
+        #[help("the first {num_non_dummies} vents are non-dummy vents and must have a texture origin specified")]
+        num_non_dummies: usize,
+        #[help("expected a texture origin for vent {vent_line_number}")]
+        vent_line_number: usize,
+        #[label("this is the texture origin")]
+        texture_origin: Option<SourceSpan>,
+    },
+    #[error("Encountered unknown section")]
+    #[diagnostic(code(fds_tbx::smv::unknown_section))]
+    UnknownSection {
+        #[label("here")]
+        section: SourceSpan,
     },
 }
 
-impl<S: Into<String>> From<winnow::error::ErrMode<winnow::error::Error<S>>> for Error {
-    fn from(err: winnow::error::ErrMode<winnow::error::Error<S>>) -> Self {
-        Self::Syntax(err.map_input(|e| e.into()))
+impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {
+    fn from(err: winnow::error::ErrMode<winnow::error::Error<&str>>) -> Self {
+        // Self::SyntaxNonDiagnostic(err.map_input(|e| e.into()))
+        match err {
+            winnow::error::ErrMode::Incomplete(needed) => Self::Incomplete(needed),
+            winnow::error::ErrMode::Backtrack(err) | winnow::error::ErrMode::Cut(err) => {
+                Self::SyntaxNonDiagnostic {
+                    remaining_length_bytes: err.input.len(),
+                    kind: err.kind,
+                }
+            }
+        }
     }
 }
 

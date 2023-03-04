@@ -26,8 +26,35 @@ use super::{
 
 #[macro_export]
 macro_rules! ws_separated {
+    // (@step $(lhs:expr),* ; $head:expr, $($tail:expr),*) =>
+    // ($($t:expr),+ ; $($t_copy:expr),+) => {
+    //     let res = winnow::sequence::preceded(
+    //         winnow::character::space0, 
+    //         $t.context(concat!("ws_separated.", i, stringify!($t)))
+    //     );
+    // },
     ($($t:expr),+) => {
-        winnow::sequence::terminated(($(winnow::sequence::preceded(winnow::character::space0, $t)),+), winnow::character::space0)
+        {
+            winnow::sequence::terminated(
+                (
+                    $(
+                        winnow::sequence::preceded(
+                            winnow::character::space0, 
+                            $t
+                                // .context(concat!("ws_separated.", stringify!($t)))
+                        )
+                    ),+
+                ),
+                winnow::character::space0)
+                .context(concat!("ws_separated!(", stringify!($($t),+), ")"))
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! trace_callsite {
+    ($t:expr) => {
+        $t.context(concat!(file!(), ":", line!(), ":", column!()))
     };
 }
 

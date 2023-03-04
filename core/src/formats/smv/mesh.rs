@@ -68,7 +68,9 @@ pub struct CircularVent {
 #[derive(Debug)]
 pub struct Mesh {
     name: String,
+    offset: Vec3F,
     dimensions: Vec3U,
+    rgb: Vec3F,
     bounds: Bounds3F,
     obsts: Vec<Obst>,
     trn: Vec3<Vec<f32>>,
@@ -127,88 +129,335 @@ pub enum ErrorKind {
 // }
 
 impl SimulationParser<'_> {
-    pub(super) fn parse_mesh(
-        &self,
-        mut input: &str,
+    /// Parses a single line and matches it against `tag`.
+    /// Returns the line if it matches, otherwise returns an error
+    /// referencing the found line and the given `section`.
+    fn subsection_hdr<'this: 'data, 'data>(
+        &'this self,
+        tag: &'static str,
+        section: &'this str,
+    ) -> impl Fn(&'data str) -> Result<(&'data str, &'data str), err::Error> + 'data {
+        move |mut input| {
+            let line = parse(
+                &mut input,
+                line(full_line.context(tag)).context("subsection_hdr"),
+            )?;
+            if line.trim().eq(tag) {
+                return Ok((input, line));
+            }
+            Err(err::Error::MissingSubSection {
+                parent: self.located_parser.span_from_substr(section),
+                name: tag,
+                found: Some(self.located_parser.span_from_substr(line)),
+            })
+        }
+    }
+
+    pub(super) fn parse_mesh<'this: 'data, 'data>(
+        &'this self,
         default_texture_origin: Vec3F,
-    ) -> Result<(&str, Mesh), err::Error> {
-        let mesh_name = parse_line(&mut input, full_line)?;
-        let (dimensions, _a) = parse_line(&mut input, ws_separated!(vec3u, i32))?;
+    ) -> impl Fn(&'data str) -> Result<(&str, Mesh), err::Error> {
+        move |mut input| {
+            let offset = parse_line(&mut input, vec3f)?;
 
-        // let parse_subsection_hdr = |input: &'_ mut &'_ str, tag: &'static str| {
-        //     let original_input = *input;
-        //     parse_line::<_, ()>(input, tag).map_err(|_| err::Error::MissingSubSection {
-        //         parent: self.located_parser.span_from_substr(mesh_name),
-        //         name: tag,
-        //         found: full_line(original_input)
-        //             .ok()
-        //             .map(|(_input, line)| self.located_parser.span_from_substr(line)),
-        //     })
-        // };
+            let (_, mesh_name) = parse_line(&mut input, ws_separated!("GRID", full_line))?;
+            let (dimensions, _a) = parse_line(&mut input, ws_separated!(vec3u, i32))?;
 
-        // parse_subsection_hdr(&mut input, "PDIM")?;
-        // let (bounds, _something) = parse_line(&mut input, ws_separated!(bounds3f, vec2f))?;
+            // Capture `self` and `mesh_name`
+            let subsection_hdr = |tag| self.subsection_hdr(tag, mesh_name);
 
-        // let parse_trn = |input: &mut &str, dim: Dim3D| {
-        //     // TODO: I'm not too fond of hardcoding the dimension names like this
-        //     let header = parse_subsection_hdr(&mut input, ["TRNX", "TRNY", "TRNZ"][dim as usize])?;
+            parse_fn(&mut input, subsection_hdr("PDIM"))?;
 
-        //     // TODO: Why is this a thing? This is just copied from fdsreader right now but idk why it's there
-        //     let n = parse_line(&mut input, usize)?;
-        //     for _ in 0..n {
-        //         // cast the line to the void
-        //         let _ = parse_line(&mut input, full_line)?;
-        //     }
+            let (bounds, rgb) = parse_line(&mut input, ws_separated!(bounds3f, vec3f))?;
 
-        //     let len = dimensions[dim] as usize;
-        //     let vec = Vec::with_capacity(len);
+            let trn = |dim: Dim3D, name: &'static str| {
+                move |mut input| {
+                    let header = parse_fn(&mut input, subsection_hdr(name))?;
 
-        //     for line in 0..len {
-        //         let ((i, i_str), v) =
-        //             parse_line(&mut input, ws_separated!(usize.with_recognized(), f32))?;
-        //         if i != line {
-        //             return Err(err::Error::SuspiciousIndex {
-        //                 inside_subsection: self.located_parser.span_from_substr(header),
-        //                 index: self.located_parser.span_from_substr(i_str),
-        //                 expected: line,
-        //             });
-        //         }
-        //         vec.push(v);
-        //     }
+                    // TODO: Why is this a thing? This is just copied from fdsreader right now but idk why it's there
+                    let n = parse_line(&mut input, usize)?;
+                    for _ in 0..n {
+                        // cast the line to the void
+                        let _ = parse_line(&mut input, full_line)?;
+                    }
 
-        //     Ok(vec)
-        // };
+                    let len = dimensions[dim] as usize;
+                    let mut vec = Vec::with_capacity(len);
 
-        // let trn = Vec3::new(
-        //     parse_trn(&mut input, Dim3D::X)?,
-        //     parse_trn(&mut input, Dim3D::Y)?,
-        //     parse_trn(&mut input, Dim3D::Z)?,
-        // );
+                    for line in 0..=len {
+                        let ((i, i_str), v) =
+                            parse_line(&mut input, ws_separated!(usize.with_recognized(), f32))?;
+                        if i != line {
+                            return Err(err::Error::SuspiciousIndex {
+                                inside_subsection: self.located_parser.span_from_substr(header),
+                                index: self.located_parser.span_from_substr(i_str),
+                                expected: line,
+                            });
+                        }
+                        vec.push(v);
+                    }
 
-        //     parse_subsection_hdr(header, &mut next, "OBST")?;
-        //     let obsts = parse_obsts(&mut next, default_texture_origin)?;
+                    Ok((input, vec))
+                }
+            };
 
-        //     parse_subsection_hdr(header, &mut next, "VENT")?;
-        //     let vents = parse_vents(&mut next)?;
+            let trn = Vec3::new(
+                parse_fn(&mut input, trn(Dim3D::X, "TRNX"))?,
+                parse_fn(&mut input, trn(Dim3D::Y, "TRNY"))?,
+                parse_fn(&mut input, trn(Dim3D::Z, "TRNZ"))?,
+            );
 
-        //     parse_subsection_hdr(header, &mut next, "CVENT")?;
-        //     let circular_vents = parse_circular_vents(&mut next)?;
+            parse_fn(&mut input, subsection_hdr("OBST"))?;
+            let obsts = parse_fn(&mut input, self.parse_obsts(default_texture_origin))?;
 
-        // TODO: fdsreader doesn't parse this, but it's in the .smv file I'm referencing
-        // parse_subsection_hdr(&mut input, "OFFSET")?;
-        // let _offset = parse_line(&mut input, vec3f)?;
+            parse_fn(&mut input, subsection_hdr("VENT"))?;
+            let vents = parse_fn(&mut input, self.parse_vents())?;
 
-        //     Ok(Mesh {
-        //         name: mesh_name,
-        //         dimensions,
-        //         bounds,
-        //         trn,
-        //         obsts,
-        //         vents,
-        //         circular_vents,
-        //     })
+            parse_fn(&mut input, subsection_hdr("CVENT"))?;
+            let circular_vents = parse_fn(&mut input, self.parse_circular_vents())?;
 
-        Ok(todo!())
+            Ok((
+                input,
+                Mesh {
+                    name: mesh_name.to_string(),
+                    offset,
+                    dimensions,
+                    rgb,
+                    bounds,
+                    obsts,
+                    trn,
+                    vents,
+                    circular_vents,
+                },
+            ))
+        }
+    }
+
+    fn parse_obsts<'this: 'data, 'data>(
+        &'this self,
+        default_texture_origin: Vec3<f32>,
+    ) -> impl Fn(&'data str) -> Result<(&'data str, Vec<Obst>), err::Error> {
+        move |mut input| {
+            // Stores obstacles as they are defined in the first half
+            // Since obstacles are defined like this:
+            //
+            // OBST
+            //  2        number of obstacles
+            //  1.2 ...  obstacle 1
+            //  2.3 ...  obstacle 2
+            //  1 2 ...  more info about obstacle 1
+            //  3 4 ...  more info about obstacle 2
+            //
+            struct HalfObst {
+                name: Option<String>,
+                id: u32,
+                is_hole: bool,
+                bounds: Bounds3F,
+                texture_origin: Vec3F,
+                // TODO: Map to actual surface type
+                side_surfaces: Surfaces3<i32>,
+            }
+            let num_obsts = parse_line(&mut input, usize)?;
+
+            let obsts = (0..num_obsts)
+                .map(|_| {
+                    // The id is signed, but the sign only represents if it's a hole or not
+                    // The absolute values are the actual id
+                    let id = i32
+                        .with_recognized()
+                        .map_res(|(x, x_str)| match x.signum() {
+                            -1 => Ok((true, x.unsigned_abs())),
+                            1 => Ok((false, x.unsigned_abs())),
+                            _ => Err(err::Error::UnexpectedObstIdSign {
+                                number: self.located_parser.span_from_substr(x_str),
+                                signum: x.signum(),
+                            }),
+                        });
+
+                    // There may be a name appended at the end of the line after a "!"
+                    let name = opt(preceded("!", full_line));
+
+                    // The texture origin is optional, if it's not present the default value is used
+                    // TODO: As per the TODO above, should this be a global offset or the default value?
+                    let texture_origin = opt(vec3f).map(|x| x.unwrap_or(default_texture_origin));
+
+                    // Full line looks like this:
+                    // bounds3f (6xf32) id (i32) surfaces3i (6xi32) optional[texture_origin (3xf32)] optional[name (string)]
+                    let (bounds, (is_hole, id), side_surfaces, texture_origin, name) = parse_line(
+                        &mut input,
+                        ws_separated!(bounds3f, id, surfaces3i, texture_origin, name),
+                    )?;
+
+                    Ok(HalfObst {
+                        bounds,
+                        is_hole,
+                        id,
+                        side_surfaces,
+                        texture_origin,
+                        name: name.map(str::to_string),
+                    })
+                })
+                .collect::<Result<Vec<_>, err::Error>>()?;
+
+            assert_eq!(obsts.len(), num_obsts);
+
+            let obsts = obsts
+                .into_iter()
+                .map(|obst| {
+                    let rgb = opt(vec3f.with_recognized());
+                    let (bounds_idx, (color_index, color_index_str), block_type, rgb) = parse_line(
+                        &mut input,
+                        ws_separated!(bounds3i, i32.with_recognized(), i32, rgb),
+                    )?;
+
+                    if (color_index == -3) != rgb.is_some() {
+                        return Err(err::Error::InvalidObstColor {
+                            color_index: self.located_parser.span_from_substr(color_index_str),
+                            rgb: rgb.map(|(_, x)| self.located_parser.span_from_substr(x)),
+                        });
+                    }
+
+                    Ok(Obst {
+                        bounds: obst.bounds,
+                        id: obst.id,
+                        is_hole: obst.is_hole,
+                        side_surfaces: obst.side_surfaces,
+                        texture_origin: obst.texture_origin,
+                        name: obst.name,
+                        bounds_idx,
+                        color_index,
+                        block_type,
+                        rgb: rgb.map(|(x, _)| x),
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok((input, obsts))
+        }
+    }
+
+    fn parse_vents<'this: 'data, 'data>(
+        &'this self,
+    ) -> impl Fn(&'data str) -> Result<(&'data str, Vec<Vent>), err::Error> {
+        |mut input| {
+            let (num_vents_total, num_dummies) =
+                parse_line(&mut input, ws_separated!(usize, usize))?;
+            let num_non_dummies = num_vents_total - num_dummies;
+
+            struct HalfVent {
+                bounds: Bounds3F,
+                vent_index: i32,
+                surface: i32,
+                texture_origin: Option<Vec3F>,
+            }
+
+            let vents = (0..num_vents_total)
+                .map(|vent_line_number: usize| {
+                    let texture_origin = opt(vec3f.with_recognized());
+                    let ((bounds, vent_index, surface, texture_origin), line) = parse_line(
+                        &mut input,
+                        ws_separated!(bounds3f, i32, i32, texture_origin).with_recognized(),
+                    )?;
+
+                    if (vent_line_number < num_non_dummies) != texture_origin.is_some() {
+                        return Err(err::Error::VentTextureOrigin {
+                            vent: self.located_parser.span_from_substr(line),
+                            num_vents_total,
+                            num_non_dummies,
+                            vent_line_number,
+                            texture_origin: texture_origin
+                                .map(|(_, x)| self.located_parser.span_from_substr(x)),
+                        });
+                    }
+
+                    Ok(HalfVent {
+                        bounds,
+                        vent_index,
+                        surface,
+                        texture_origin: texture_origin.map(|(x, _)| x),
+                    })
+                })
+                .collect::<Result<Vec<_>, err::Error>>()?;
+
+            assert_eq!(vents.len(), num_vents_total);
+
+            let vents = vents
+                .into_iter()
+                .map(|vent| {
+                    let rgba = opt(ws_separated!(vec3f, f32));
+                    let (bounds_idx, color_index, draw_type, rgba) =
+                        parse_line(&mut input, ws_separated!(bounds3i, i32, i32, rgba))?;
+
+                    Ok(Vent {
+                        bounds: vent.bounds,
+                        vent_index: vent.vent_index,
+                        surface: vent.surface,
+                        texture_origin: vent.texture_origin,
+                        bounds_idx,
+                        color_index,
+                        draw_type,
+                        rgba,
+                    })
+                })
+                .collect::<Result<Vec<_>, err::Error>>()?;
+
+            Ok((input, vents))
+        }
+    }
+
+    fn parse_circular_vents<'this: 'data, 'data>(
+        &'this self,
+    ) -> impl Fn(&'data str) -> Result<(&'data str, Vec<CircularVent>), err::Error> {
+        move |mut input| {
+            let num_vents = parse_line(&mut input, usize)?;
+
+            struct HalfCircularVent {
+                bounds: Bounds3F,
+                vent_index: i32,
+                surface: i32,
+                origin: Vec3F,
+                radius: f32,
+            }
+
+            let vents = (0..num_vents)
+                .map(|_| {
+                    let (bounds, vent_index, surface, origin, radius) =
+                        parse_line(&mut input, ws_separated!(bounds3f, i32, i32, vec3f, f32))?;
+
+                    Ok(HalfCircularVent {
+                        bounds,
+                        vent_index,
+                        surface,
+                        origin,
+                        radius,
+                    })
+                })
+                .collect::<Result<Vec<_>, err::Error>>()?;
+
+            assert_eq!(vents.len(), num_vents);
+
+            let vents = vents
+                .into_iter()
+                .map(|vent| {
+                    let rgba = opt(ws_separated!(vec3f, f32));
+                    let (bounds_idx, color_index, draw_type, rgba) =
+                        parse_line(&mut input, ws_separated!(bounds3i, i32, i32, rgba))?;
+
+                    Ok(CircularVent {
+                        bounds: vent.bounds,
+                        vent_index: vent.vent_index,
+                        surface: vent.surface,
+                        origin: vent.origin,
+                        radius: vent.radius,
+                        bounds_idx,
+                        color_index,
+                        draw_type,
+                        rgba,
+                    })
+                })
+                .collect::<Result<Vec<_>, err::Error>>()?;
+
+            Ok((input, vents))
+        }
     }
 }
 
@@ -283,229 +532,4 @@ impl SimulationParser<'_> {
 //         vents,
 //         circular_vents,
 //     })
-// }
-
-// fn parse_obsts<'a, Src: FnMut() -> Result<&'a str, err::Error>>(
-//     mut next: Src,
-//     default_texture_origin: Vec3<f32>,
-// ) -> Result<Vec<Obst>, err::Error> {
-//     // Stores obstacles as they are defined in the first half
-//     // Since obstacles are defined like this:
-//     //
-//     // OBST
-//     //  2        number of obstacles
-//     //  1.2 ...  obstacle 1
-//     //  2.3 ...  obstacle 2
-//     //  1 2 ...  more info about obstacle 1
-//     //  3 4 ...  more info about obstacle 2
-//     //
-//     struct HalfObst {
-//         name: Option<String>,
-//         id: u32,
-//         is_hole: bool,
-//         bounds: Bounds3F,
-//         texture_origin: Vec3F,
-//         // TODO: Map to actual surface type
-//         side_surfaces: Surfaces3<i32>,
-//     }
-//     let num_obsts = parse!(next()? => usize)?;
-//     let obsts = repeat_n(
-//         &mut next,
-//         |next, _| {
-//             let next = next()?;
-
-//             // The id is signed, but the sign only represents if it's a hole or not
-//             // The absolute values are the actual id
-//             let id = i32.map_res(|x| match x.signum() {
-//                 -1 => Ok((true, x.unsigned_abs())),
-//                 1 => Ok((false, x.unsigned_abs())),
-//                 _ => Err(err(
-//                     src,
-//                     // TODO: I don't like this, spans should be tracked more nicely
-//                     next.split_whitespace().nth(6).unwrap_or(next),
-//                     SupErrorKind::Mesh(ErrorKind::UnexpectedObstIdSign(x)),
-//                 )),
-//             });
-
-//             // There may be a name appended at the end of the line after a "!"
-//             let name = opt((space0, "!", full_line_string).map(|(_, _, x)| x));
-
-//             // The texture origin is optional, if it's not present the default value is used
-//             // TODO: As per the TODO above, should this be a global offset or the default value?
-//             let texture_origin = opt(vec3f).map(|x| x.unwrap_or(default_texture_origin));
-
-//             // Full line looks like this:
-//             // bounds3f (6xf32) id (i32) surfaces3i (6xi32) optional[texture_origin (3xf32)] optional[name (string)]
-//             let (bounds, (is_hole, id), side_surfaces, texture_origin, name) =
-//                 parse!(next => bounds3f id surfaces3i texture_origin name)?;
-
-//             Ok(HalfObst {
-//                 bounds,
-//                 is_hole,
-//                 id,
-//                 side_surfaces,
-//                 texture_origin,
-//                 name,
-//             })
-//         },
-//         num_obsts,
-//     )?;
-
-//     assert_eq!(obsts.len(), num_obsts);
-
-//     let obsts = obsts
-//         .into_iter()
-//         .map(|obst| {
-//             let next = next()?;
-//             let rgb = opt(vec3f);
-//             let (bounds_idx, color_index, block_type, rgb) = parse!(next => bounds3i i32 i32 rgb)?;
-
-//             if (color_index == -3) != rgb.is_some() {
-//                 return Err(err(
-//                     // TODO: This just passes the whole line
-//                     next,
-//                     SupErrorKind::Mesh(ErrorKind::InvalidObstColor { color_index, rgb }),
-//                 ));
-//             }
-
-//             Ok(Obst {
-//                 bounds: obst.bounds,
-//                 id: obst.id,
-//                 is_hole: obst.is_hole,
-//                 side_surfaces: obst.side_surfaces,
-//                 texture_origin: obst.texture_origin,
-//                 name: obst.name,
-//                 bounds_idx,
-//                 color_index,
-//                 block_type,
-//                 rgb,
-//             })
-//         })
-//         .collect::<Result<Vec<_>, _>>()?;
-//     Ok(obsts)
-// }
-
-// fn parse_vents<'a, Src: FnMut() -> Result<&'a str, err::Error>>(
-//     mut next: Src,
-// ) -> Result<Vec<Vent>, err::Error> {
-//     let (num_vents, num_dummies) = parse!(next()? => usize usize)?;
-//     let num_non_dummies = num_vents - num_dummies;
-
-//     struct HalfVent {
-//         bounds: Bounds3F,
-//         vent_index: i32,
-//         surface: i32,
-//         texture_origin: Option<Vec3F>,
-//     }
-
-//     let vents = repeat_n(
-//         &mut next,
-//         |next, i| {
-//             let next = next()?;
-//             let texture_origin = opt(vec3f);
-//             let (bounds, vent_index, surface, texture_origin) =
-//                 parse!(next => bounds3f i32 i32 texture_origin)?;
-
-//             if (i < num_non_dummies) != texture_origin.is_some() {
-//                 return Err(err(
-//                     next,
-//                     SupErrorKind::Mesh(ErrorKind::InvalidVentTextureOrigin {
-//                         i,
-//                         num_vents,
-//                         num_dummies,
-//                         texture_origin,
-//                     }),
-//                 ));
-//             }
-
-//             Ok(HalfVent {
-//                 bounds,
-//                 vent_index,
-//                 surface,
-//                 texture_origin,
-//             })
-//         },
-//         num_vents,
-//     )?;
-
-//     assert_eq!(vents.len(), num_vents);
-
-//     let vents = vents
-//         .into_iter()
-//         .map(|vent| {
-//             let next = next()?;
-//             let rgba = opt((vec3f, f32));
-//             let (bounds_idx, color_index, draw_type, rgba) = parse!(next => bounds3i i32 i32 rgba)?;
-
-//             Ok(Vent {
-//                 bounds: vent.bounds,
-//                 vent_index: vent.vent_index,
-//                 surface: vent.surface,
-//                 texture_origin: vent.texture_origin,
-//                 bounds_idx,
-//                 color_index,
-//                 draw_type,
-//                 rgba,
-//             })
-//         })
-//         .collect::<Result<Vec<_>, err::Error>>()?;
-
-//     Ok(vents)
-// }
-
-// fn parse_circular_vents<'a, Src: FnMut() -> Result<&'a str, err::Error>>(
-//     mut next: Src,
-// ) -> Result<Vec<CircularVent>, err::Error> {
-//     let num_vents = parse!(next()? => usize)?;
-
-//     struct HalfCircularVent {
-//         bounds: Bounds3F,
-//         vent_index: i32,
-//         surface: i32,
-//         origin: Vec3F,
-//         radius: f32,
-//     }
-
-//     let vents = repeat_n(
-//         &mut next,
-//         |next, _| {
-//             let next = next()?;
-//             let (bounds, vent_index, surface, origin, radius) =
-//                 parse!(next => bounds3f i32 i32 vec3f f32)?;
-
-//             Ok(HalfCircularVent {
-//                 bounds,
-//                 vent_index,
-//                 surface,
-//                 origin,
-//                 radius,
-//             })
-//         },
-//         num_vents,
-//     )?;
-
-//     assert_eq!(vents.len(), num_vents);
-
-//     let vents = vents
-//         .into_iter()
-//         .map(|vent| {
-//             let next = next()?;
-//             let rgba = opt((vec3f, f32));
-//             let (bounds_idx, color_index, draw_type, rgba) = parse!(next => bounds3i i32 i32 rgba)?;
-
-//             Ok(CircularVent {
-//                 bounds: vent.bounds,
-//                 vent_index: vent.vent_index,
-//                 surface: vent.surface,
-//                 origin: vent.origin,
-//                 radius: vent.radius,
-//                 bounds_idx,
-//                 color_index,
-//                 draw_type,
-//                 rgba,
-//             })
-//         })
-//         .collect::<Result<Vec<_>, err::Error>>()?;
-
-//     Ok(vents)
 // }
