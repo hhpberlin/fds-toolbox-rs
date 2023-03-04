@@ -42,6 +42,16 @@ pub enum Error {
         #[help("Expected a reference to a {name}")]
         key_type: &'static str,
     },
+    #[error("Found an index out of order")]
+    #[diagnostic(code(fds_tbx::smv::suspicious_index))]
+    SuspiciousIndex {
+        #[label("Inside this sub-section")]
+        inside_subsection: SourceSpan,
+        #[label("This index is suspicious")]
+        index: SourceSpan,
+        #[help("Expected an index of {expected}")]
+        expected: usize,
+    },
 }
 
 impl<S: Into<String>> From<winnow::error::ErrMode<winnow::error::Error<S>>> for Error {

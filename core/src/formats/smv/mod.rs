@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use winnow::{
     branch::alt,
     bytes::{tag, take_till0, take_till1},
-    character::{line_ending, multispace0, space0},
+    character::{line_ending, multispace0, space0, not_line_ending},
     combinator::{opt, success, value},
     dispatch,
     error::{ContextError, ErrMode, ParseError},
@@ -142,7 +142,7 @@ struct SimulationParser<'a> {
 /// parse(&mut input, "lorem").unwrap();
 /// assert_eq!(input, " ipsum");
 /// ```
-fn parse<'ptr, I, O, E>(input: &'ptr mut I, parser: impl Parser<I, O, E>) -> Result<O, ErrMode<E>> {
+fn parse<'ptr, I: Copy, O, E>(input: &'ptr mut I, mut parser: impl Parser<I, O, E>) -> Result<O, ErrMode<E>> {
     let (remaining, value) = parser.parse_next(*input)?;
     *input = remaining;
     Ok(value)
@@ -158,7 +158,7 @@ fn parse_line<'ptr, 'input, O, E: ParseError<&'input str> + ContextError<&'input
 fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
     parser: impl Parser<&'a str, O, E>,
 ) -> impl Parser<&'a str, O, E> {
-    terminated(parser, line_ending).context("line")
+    terminated(parser, (line_ending, multispace0)).context("line")
 }
 
 /// Parses an entire line, but leaves the line ending in the input.
@@ -166,11 +166,13 @@ fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
 /// ```
 /// assert_eq!(full_line.parse_next("lorem\nipsum"), Ok(("ipsum", "\nlorem")));
 /// ```
-fn full_line(i: &str) -> IResult<&str, &str> {
-    take_till1(|c| c == '\r' || c == '\n').parse_next(i)
+fn full_line(input: &str) -> IResult<&str, &str> {
+    // TODO: Which one is better between these two?
+    not_line_ending.parse_next(input)
+    //take_till1(|c| c == '\r' || c == '\n').parse_next(i)
 }
 
-fn repeat<'input, O, E>(
+fn repeat<'input, O>(
     parser: impl Parser<&'input str, O, winnow::error::Error<&'input str>>,
 ) -> impl FnMut(&'input str) -> IResult<&'input str, Vec<O>, winnow::error::Error<&'input str>> {
     let mut parser = parser.context("repeat");
@@ -221,7 +223,7 @@ impl SimulationParser<'_> {
         let mut input = self.located_parser.full_input;
 
         while !input.is_empty() {
-            let (input, word) = preceded(multispace0, non_ws).parse_next(input)?;
+            let word = parse(&mut input, preceded(multispace0, non_ws))?;
             // let (input, addendum) =
             //     terminated(alt((full_line.map(Some), success(None))), line_ending)
             //         .parse_next(input)?;
@@ -230,7 +232,7 @@ impl SimulationParser<'_> {
 
             // }
 
-            if let Ok((input, _)) = line_ending::<_, ()>.parse_next(input) {
+            if let Ok(_) = parse(&mut input, line_ending::<_, ()>) {
                 match word {
                     "TITLE" => title = Some(parse_line(&mut input, full_line)?),
                     "VERSION" | "FDSVERSION" => {
@@ -262,7 +264,7 @@ impl SimulationParser<'_> {
                         let (surface_type, texture_width, texture_height, rgb, transparency) =
                             parse_line(&mut input, ws_separated!(i32, f32, f32, vec3f, f32))?;
                         let texture =
-                            parse(&mut input, alt(("null".value(None), full_line.map(Some))))?;
+                            parse(&mut input, alt((tag("null").value(None), full_line.map(Some))))?;
                         surfaces.push(Surface {
                             name: name.to_string(),
                             tmpm,
@@ -288,7 +290,10 @@ impl SimulationParser<'_> {
                     //       Check if it actually should be the default value or if it should be a global offset
                     "TOFFSEF" => default_texture_origin = Some(parse_line(&mut input, vec3f)?),
                     "RAMP" => {
-                        let ramp = (line(("RAMP:", full_line)), repeat(ws_separated!(f32, f32)));
+                        let ramp = (
+                            line(("RAMP:", full_line)), 
+                            repeat(ws_separated!(f32, f32)),
+                        );
                         ramps = Some(parse(&mut input, repeat(ramp))?)
                     }
                     "PROP" => {
@@ -330,15 +335,21 @@ impl SimulationParser<'_> {
                             },
                         );
                     }
+                    "OFFSET" => {
+                        // This always appears before GRID
+                        todo!()
+                        }
+                        _ => todo!(),
                 }
             } else {
                 match word {
                     "GRID" => {
-                        let default_texture_origin = default_texture_origin
-                            .ok_or(err::Error::MissingSection { name: "TOFFSET" })?;
-                        // let mesh = mesh::parse_mesh(line, default_texture_origin, next)?;
-                        // meshes.push(mesh);
-                        todo!()
+                        let default_texture_origin =
+                            default_texture_origin.ok_or(err::Error::MissingSection { name: "TOFFSET" })?;
+
+                        let mesh;
+                        (input, mesh) = self.parse_mesh(&mut input, default_texture_origin)?;
+                        meshes.push(mesh);
                     }
                     "SMOKF3D" | "SMOKG3D" => {
                         let num = parse_line(&mut input, i32)?;
@@ -433,6 +444,7 @@ impl SimulationParser<'_> {
                             unit: unit.to_string(),
                         });
                     }
+                    _ => todo!(),
                 }
             }
         }

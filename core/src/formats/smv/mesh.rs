@@ -1,4 +1,4 @@
-use super::{err, err::Error, err::ErrorKind as SupErrorKind, util::*};
+use super::*;
 
 use std::{
     collections::HashMap,
@@ -92,6 +92,121 @@ pub enum ErrorKind {
         num_dummies: usize,
         texture_origin: Option<Vec3F>,
     },
+}
+
+// /// Checks if the current line matches the given tag or returns a fitting error
+// ///
+// /// # Arguments
+// ///
+// /// * `header` - The header of the current section, used for error messages
+// /// * `next` - The next function to get the next line
+// /// * `tag` - The tag to match
+// fn parse_subsection_hdr<'a>(
+//     header: SourceSpan,
+//     mut input: &'a str,
+//     tag: &'static str,
+// ) -> Result<(), err::Error> {
+//     if let Ok(next_line) = parse_line(&mut input, tag) {
+//         if next_line.trim().eq(tag) {
+//             Ok(())
+//         } else {
+//             Err(err::Error::MissingSubSection {
+//                 parent: header,
+//                 name: tag,
+//                 // found: next_line,
+//                 found: None,
+//             })
+//         }
+//     } else {
+//         Err(err::Error::MissingSubSection {
+//             parent: header,
+//             name: tag,
+//             found: None,
+//         })
+//     }
+// }
+
+impl SimulationParser<'_> {
+    pub(super) fn parse_mesh(&self, mut input: &str, default_texture_origin: Vec3F) -> Result<(&str, Mesh), err::Error> {
+        let mesh_name = parse_line(&mut input, full_line)?;
+        let (dimensions, _a) = parse_line(&mut input, ws_separated!(vec3u, i32))?;
+
+        // let parse_subsection_hdr = |input: &'_ mut &'_ str, tag: &'static str| {
+        //     let original_input = *input;
+        //     parse_line::<_, ()>(input, tag).map_err(|_| err::Error::MissingSubSection {
+        //         parent: self.located_parser.span_from_substr(mesh_name),
+        //         name: tag,
+        //         found: full_line(original_input)
+        //             .ok()
+        //             .map(|(_input, line)| self.located_parser.span_from_substr(line)),
+        //     })
+        // };
+
+        // parse_subsection_hdr(&mut input, "PDIM")?;
+        // let (bounds, _something) = parse_line(&mut input, ws_separated!(bounds3f, vec2f))?;
+
+        // let parse_trn = |input: &mut &str, dim: Dim3D| {
+        //     // TODO: I'm not too fond of hardcoding the dimension names like this
+        //     let header = parse_subsection_hdr(&mut input, ["TRNX", "TRNY", "TRNZ"][dim as usize])?;
+
+        //     // TODO: Why is this a thing? This is just copied from fdsreader right now but idk why it's there
+        //     let n = parse_line(&mut input, usize)?;
+        //     for _ in 0..n {
+        //         // cast the line to the void
+        //         let _ = parse_line(&mut input, full_line)?;
+        //     }
+
+        //     let len = dimensions[dim] as usize;
+        //     let vec = Vec::with_capacity(len);
+
+        //     for line in 0..len {
+        //         let ((i, i_str), v) =
+        //             parse_line(&mut input, ws_separated!(usize.with_recognized(), f32))?;
+        //         if i != line {
+        //             return Err(err::Error::SuspiciousIndex {
+        //                 inside_subsection: self.located_parser.span_from_substr(header),
+        //                 index: self.located_parser.span_from_substr(i_str),
+        //                 expected: line,
+        //             });
+        //         }
+        //         vec.push(v);
+        //     }
+
+        //     Ok(vec)
+        // };
+
+        // let trn = Vec3::new(
+        //     parse_trn(&mut input, Dim3D::X)?,
+        //     parse_trn(&mut input, Dim3D::Y)?,
+        //     parse_trn(&mut input, Dim3D::Z)?,
+        // );
+
+
+        //     parse_subsection_hdr(header, &mut next, "OBST")?;
+        //     let obsts = parse_obsts(&mut next, default_texture_origin)?;
+
+        //     parse_subsection_hdr(header, &mut next, "VENT")?;
+        //     let vents = parse_vents(&mut next)?;
+
+        //     parse_subsection_hdr(header, &mut next, "CVENT")?;
+        //     let circular_vents = parse_circular_vents(&mut next)?;
+
+        // TODO: fdsreader doesn't parse this, but it's in the .smv file I'm referencing
+        // parse_subsection_hdr(&mut input, "OFFSET")?;
+        // let _offset = parse_line(&mut input, vec3f)?;
+
+        //     Ok(Mesh {
+        //         name: mesh_name,
+        //         dimensions,
+        //         bounds,
+        //         trn,
+        //         obsts,
+        //         vents,
+        //         circular_vents,
+        //     })
+
+        Ok(todo!())
+    }
 }
 
 // pub(super) fn parse_mesh<'a, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(

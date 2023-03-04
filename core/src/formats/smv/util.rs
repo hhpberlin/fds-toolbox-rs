@@ -75,28 +75,28 @@ impl_from!(surfaces3i(i32, i32, i32, i32, i32, i32) -> Surfaces3<i32> {
 impl_from!(bounds3i(i32, i32, i32, i32, i32, i32) -> Bounds3I { Bounds3::from_fds_notation_tuple });
 impl_from!(bounds3f(f32, f32, f32, f32, f32, f32) -> Bounds3F { Bounds3::from_fds_notation_tuple });
 
-pub fn string<I>(i: I) -> IResult<I, String>
-where
-    I: StreamIsPartial + Stream,
-    <I as Stream>::Token: AsChar,
-    <I as Stream>::Slice: AsRef<str>,
-{
-    non_ws
-        .map(|s: I::Slice| s.as_ref().to_string())
-        .parse_next(i)
-}
+// pub fn string<I>(i: I) -> IResult<I, String>
+// where
+//     I: StreamIsPartial + Stream,
+//     <I as Stream>::Token: AsChar,
+//     <I as Stream>::Slice: AsRef<str>,
+// {
+//     non_ws
+//         .map(|s: I::Slice| s.as_ref().to_string())
+//         .parse_next(i)
+// }
 
-pub fn full_line_str<'a, I>(i: I) -> IResult<I, &'a str>
-where
-    I: StreamIsPartial + Stream + 'a,
-    I: Compare<&'static str> + AsBStr,
-    <I as Stream>::Token: AsChar,
-    <I as Stream>::Slice: AsRef<str>,
-{
-    not_line_ending
-        .map(|s: I::Slice| s.as_ref().trim())
-        .parse_next(i)
-}
+// pub fn full_line_str<'a, I>(i: I) -> IResult<I, &'a str>
+// where
+//     I: StreamIsPartial + Stream + 'a,
+//     I: Compare<&'static str> + AsBStr,
+//     <I as Stream>::Token: AsChar,
+//     <I as Stream>::Slice: AsRef<str>,
+// {
+//     not_line_ending
+//         .map(|s: I::Slice| s.as_ref().trim())
+//         .parse_next(i)
+// }
 
 // pub fn full_line_string<I>(i: I) -> IResult<I, String>
 // where
@@ -107,32 +107,32 @@ where
 //     full_line_str.map(|s| s.to_string()).parse_next(i)
 // }
 
-pub(super) fn match_tag<'a>(i: &'a str, tag: &'a str, error: Error) -> Result<(), Error> {
-    if i.trim().eq(tag) {
-        Ok(())
-    } else {
-        Err(error)
-    }
-}
+// pub(super) fn match_tag<'a>(i: &'a str, tag: &'a str, error: Error) -> Result<(), Error> {
+//     if i.trim().eq(tag) {
+//         Ok(())
+//     } else {
+//         Err(error)
+//     }
+// }
 
-pub(super) fn parse<'a, I, T, E>(i: I, mut parser: impl Parser<I, T, E>) -> Result<T, Error>
-where
-    I: StreamIsPartial + Stream + Location,
-    <I as Stream>::Token: AsChar,
-    <I as Stream>::Slice: AsRef<str>,
-    Error: From<winnow::Err<E>>,
-    E: winnow::error::ParseError<I>,
-{
-    let parser = parser.with_span();
-    let (i, (o, s)) = parser.parse_next(i)?;
+// pub(super) fn parse<'a, I, T, E>(i: I, mut parser: impl Parser<I, T, E>) -> Result<T, Error>
+// where
+//     I: StreamIsPartial + Stream + Location,
+//     <I as Stream>::Token: AsChar,
+//     <I as Stream>::Slice: AsRef<str>,
+//     Error: From<winnow::Err<E>>,
+//     E: winnow::error::ParseError<I>,
+// {
+//     let parser = parser.with_span();
+//     let (i, (o, s)) = parser.parse_next(i)?;
 
-    // TODO
-    // if i.eof_offset() !=  {
-    Ok(o)
-    // } else {
-    //     Err(err(s.into(), ErrorKind::TrailingCharacters))
-    // }
-}
+//     // TODO
+//     // if i.eof_offset() !=  {
+//     Ok(o)
+//     // } else {
+//     //     Err(err(s.into(), ErrorKind::TrailingCharacters))
+//     // }
+// }
 
 // pub(super) fn repeat<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
 //     mut src: Src,
@@ -143,42 +143,11 @@ where
 //     repeat_n(src, parse, n)
 // }
 
-pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
-    mut src: Src,
-    parse: impl Fn(&mut Src, usize) -> Result<T, err::Error>,
-    n: usize,
-) -> Result<Vec<T>, err::Error> {
-    (0..n).map(|i| parse(&mut src, i)).collect()
-}
+// pub(super) fn repeat_n<'a, T, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
+//     mut src: Src,
+//     parse: impl Fn(&mut Src, usize) -> Result<T, err::Error>,
+//     n: usize,
+// ) -> Result<Vec<T>, err::Error> {
+//     (0..n).map(|i| parse(&mut src, i)).collect()
+// }
 
-/// Checks if the current line matches the given tag or returns a fitting error
-///
-/// # Arguments
-///
-/// * `header` - The header of the current section, used for error messages
-/// * `next` - The next function to get the next line
-/// * `tag` - The tag to match
-pub(super) fn parse_subsection_hdr<'a, Src: FnMut() -> Result<&'a str, err::Error>>(
-    header: SourceSpan,
-    mut next: Src,
-    tag: &'static str,
-) -> Result<(), err::Error> {
-    if let Ok(next_line) = next() {
-        if next_line.trim().eq(tag) {
-            Ok(())
-        } else {
-            Err(err::Error::MissingSubSection {
-                parent: header,
-                name: tag,
-                // found: next_line,
-                found: None,
-            })
-        }
-    } else {
-        Err(err::Error::MissingSubSection {
-            parent: header,
-            name: tag,
-            found: None,
-        })
-    }
-}

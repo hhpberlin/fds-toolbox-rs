@@ -24,7 +24,15 @@ impl Dim3DSigned {
     }
 
     pub fn iter() -> impl Iterator<Item = Dim3DSigned> {
-        [Dim3DSigned::new(true, Dim3D::X), Dim3DSigned::new(false, Dim3D::X), Dim3DSigned::new(true, Dim3D::Y), Dim3DSigned::new(false, Dim3D::Y), Dim3DSigned::new(true, Dim3D::Z), Dim3DSigned::new(false, Dim3D::Z)].into_iter()
+        [
+            Dim3DSigned::new(true, Dim3D::X),
+            Dim3DSigned::new(false, Dim3D::X),
+            Dim3DSigned::new(true, Dim3D::Y),
+            Dim3DSigned::new(false, Dim3D::Y),
+            Dim3DSigned::new(true, Dim3D::Z),
+            Dim3DSigned::new(false, Dim3D::Z),
+        ]
+        .into_iter()
     }
 
     pub fn as_u8(&self) -> u8 {
