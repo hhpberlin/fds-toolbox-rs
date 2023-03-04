@@ -108,8 +108,8 @@ impl PlotTab {
                     .width(Length::Shrink),
                     horizontal_space(Length::Fill),
                     container(array_stats_vis(device.values.stats))
-                        .width(Length::Units(100))
-                        .height(Length::Units(20)),
+                        .width(Length::Fixed(100.))
+                        .height(Length::Fixed(20.)),
                 ])
                 .max_width(400);
         }

@@ -263,9 +263,9 @@ impl Application for FdsToolbox {
                 )
                 .on_close(|x| Message::TabSelected(TabIdx::Absolute(x)))
                 .tab_width(Length::Shrink)
-                .spacing(5)
-                .padding(5)
-                .text_size(32)
+                .spacing(5.)
+                .padding(5.)
+                .text_size(32.)
                 .into(),
         };
 
