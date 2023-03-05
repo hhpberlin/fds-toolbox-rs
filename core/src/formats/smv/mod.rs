@@ -1,5 +1,6 @@
 mod util;
 
+use miette::SourceCode;
 use util::*;
 mod mesh;
 #[cfg(test)]
@@ -152,11 +153,12 @@ struct RampValue {
 mod err;
 
 impl Simulation {
-    pub fn parse(file: &str) -> Result<Self, err::Error> {
+    pub fn parse(file: &str) -> Result<Self, miette::Report> {
         let parser = SimulationParser {
             located_parser: InputLocator::new(file),
         };
-        parser.parse()
+        // TODO: Avoid `to_string` call for owned input
+        parser.parse().map_err(move |err| parser.map_err(err, move || file.to_string()))
     }
 }
 struct SimulationParser<'a> {
@@ -288,9 +290,12 @@ fn quantity(mut input: &str) -> IResult<&str, Quantity> {
     ))
 }
 
-impl SimulationParser<'_> {
-    // fn parse2(&self) -> Result
-    fn map_err(&self, err: err::Error) -> miette::Report {
+impl<'a> SimulationParser<'a> {
+    fn map_err<Src: SourceCode + Send + Sync + 'static>(
+        self,
+        err: err::Error,
+        owned_input_src: impl FnOnce() -> Src,
+    ) -> miette::Report {
         let err = match err {
             err::Error::SyntaxNonDiagnostic {
                 remaining_length_bytes,
@@ -309,8 +314,16 @@ impl SimulationParser<'_> {
             }
             err => err,
         };
-        miette::Report::new(err).with_source_code(self.located_parser.full_input.to_string())
+        miette::Report::new(err).with_source_code(owned_input_src())
+        // err::Error::new(
+        //     self.located_parser.full_input,
+        //     err,
+        // )
     }
+
+    // fn parse_with_report(&self) -> Result<Simulation, miette::Report> {
+    //     self.parse().map_err(|err| self.map_err(err))
+    // }
 
     fn parse(&self) -> Result<Simulation, err::Error> {
         // For reference, the SMV file is written by `dump.f90` in FDS.
@@ -435,12 +448,17 @@ impl SimulationParser<'_> {
                     "RAMP" => {
                         let ramp = (
                             line(preceded("RAMP:", full_line)),
-                            repeat(line(ws_separated!(f32, f32)).map(|(independent, dependent)| RampValue {independent, dependent})),
+                            repeat(line(ws_separated!(f32, f32)).map(
+                                |(independent, dependent)| RampValue {
+                                    independent,
+                                    dependent,
+                                },
+                            )),
                         )
-                        .map(|(name, values)| Ramp {
-                            name: name.trim().to_string(),
-                            values,
-                        });
+                            .map(|(name, values)| Ramp {
+                                name: name.trim().to_string(),
+                                values,
+                            });
                         ramps = Some(parse(&mut input, repeat(ramp))?);
                     }
                     "PROP" => {
@@ -602,8 +620,7 @@ impl SimulationParser<'_> {
             }
         }
 
-        let num_meshes = num_meshes
-            .ok_or(err::Error::MissingSection { name: "NMESHES" })?;
+        let num_meshes = num_meshes.ok_or(err::Error::MissingSection { name: "NMESHES" })?;
         if meshes.len() != num_meshes {
             return Err(err::Error::WrongNumberOfMeshes {
                 expected: num_meshes,
@@ -631,21 +648,17 @@ impl SimulationParser<'_> {
             .to_string();
         let solid_ht3d = solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?;
 
-        let hrrpuv_cutoff = hrrpuv_cutoff
-            .ok_or(err::Error::MissingSection { name: "HRRPUVCUT" })?;
-        let (time_end, num_frames) = time_end.zip(num_frames)
+        let hrrpuv_cutoff =
+            hrrpuv_cutoff.ok_or(err::Error::MissingSection { name: "HRRPUVCUT" })?;
+        let (time_end, num_frames) = time_end
+            .zip(num_frames)
             .ok_or(err::Error::MissingSection { name: "VIEWTIMES" })?;
-        let smoke_albedo = smoke_albedo
-            .ok_or(err::Error::MissingSection { name: "ALBEDO" })?;
-        let i_blank = i_blank
-            .ok_or(err::Error::MissingSection { name: "IBLANK" })?;
-        let gravity_vec = gravity_vec
-            .ok_or(err::Error::MissingSection { name: "GVEC" })?;
+        let smoke_albedo = smoke_albedo.ok_or(err::Error::MissingSection { name: "ALBEDO" })?;
+        let i_blank = i_blank.ok_or(err::Error::MissingSection { name: "IBLANK" })?;
+        let gravity_vec = gravity_vec.ok_or(err::Error::MissingSection { name: "GVEC" })?;
 
-        let ramps = ramps
-            .ok_or(err::Error::MissingSection { name: "RAMP" })?;
-        let outlines = outlines
-            .ok_or(err::Error::MissingSection { name: "OUTLINE" })?;
+        let ramps = ramps.ok_or(err::Error::MissingSection { name: "RAMP" })?;
+        let outlines = outlines.ok_or(err::Error::MissingSection { name: "OUTLINE" })?;
 
         let default_surface_id = default_surface_id
             .ok_or(err::Error::MissingSection { name: "SURFDEF" })?

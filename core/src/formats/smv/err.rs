@@ -1,17 +1,24 @@
-use std::num::ParseFloatError;
-
-use std::num::ParseIntError;
-
 use miette::Diagnostic;
 use thiserror::Error;
 use winnow;
 
 use miette::SourceSpan;
 
+// #[derive(Debug, Error, Diagnostic, Constructor)]
+// #[error("{kind}")]
+// pub struct Error<'src> {
+//     #[source_code]
+//     src: &'src str,
+//     #[source]
+//     #[diagnostic_source]
+//     #[related]
+//     kind: ErrorKind,
+// }
+
 #[derive(Debug, Error, Diagnostic)]
 pub enum Error {
     #[error("Syntax error")]
-    #[diagnostic(code(fds_tbx::smv::generic_syntax), help("error: {kind:#?}"))]
+    #[diagnostic(code(fds_tbx::smv::generic_syntax), help("error kind: {kind:#?}"))]
     Syntax {
         #[label("here")]
         location: SourceSpan,
@@ -83,7 +90,7 @@ pub enum Error {
     #[diagnostic(code(fds_tbx::smv::vent_missing_texture_origin))]
     // #[help("Expected a texture origin for vent {vent_index} of {num_vents_total} vents, because it is within the first {num_non_dummies} vents, which are not dummy vents and must therefore have a texture origin specified.")]
     VentTextureOrigin {
-        #[label("this vent")]
+        #[label("in this vent")]
         vent: SourceSpan,
         #[help("theres {num_vents_total} vents in total")]
         num_vents_total: usize,
@@ -129,84 +136,3 @@ impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {
         }
     }
 }
-
-#[derive(Debug, Error, Diagnostic)]
-// #[error("oops!")]
-// #[diagnostic(
-//     // code(oops::my::bad),
-//     // url(docsrs),
-//     // help("try doing it better next time?")
-// )]
-pub enum ErrorOld {
-    #[error("oops!")]
-    WrongSyntax {
-        #[label("here")]
-        pos: SourceSpan,
-        #[source]
-        #[diagnostic_source]
-        err: ErrorKind,
-    },
-    // #[error("oops!")]
-    // Nom(#[source] winnow::error::ErrMode<winnow::error::Error<String>>),
-    // TODO: Using enum instead of a &str worth it?
-    #[error("oops!")]
-    MissingSection { name: &'static str },
-    #[error("oops!")]
-    MissingSubSection {
-        parent: SourceSpan,
-        name: &'static str,
-    },
-    #[error("oops!")]
-    InvalidKey { parent: SourceSpan, key: SourceSpan },
-    // #[error(transparent)]
-    // #[diagnostic(code(oops::my::bad))]
-    // SyntaxError(#[from] SyntaxParseError<String>),
-}
-
-#[derive(Debug, Error, Diagnostic)]
-pub enum ErrorKind {
-    /// An error occurred while parsing an integer.
-    #[error(transparent)]
-    #[diagnostic(code(fds_tbx::smv::parse_int))]
-    ParseIntError(ParseIntError),
-
-    /// An error occurred while parsing a floating point number.
-    #[error(transparent)]
-    #[diagnostic(code(fds_tbx::smv::parse_float))]
-    ParseFloatError(ParseFloatError),
-    // // TODO: Expected is currently a lower bound, not an exact value because of the way the macro is written
-    // WrongNumberOfValues { expected: usize, got: usize },
-    // TrailingCharacters,
-    // UnknownSection,
-    // MismatchedIndex { expected: usize, got: usize },
-    // Mesh(mesh::ErrorKind),
-    // InvalidSection,
-}
-
-// impl<'a> FromExternalError<&'a str, ParseIntError> for SyntaxParseError<&'a str, ErrorKind> {
-//     fn from_external_error(input: &'a str, _kind: winnow::error::ErrorKind, e: ParseIntError) -> Self {
-//         SyntaxParseError {
-//             input,
-//             len: 0,
-//             label: None,
-//             help: None,
-//             context: None,
-//             kind: Some(ErrorKind::ParseIntError(e)),
-//             touched: false,
-//         }
-//     }
-// }
-
-// impl<'a> FromExternalError<&'a str, ParseFloatError> for SyntaxParseError<&'a str, ErrorKind> {
-//     fn from_external_error(input: &'a str, _kind: winnow::error::ErrorKind, e: ParseFloatError) -> Self {
-//         SyntaxParseError {
-//             input,
-//             len: 0,
-//             label: None,
-//             help: None,
-//             context: None,
-//             kind: Some(ErrorKind::ParseFloatError(e)),
-//             touched: false,
-//         }
-//     }
-// }

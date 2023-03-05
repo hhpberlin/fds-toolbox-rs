@@ -340,20 +340,20 @@ impl SimulationParser<'_> {
 
             let vents = (0..num_vents_total)
                 .map(|vent_line_number: usize| {
-                    let texture_origin = opt(vec3f.with_recognized());
-                    let ((bounds, vent_index, surface, texture_origin), line) = parse_line(
+                    let texture_origin = opt(preceded(space0, vec3f.with_recognized()));
+                    let (((bounds, vent_index, surface), line), texture_origin) = parse_line(
                         &mut input,
-                        ws_separated!(bounds3f, i32, i32, texture_origin).with_recognized(),
+                        (ws_separated!(bounds3f, i32, i32).with_recognized(), texture_origin),
                     )?;
 
                     if (vent_line_number < num_non_dummies) != texture_origin.is_some() {
                         return Err(err::Error::VentTextureOrigin {
-                            vent: self.located_parser.span_from_substr(line),
+                            vent: self.located_parser.span_from_substr(line.trim()),
                             num_vents_total,
                             num_non_dummies,
                             vent_line_number,
                             texture_origin: texture_origin
-                                .map(|(_, x)| self.located_parser.span_from_substr(x)),
+                                .map(|(_, x)| self.located_parser.span_from_substr(x.trim())),
                         });
                     }
 
