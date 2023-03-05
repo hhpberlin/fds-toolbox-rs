@@ -106,6 +106,13 @@ pub enum Error {
         help("expected {expected} meshes, found {found} meshes")
     )]
     WrongNumberOfMeshes { expected: usize, found: usize },
+    #[error("Found unexpected constant value, expected {expected}")]
+    #[diagnostic(code(fds_tbx::smv::unexpected_constant_value))]
+    InvalidFloatConstant {
+        #[label("expected {expected} here")]
+        span: SourceSpan,
+        expected: f32,
+    }
 }
 
 impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {

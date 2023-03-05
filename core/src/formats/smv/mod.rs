@@ -32,7 +32,20 @@ struct Simulation {
     input_file: String,
     revision: String,
     chid: String,
-    solid_ht3d: i32, // TODO: Is this the correct type?
+    solid_ht3d: i32,
+    meshes: Vec<mesh::Mesh>,
+    devices: HashMap<String, Device>,
+    time_end: f32,
+    num_frames: i32,
+    hrrpuv_cutoff: f32,
+    smoke_albedo: f32,
+    /// From dump.f90: "Parameter passed to smokeview (in .smv file) to control generation of blockages"
+    i_blank: bool,
+    gravity_vec: Vec3F,
+    surfaces: Vec<Surface>,
+    ramps: Vec<Ramp>,
+    outlines: Vec<Bounds3F>,
+    default_surface_id: String,
 }
 
 #[derive(Debug)]
@@ -122,6 +135,18 @@ struct Quantity {
     label: String,
     bar_label: String,
     unit: String,
+}
+
+#[derive(Debug)]
+struct Ramp {
+    name: String,
+    values: Vec<RampValue>,
+}
+
+#[derive(Debug)]
+struct RampValue {
+    independent: f32,
+    dependent: f32,
 }
 
 mod err;
@@ -288,6 +313,9 @@ impl SimulationParser<'_> {
     }
 
     fn parse(&self) -> Result<Simulation, err::Error> {
+        // For reference, the SMV file is written by `dump.f90` in FDS.
+        // Search for `WRITE(LU_SMV` to find the relevant parts of the code.
+
         let mut title = None;
         let mut fds_version = None;
         let mut end_file = None;
@@ -296,14 +324,16 @@ impl SimulationParser<'_> {
         let mut chid = None;
         let mut csv_files = HashMap::new();
         let mut solid_ht3d: Option<i32> = None; // TODO: Type
-        let mut num_meshes: Option<u32> = None;
+        let mut num_meshes: Option<usize> = None;
         let mut hrrpuv_cutoff: Option<f32> = None;
-        // TODO: Find out what these values are
-        let mut view_times: Option<(f32, f32, i32)> = None;
-        let mut albedo = None;
+
+        let mut time_end = None;
+        let mut num_frames = None;
+
+        let mut smoke_albedo = None;
         let mut i_blank = None;
-        let mut g_vec = None;
-        let mut surfdef = None;
+        let mut gravity_vec = None;
+        let mut default_surface_id = None;
         let mut outlines = None;
         let mut default_texture_origin = None;
         let mut ramps = None;
@@ -346,19 +376,30 @@ impl SimulationParser<'_> {
                         let file_name = parse_line(&mut input, full_line)?;
                         csv_files.insert(name, file_name);
                     }
-                    "NMESHES" => num_meshes = Some(parse_line(&mut input, u32)?),
+                    "NMESHES" => num_meshes = Some(parse_line(&mut input, usize)?),
                     "HRRPUVCUT" => {
-                        // TODO: Find out what this is
-                        let _ = parse_line(&mut input, i32)?;
+                        // This line is hardcoded as 1 in FDS
+                        let _ = parse_line(&mut input, "1")?;
                         hrrpuv_cutoff = Some(parse_line(&mut input, f32)?)
                     }
                     "VIEWTIMES" => {
-                        view_times = Some(parse_line(&mut input, ws_separated!(f32, f32, i32))?)
+                        let ((start, start_str), time_end_, num_frames_) =
+                            parse_line(&mut input, ws_separated!(f32.with_recognized(), f32, i32))?;
+                        if start != 0. {
+                            return Err(err::Error::InvalidFloatConstant {
+                                span: self.located_parser.span_from_substr(start_str),
+                                expected: 0.,
+                            });
+                        }
+                        time_end = Some(time_end_);
+                        num_frames = Some(num_frames_);
                     }
-                    "ALBEDO" => albedo = Some(parse_line(&mut input, f32)?),
-                    "IBLANK" => i_blank = Some(parse_line(&mut input, i32)?),
-                    "GVEC" => g_vec = Some(parse_line(&mut input, vec3f)?),
-                    "SURFDEF" => surfdef = Some(parse_line(&mut input, full_line)?),
+                    "ALBEDO" => smoke_albedo = Some(parse_line(&mut input, f32)?),
+                    // Always 0 or 1
+                    // TODO: Error if not 0 or 1
+                    "IBLANK" => i_blank = Some(parse_line(&mut input, u32)? == 1),
+                    "GVEC" => gravity_vec = Some(parse_line(&mut input, vec3f)?),
+                    "SURFDEF" => default_surface_id = Some(parse_line(&mut input, full_line)?),
                     "SURFACE" => {
                         let name = parse_line(&mut input, full_line)?;
                         let (tmpm, material_emissivity) =
@@ -390,24 +431,19 @@ impl SimulationParser<'_> {
                         });
                     }
                     "OUTLINE" => outlines = Some(parse(&mut input, repeat(line(bounds3f)))?),
-                    // TODO: This is called offset but fdsreader treats it as the default texture origin
-                    //       Check if it actually should be the default value or if it should be a global offset
                     "TOFFSET" => default_texture_origin = Some(parse_line(&mut input, vec3f)?),
                     "RAMP" => {
                         let ramp = (
-                            line(("RAMP:", full_line)),
-                            repeat(line(ws_separated!(f32, f32))),
-                        );
-                        ramps = Some(parse(&mut input, repeat(ramp))?)
+                            line(preceded("RAMP:", full_line)),
+                            repeat(line(ws_separated!(f32, f32)).map(|(independent, dependent)| RampValue {independent, dependent})),
+                        )
+                        .map(|(name, values)| Ramp {
+                            name: name.trim().to_string(),
+                            values,
+                        });
+                        ramps = Some(parse(&mut input, repeat(ramp))?);
                     }
                     "PROP" => {
-                        // TODO: This is probably wrong, based on a sample size of two
-                        // parse(
-                        //     &mut input,
-                        //     (line("null"), line("1"), line("sensor"), line("0")),
-                        // )?;
-                        // todo!()
-
                         let name = parse_line(&mut input, full_line)?;
                         let smv_ids = parse(&mut input, repeat(line(full_line)))?;
                         let smv_props = parse(&mut input, repeat(line(full_line)))?;
@@ -566,6 +602,15 @@ impl SimulationParser<'_> {
             }
         }
 
+        let num_meshes = num_meshes
+            .ok_or(err::Error::MissingSection { name: "NMESHES" })?;
+        if meshes.len() != num_meshes {
+            return Err(err::Error::WrongNumberOfMeshes {
+                expected: num_meshes,
+                found: meshes.len(),
+            });
+        }
+
         let title = title
             .ok_or(err::Error::MissingSection { name: "TITLE" })?
             .to_string();
@@ -586,6 +631,26 @@ impl SimulationParser<'_> {
             .to_string();
         let solid_ht3d = solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?;
 
+        let hrrpuv_cutoff = hrrpuv_cutoff
+            .ok_or(err::Error::MissingSection { name: "HRRPUVCUT" })?;
+        let (time_end, num_frames) = time_end.zip(num_frames)
+            .ok_or(err::Error::MissingSection { name: "VIEWTIMES" })?;
+        let smoke_albedo = smoke_albedo
+            .ok_or(err::Error::MissingSection { name: "ALBEDO" })?;
+        let i_blank = i_blank
+            .ok_or(err::Error::MissingSection { name: "IBLANK" })?;
+        let gravity_vec = gravity_vec
+            .ok_or(err::Error::MissingSection { name: "GVEC" })?;
+
+        let ramps = ramps
+            .ok_or(err::Error::MissingSection { name: "RAMP" })?;
+        let outlines = outlines
+            .ok_or(err::Error::MissingSection { name: "OUTLINE" })?;
+
+        let default_surface_id = default_surface_id
+            .ok_or(err::Error::MissingSection { name: "SURFDEF" })?
+            .to_string();
+
         Ok(Simulation {
             title,
             fds_version,
@@ -594,6 +659,18 @@ impl SimulationParser<'_> {
             revision,
             chid,
             solid_ht3d,
+            meshes,
+            devices,
+            hrrpuv_cutoff,
+            time_end,
+            num_frames,
+            smoke_albedo,
+            i_blank,
+            gravity_vec,
+            ramps,
+            outlines,
+            default_surface_id,
+            surfaces,
         })
     }
 }

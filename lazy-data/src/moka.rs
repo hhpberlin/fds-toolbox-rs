@@ -9,7 +9,11 @@ use fds_toolbox_core::{
 };
 use moka::sync::Cache;
 
+
 #[derive(Debug)]
+// TODO: Remove dead_code. Here for a dark cockpit.
+#[allow(dead_code)]
+
 pub struct MokaStore {
     s0d: Cache<SimulationIdx<TimeSeriesIdx>, Arc<TimeSeries0>>,
     s2d: Cache<SimulationIdx<SliceSeriesIdx>, Arc<TimeSeries2>>,
