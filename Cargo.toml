@@ -4,6 +4,7 @@ members = [
     "core",
     "lazy-data",
     "ui",
+    "rescale-api"
 ]
 
 [profile.release]
