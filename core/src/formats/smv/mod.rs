@@ -212,7 +212,7 @@ fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
 /// ```
 fn full_line<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     // TODO: Which one is better between these two?
-    not_line_ending.parse_next(input)
+    not_line_ending.parse_next(input).map(|(i, o)| (i, o.trim()))
     //take_till1(|c| c == '\r' || c == '\n').parse_next(i)
 }
 
