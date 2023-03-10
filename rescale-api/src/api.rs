@@ -1,6 +1,6 @@
-use std::{sync::Arc, fmt::Display};
+use std::fmt::Display;
 
-use reqwest::{Method, IntoUrl};
+use reqwest::{IntoUrl, Method};
 
 #[derive(Debug)]
 pub struct RescaleApiClient {
@@ -27,7 +27,8 @@ impl RescaleApiClient {
     }
 
     pub fn request_inner<U: IntoUrl>(&self, method: Method, url: U) -> reqwest::RequestBuilder {
-        self.client.request(method, url)
+        self.client
+            .request(method, url)
             .header("Authorization", self.token.header_value())
     }
 

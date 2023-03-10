@@ -119,7 +119,7 @@ pub enum Error {
         #[label("expected {expected} here")]
         span: SourceSpan,
         expected: f32,
-    }
+    },
 }
 
 impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {

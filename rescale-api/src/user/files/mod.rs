@@ -1,13 +1,11 @@
 use bytes::Bytes;
-use reqwest::header::{HeaderMap, AUTHORIZATION};
-use reqwest::multipart::{Form, Part};
+
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::copy;
+
 use std::io::Read;
 
-use crate::api::{RescaleApiClient, RescaleApiToken};
+use crate::api::RescaleApiClient;
 
 /// Represents a response file with various properties.
 #[derive(Debug, Deserialize)]
@@ -134,7 +132,7 @@ pub async fn list_filtered(
 }
 
 pub async fn delete(client: &RescaleApiClient, file_id: &str) -> Result<(), reqwest::Error> {
-    let response = client
+    let _response = client
         .request(Method::DELETE, format!("files/{file_id}/"))
         .send()
         .await?

@@ -158,7 +158,9 @@ impl Simulation {
             located_parser: InputLocator::new(file),
         };
         // TODO: Avoid `to_string` call for owned input
-        parser.parse().map_err(move |err| parser.map_err(err, move || file.to_string()))
+        parser
+            .parse()
+            .map_err(move |err| parser.map_err(err, move || file.to_string()))
     }
 }
 struct SimulationParser<'a> {
@@ -212,7 +214,9 @@ fn line<'a, O, E: ParseError<&'a str> + ContextError<&'a str>>(
 /// ```
 fn full_line<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     // TODO: Which one is better between these two?
-    not_line_ending.parse_next(input).map(|(i, o)| (i, o.trim()))
+    not_line_ending
+        .parse_next(input)
+        .map(|(i, o)| (i, o.trim()))
     //take_till1(|c| c == '\r' || c == '\n').parse_next(i)
 }
 

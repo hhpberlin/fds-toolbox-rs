@@ -343,7 +343,10 @@ impl SimulationParser<'_> {
                     let texture_origin = opt(preceded(space0, vec3f.with_recognized()));
                     let (((bounds, vent_index, surface), line), texture_origin) = parse_line(
                         &mut input,
-                        (ws_separated!(bounds3f, i32, i32).with_recognized(), texture_origin),
+                        (
+                            ws_separated!(bounds3f, i32, i32).with_recognized(),
+                            texture_origin,
+                        ),
                     )?;
 
                     if (vent_line_number < num_non_dummies) != texture_origin.is_some() {
