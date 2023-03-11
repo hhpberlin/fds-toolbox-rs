@@ -754,9 +754,7 @@ impl<'a> SimulationParser<'a> {
         let title = title
             .ok_or(err::Error::MissingSection { name: "TITLE" })?
             .to_string();
-        let fds_version = fds_version
-            .ok_or(err::Error::MissingSection { name: "FDSVERSION" })?
-            .to_string();
+        let fds_version = fds_version.ok_or(err::Error::MissingSection { name: "FDSVERSION" })?;
         let end_version = end_file
             .ok_or(err::Error::MissingSection { name: "ENDF" })?
             .to_string();

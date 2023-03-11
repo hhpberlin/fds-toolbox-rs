@@ -23,7 +23,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // convert content from Bytes to &str
         let text = std::str::from_utf8(content.as_ref())?;
 
-        let sim = Simulation::parse_with_warn_stdout(text).unwrap();
+        let _sim = Simulation::parse_with_warn_stdout(text).unwrap();
     }
 
     Ok(())

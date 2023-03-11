@@ -294,10 +294,11 @@ impl SimulationParser<'_> {
                 .into_iter()
                 .map(|obst| {
                     let rgba = opt(ws_separated!(vec3f, f32).with_recognized());
-                    let (bounds_idx, (color_index, color_index_str), block_type, rgba) = parse_line(
-                        &mut input,
-                        ws_separated!(bounds3i, i32.with_recognized(), i32, rgba),
-                    )?;
+                    let (bounds_idx, (color_index, color_index_str), block_type, rgba) =
+                        parse_line(
+                            &mut input,
+                            ws_separated!(bounds3i, i32.with_recognized(), i32, rgba),
+                        )?;
 
                     if (color_index == -3) != rgba.is_some() {
                         return Err(err::Error::InvalidObstColor {
