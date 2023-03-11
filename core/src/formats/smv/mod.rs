@@ -26,7 +26,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct Simulation {
+pub struct Simulation {
     title: String,
     fds_version: String,
     end_version: String,
@@ -53,19 +53,19 @@ struct Simulation {
 }
 
 #[derive(Debug)]
-struct TimeRange {
+pub struct TimeRange {
     time_start: f32,
     time_end: f32,
 }
 
 #[derive(Debug)]
-struct ViewTimes {
+pub struct ViewTimes {
     time_end: f32,
     num_frames: i32,
 }
 
 #[derive(Debug)]
-struct Surface {
+pub struct Surface {
     name: String,
     // TODO: What is this? Better name
     tmpm: f32,
@@ -79,13 +79,13 @@ struct Surface {
 }
 
 #[derive(Debug)]
-struct Material {
+pub struct Material {
     name: String,
     rgb: Vec3F,
 }
 
 #[derive(Debug)]
-struct Device {
+pub struct Device {
     id: String,
     quantity: String,
     position: Vec3F,
@@ -97,7 +97,7 @@ struct Device {
 }
 
 #[derive(Debug)]
-struct DeviceActivation {
+pub struct DeviceActivation {
     // TODO: Find out what these names mean and give them better names
     a: i32,
     b: f32,
@@ -105,14 +105,14 @@ struct DeviceActivation {
 }
 
 #[derive(Debug)]
-enum Smoke3DType {
+pub enum Smoke3DType {
     // TODO: Find out what these names mean and give them better names
     F,
     G,
 }
 
 #[derive(Debug)]
-struct Smoke3D {
+pub struct Smoke3D {
     mesh_index: i32,
     file_name: String,
     quantity: Quantity,
@@ -121,7 +121,7 @@ struct Smoke3D {
 }
 
 #[derive(Debug)]
-struct Slice {
+pub struct Slice {
     mesh_index: i32,
     file_name: String,
     quantity: String,
@@ -135,34 +135,34 @@ struct Slice {
 }
 
 #[derive(Debug)]
-struct Plot3D {
+pub struct Plot3D {
     file_name: String,
     mesh_index: i32,
     quantities: [Quantity; 5],
 }
 
 #[derive(Debug)]
-struct Property {
+pub struct Property {
     name: String,
     smv_ids: Vec<String>,
     smv_props: Vec<String>,
 }
 
 #[derive(Debug)]
-struct Quantity {
+pub struct Quantity {
     label: String,
     bar_label: String,
     unit: String,
 }
 
 #[derive(Debug)]
-struct Ramp {
+pub struct Ramp {
     name: String,
     values: Vec<RampValue>,
 }
 
 #[derive(Debug)]
-struct RampValue {
+pub struct RampValue {
     independent: f32,
     dependent: f32,
 }
@@ -726,9 +726,14 @@ impl<'a> SimulationParser<'a> {
                             quantities,
                         });
                     }
+                    // "BNDF" => {
+                    //     let (mesh_index, one) = parse_line(&mut input, ws_separated!(u32, i32.with_recognized()));
+                    //     i32_const(one, 1)?;
+
+                    // }
                     // Quietly discard some sections
                     // TODO: Parse these sections
-                    "PRT5" | "ISOG" | "HIDE_OBST" => {
+                    "PRT5" | "ISOG" | "HIDE_OBST" | "SHOW_OBST" => {
                         input = self.skip_section(input, &None, word)?;
                     }
                     _ => {
