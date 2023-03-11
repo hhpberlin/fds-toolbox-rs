@@ -3230,6 +3230,7 @@ name = "rescale-api"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "fds-toolbox-core",
  "reqwest",
  "serde",
  "serde_json",

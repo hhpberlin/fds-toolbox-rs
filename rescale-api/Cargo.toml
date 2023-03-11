@@ -14,3 +14,6 @@ bytes = "1.4"
 # Include tokio for binary version
 # TODO: Remove this dependency for library version
 tokio = { version = "1.13.0", features = ["full"] }
+
+# TODO: Remove or lock to cfg(test)
+fds-toolbox-core = { path = "../core" }
