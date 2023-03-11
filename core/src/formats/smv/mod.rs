@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use winnow::{
     branch::alt,
-    bytes::{tag, take_till0},
+    bytes::{tag, take_till0, take_till1},
     character::{line_ending, multispace0, not_line_ending, space0},
     combinator::opt,
     error::{ContextError, ErrMode, ParseError},
@@ -33,11 +33,9 @@ struct Simulation {
     input_file: String,
     revision: String,
     chid: String,
-    solid_ht3d: i32,
+    solid_ht3d: Option<i32>,
     meshes: Vec<mesh::Mesh>,
     devices: HashMap<String, Device>,
-    time_end: f32,
-    num_frames: i32,
     hrrpuv_cutoff: f32,
     smoke_albedo: f32,
     /// From dump.f90: "Parameter passed to smokeview (in .smv file) to control generation of blockages"
@@ -47,6 +45,23 @@ struct Simulation {
     ramps: Vec<Ramp>,
     outlines: Vec<Bounds3F>,
     default_surface_id: String,
+    viewtimes: ViewTimes,
+    time_range: Option<TimeRange>,
+    xyz_files: Vec<String>,
+    heat_of_combustion: Option<f32>,
+    reaction_fuel: Option<String>,
+}
+
+#[derive(Debug)]
+struct TimeRange {
+    time_start: f32,
+    time_end: f32,
+}
+
+#[derive(Debug)]
+struct ViewTimes {
+    time_end: f32,
+    num_frames: i32,
 }
 
 #[derive(Debug)]
@@ -71,14 +86,14 @@ struct Material {
 
 #[derive(Debug)]
 struct Device {
-    name: String,
-    unit: String,
+    id: String,
+    quantity: String,
     position: Vec3F,
     orientation: Vec3F,
-    a: i32,
-    b: i32,
+    state_index: i32,
     bounds: Option<Bounds3F>,
     activations: Vec<DeviceActivation>,
+    property_id: String,
 }
 
 #[derive(Debug)]
@@ -98,10 +113,11 @@ enum Smoke3DType {
 
 #[derive(Debug)]
 struct Smoke3D {
-    num: i32,
+    mesh_index: i32,
     file_name: String,
     quantity: Quantity,
     smoke_type: Smoke3DType,
+    mass_extinction_coefficient: Option<f32>,
 }
 
 #[derive(Debug)]
@@ -115,6 +131,7 @@ struct Slice {
     // TODO: Find all options
     slice_type: String,
     bounds: Bounds3I,
+    id: Option<String>,
 }
 
 #[derive(Debug)]
@@ -153,14 +170,30 @@ struct RampValue {
 mod err;
 
 impl Simulation {
-    pub fn parse(file: &str) -> Result<Self, miette::Report> {
+    pub fn parse_with_warn(
+        file: &str,
+        warn: Option<Box<dyn Fn(miette::Report) + '_>>,
+    ) -> Result<Self, miette::Report> {
         let parser = SimulationParser {
             located_parser: InputLocator::new(file),
         };
+        // So the closures can be move
+        let parser = &parser;
+
+        let map_err = move |err| parser.map_err(err, move || file.to_string());
         // TODO: Avoid `to_string` call for owned input
         parser
-            .parse()
-            .map_err(move |err| parser.map_err(err, move || file.to_string()))
+            // .parse(warn.map(|warn| Box::new(|e| warn(map_err(e))) as Box<dyn Fn(err::Error)>))
+            .parse(warn.map(|warn| Box::new(move |e| warn(map_err(e))) as Box<dyn Fn(err::Error)>))
+            .map_err(map_err)
+    }
+
+    pub fn parse(file: &str) -> Result<Self, miette::Report> {
+        Self::parse_with_warn(file, None)
+    }
+
+    pub fn parse_with_warn_stdout(file: &str) -> Result<Self, miette::Report> {
+        Self::parse_with_warn(file, Some(Box::new(|e| eprintln!("{:?}", e))))
     }
 }
 struct SimulationParser<'a> {
@@ -296,7 +329,7 @@ fn quantity(mut input: &str) -> IResult<&str, Quantity> {
 
 impl<'a> SimulationParser<'a> {
     fn map_err<Src: SourceCode + Send + Sync + 'static>(
-        self,
+        &self,
         err: err::Error,
         owned_input_src: impl FnOnce() -> Src,
     ) -> miette::Report {
@@ -329,7 +362,31 @@ impl<'a> SimulationParser<'a> {
     //     self.parse().map_err(|err| self.map_err(err))
     // }
 
-    fn parse(&self) -> Result<Simulation, err::Error> {
+    fn f32_const(&self, val: (f32, &str), const_val: f32) -> Result<(), err::Error> {
+        let (val, str) = val;
+        if val == const_val {
+            Ok(())
+        } else {
+            Err(err::Error::InvalidFloatConstant {
+                span: self.located_parser.span_from_substr(str),
+                expected: const_val,
+            })
+        }
+    }
+
+    fn i32_const(&self, val: (i32, &str), const_val: i32) -> Result<(), err::Error> {
+        let (val, str) = val;
+        if val == const_val {
+            Ok(())
+        } else {
+            Err(err::Error::InvalidIntConstant {
+                span: self.located_parser.span_from_substr(str),
+                expected: const_val,
+            })
+        }
+    }
+
+    fn parse(&self, warn: Option<Box<dyn Fn(err::Error) + '_>>) -> Result<Simulation, err::Error> {
         // For reference, the SMV file is written by `dump.f90` in FDS.
         // Search for `WRITE(LU_SMV` to find the relevant parts of the code.
 
@@ -343,9 +400,12 @@ impl<'a> SimulationParser<'a> {
         let mut solid_ht3d: Option<i32> = None; // TODO: Type
         let mut num_meshes: Option<usize> = None;
         let mut hrrpuv_cutoff: Option<f32> = None;
+        let mut heat_of_combustion = None;
+        let mut reaction_fuel = None;
 
-        let mut time_end = None;
-        let mut num_frames = None;
+        let mut time_range = None;
+
+        let mut viewtimes = None;
 
         let mut smoke_albedo = None;
         let mut i_blank = None;
@@ -363,25 +423,32 @@ impl<'a> SimulationParser<'a> {
         let mut pl3d = Vec::new();
         let mut properties = Vec::new();
 
+        let mut xyz_files = Vec::new();
+
         let mut input = self.located_parser.full_input;
 
-        // TODO: Error on unexpected setions repetitons (2 titles for example)
+        // TODO: Error on unexpected section repetitions (2 titles for example)
 
         while !input.is_empty() {
             let word = parse(&mut input, preceded(multispace0, non_ws))?;
-            // let (input, addendum) =
-            //     terminated(alt((full_line.map(Some), success(None))), line_ending)
-            //         .parse_next(input)?;
-
-            // dispatch! {
-
-            // }
 
             if parse(&mut input, line_ending::<_, ()>).is_ok() {
                 match word {
                     "TITLE" => title = Some(parse_line(&mut input, full_line)?),
                     "VERSION" | "FDSVERSION" => {
-                        fds_version = Some(parse_line(&mut input, full_line)?)
+                        let mut ver =
+                            parse(&mut input, terminated(full_line, line_ending))?.to_string();
+                        // TODO: This is very cursed and weird
+                        //       Why is there even a case where the version is two lines long
+                        //       Who decided that's okay, like morally speaking
+                        if let Ok::<_, ErrMode<()>>(line) =
+                            parse(&mut input, terminated(full_line, line_ending))
+                        {
+                            if !line.is_empty() {
+                                ver = format!("{ver}\n{line}");
+                            }
+                        }
+                        fds_version = Some(ver);
                     }
                     "ENDF" => end_file = Some(parse_line(&mut input, full_line)?),
                     "INPF" => input_file = Some(parse_line(&mut input, full_line)?),
@@ -399,17 +466,23 @@ impl<'a> SimulationParser<'a> {
                         let _ = parse_line(&mut input, "1")?;
                         hrrpuv_cutoff = Some(parse_line(&mut input, f32)?)
                     }
+                    "TIMES" => {
+                        let (time_start, time_end) =
+                            parse_line(&mut input, ws_separated!(f32, f32))?;
+                        time_range = Some(TimeRange {
+                            time_start,
+                            time_end,
+                        });
+                    }
                     "VIEWTIMES" => {
-                        let ((start, start_str), time_end_, num_frames_) =
+                        let (start, time_end, num_frames) =
                             parse_line(&mut input, ws_separated!(f32.with_recognized(), f32, i32))?;
-                        if start != 0. {
-                            return Err(err::Error::InvalidFloatConstant {
-                                span: self.located_parser.span_from_substr(start_str),
-                                expected: 0.,
-                            });
-                        }
-                        time_end = Some(time_end_);
-                        num_frames = Some(num_frames_);
+                        // Hardcoded to 0 in FDS
+                        self.f32_const(start, 0.)?;
+                        viewtimes = Some(ViewTimes {
+                            time_end,
+                            num_frames,
+                        });
                     }
                     "ALBEDO" => smoke_albedo = Some(parse_line(&mut input, f32)?),
                     // Always 0 or 1
@@ -477,33 +550,44 @@ impl<'a> SimulationParser<'a> {
                         });
                     }
                     "DEVICE" => {
-                        let name = take_till0("%").map(str::trim);
-                        let unit = preceded("%", full_line);
-                        let (name, unit) = parse_line(&mut input, (name, unit))?;
+                        let device_id = take_till0("%").map(str::trim);
+                        let quant = preceded("%", full_line);
+                        let (device_id, quantity) = parse_line(&mut input, (device_id, quant))?;
 
                         // TODO: This is a bit ugly
-                        let close = ws_separated!("%", "null").recognize();
+                        let close = preceded((space0, "%"), full_line);
 
                         // TODO: idk what this is
                         let bounds = preceded("#", bounds3f);
-                        let bounds = terminated(opt(bounds), close);
 
                         // TODO: what are a and b?
-                        let (position, orientation, a, b, bounds) =
-                            parse_line(&mut input, ws_separated!(vec3f, vec3f, i32, i32, bounds))?;
+                        let (position, orientation, state_index, zero, bounds, property_id) =
+                            parse_line(
+                                &mut input,
+                                ws_separated!(
+                                    vec3f,
+                                    vec3f,
+                                    i32,
+                                    i32.with_recognized(),
+                                    opt(bounds),
+                                    close
+                                ),
+                            )?;
 
-                        let name = name.to_string();
+                        self.i32_const(zero, 0)?;
+
+                        let id = device_id.to_string();
                         devices.insert(
-                            name.clone(),
+                            id.clone(),
                             Device {
-                                name,
-                                unit: unit.to_string(),
+                                id,
+                                quantity: quantity.to_string(),
                                 position,
                                 orientation,
-                                a,
-                                b,
+                                state_index,
                                 bounds,
                                 activations: Vec::new(),
+                                property_id: property_id.to_string(),
                             },
                         );
                     }
@@ -515,16 +599,34 @@ impl<'a> SimulationParser<'a> {
                         let mesh = parse_fn(&mut input, self.parse_mesh(default_texture_origin))?;
                         meshes.push(mesh);
                     }
+                    "XYZ" => {
+                        let file_name = parse_line(&mut input, full_line)?;
+                        xyz_files.push(file_name.to_string());
+                    }
+                    "HoC" => {
+                        let one = parse_line(&mut input, i32.with_recognized())?;
+                        self.i32_const(one, 1)?;
+                        heat_of_combustion = Some(parse_line(&mut input, f32)?);
+                    }
+                    "FUEL" => {
+                        let one = parse_line(&mut input, i32.with_recognized())?;
+                        self.i32_const(one, 1)?;
+                        reaction_fuel = Some(parse_line(&mut input, full_line)?);
+                    }
+                    // Quietly discard some sections
+                    // TODO: Parse these sections
+                    "FACE" | "CADGEOM" | "VERT" | "CLASS_OF_PARTICLES" => {
+                        input = self.skip_section(input, &None, word)?;
+                    }
                     _ => {
-                        return Err(err::Error::UnknownSection {
-                            section: self.located_parser.span_from_substr(word),
-                        })
+                        input = self.skip_section(input, &warn, word)?;
                     }
                 }
             } else {
                 match word {
                     "SMOKF3D" | "SMOKG3D" => {
-                        let num = parse_line(&mut input, i32)?;
+                        let (mesh_index, mass_extinction_coefficient) =
+                            parse_line(&mut input, ws_separated!(i32, opt(f32)))?;
 
                         let smoke_type = match word {
                             "SMOKF3D" => Smoke3DType::F,
@@ -536,15 +638,23 @@ impl<'a> SimulationParser<'a> {
                         let quantity = parse(&mut input, quantity)?;
 
                         smoke3d.push(Smoke3D {
-                            num,
+                            mesh_index,
                             smoke_type,
                             file_name: file_name.to_string(),
                             quantity,
+                            mass_extinction_coefficient,
                         });
                     }
                     "SLCF" | "SLCC" => {
-                        let (mesh_index, _, slice_type, _, bounds) =
-                            parse_line(&mut input, ws_separated!(i32, "#", non_ws, "&", bounds3i))?;
+                        let id = preceded("%", take_till1("&").map(str::trim));
+                        // From Fortran:
+                        // ' ! ',SL%SLCF_INDEX, CC_VAL
+                        // Not present in DemoHaus2
+                        let stuff = preceded("!", ws_separated!(i32, opt(i32)));
+                        let (mesh_index, _, slice_type, id, _, bounds, _stuff) = parse_line(
+                            &mut input,
+                            ws_separated!(i32, "#", non_ws, opt(id), "&", bounds3i, opt(stuff)),
+                        )?;
 
                         let cell_centered = match word {
                             "SLCC" => true,
@@ -566,6 +676,7 @@ impl<'a> SimulationParser<'a> {
                             quantity: quantity.to_string(),
                             name: name.to_string(),
                             unit: unit.to_string(),
+                            id: id.map(ToString::to_string),
                         });
                     }
                     "DEVICE_ACT" => {
@@ -615,10 +726,13 @@ impl<'a> SimulationParser<'a> {
                             quantities,
                         });
                     }
+                    // Quietly discard some sections
+                    // TODO: Parse these sections
+                    "PRT5" | "ISOG" | "HIDE_OBST" => {
+                        input = self.skip_section(input, &None, word)?;
+                    }
                     _ => {
-                        return Err(err::Error::UnknownSection {
-                            section: self.located_parser.span_from_substr(word),
-                        })
+                        input = self.skip_section(input, &warn, word)?;
                     }
                 }
             }
@@ -650,13 +764,11 @@ impl<'a> SimulationParser<'a> {
         let chid = chid
             .ok_or(err::Error::MissingSection { name: "CHID" })?
             .to_string();
-        let solid_ht3d = solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?;
+        // let solid_ht3d = solid_ht3d.ok_or(err::Error::MissingSection { name: "SOLID_HT3D" })?;
 
         let hrrpuv_cutoff =
             hrrpuv_cutoff.ok_or(err::Error::MissingSection { name: "HRRPUVCUT" })?;
-        let (time_end, num_frames) = time_end
-            .zip(num_frames)
-            .ok_or(err::Error::MissingSection { name: "VIEWTIMES" })?;
+        let viewtimes = viewtimes.ok_or(err::Error::MissingSection { name: "VIEWTIMES" })?;
         let smoke_albedo = smoke_albedo.ok_or(err::Error::MissingSection { name: "ALBEDO" })?;
         let i_blank = i_blank.ok_or(err::Error::MissingSection { name: "IBLANK" })?;
         let gravity_vec = gravity_vec.ok_or(err::Error::MissingSection { name: "GVEC" })?;
@@ -667,6 +779,8 @@ impl<'a> SimulationParser<'a> {
         let default_surface_id = default_surface_id
             .ok_or(err::Error::MissingSection { name: "SURFDEF" })?
             .to_string();
+
+        let reaction_fuel = reaction_fuel.map(str::to_string);
 
         Ok(Simulation {
             title,
@@ -679,8 +793,6 @@ impl<'a> SimulationParser<'a> {
             meshes,
             devices,
             hrrpuv_cutoff,
-            time_end,
-            num_frames,
             smoke_albedo,
             i_blank,
             gravity_vec,
@@ -688,6 +800,50 @@ impl<'a> SimulationParser<'a> {
             outlines,
             default_surface_id,
             surfaces,
+            viewtimes,
+            time_range,
+            xyz_files,
+            heat_of_combustion,
+            reaction_fuel,
         })
+    }
+
+    fn skip_section<'b>(
+        &'b self,
+        mut input: &'b str,
+        warn: &Option<Box<dyn Fn(err::Error) + 'b>>,
+        word: &'b str,
+    ) -> Result<&'b str, err::Error> {
+        // Skip the current line
+        // Incase of parsing something like "MESH <name>", if name is all caps, it would falsely be parsed as a section
+        let Ok(_) = parse_line::<_, ()>(&mut input, full_line) else {
+            return Err(err::Error::UnexpectedEndOfInput {
+                span: self.located_parser.span_from_substr(word),
+            });
+        };
+
+        // Parse lines until finding the next section
+        // Next section is determined as the first line that starts with an all-caps word
+        while let Ok::<_, ErrMode<()>>((remainder, word)) =
+            terminated(not_line_ending, line_ending).parse_next(input)
+        {
+            if word.chars().all(|c| c.is_ascii_uppercase()) {
+                break;
+            }
+            input = remainder;
+        }
+
+        // return Err(err::Error::UnknownSection {
+        //     section: self.located_parser.span_from_substr(word),
+        // });
+
+        // TODO: Track https://github.com/rust-lang/rust/issues/91345 and use .inspect
+        warn.iter().for_each(|x| {
+            x(err::Error::UnknownSection {
+                section: self.located_parser.span_from_substr(word),
+            })
+        });
+
+        Ok(input)
     }
 }

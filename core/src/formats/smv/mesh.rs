@@ -21,10 +21,11 @@ pub struct Obst {
     // TODO: Map to actual surface type
     side_surfaces: Surfaces3<i32>,
     bounds_idx: Bounds3I,
-    // TODO: Introduce rgb struct?
-    rgb: Option<Vec3F>,
     color_index: i32,
     block_type: i32,
+    // TODO: Introduce RGB(A) struct?
+    /// Vec3F is RGB, f32 is alpha
+    rgba: Option<(Vec3F, f32)>,
 }
 
 #[derive(Debug)]
@@ -292,16 +293,16 @@ impl SimulationParser<'_> {
             let obsts = obsts
                 .into_iter()
                 .map(|obst| {
-                    let rgb = opt(vec3f.with_recognized());
-                    let (bounds_idx, (color_index, color_index_str), block_type, rgb) = parse_line(
+                    let rgba = opt(ws_separated!(vec3f, f32).with_recognized());
+                    let (bounds_idx, (color_index, color_index_str), block_type, rgba) = parse_line(
                         &mut input,
-                        ws_separated!(bounds3i, i32.with_recognized(), i32, rgb),
+                        ws_separated!(bounds3i, i32.with_recognized(), i32, rgba),
                     )?;
 
-                    if (color_index == -3) != rgb.is_some() {
+                    if (color_index == -3) != rgba.is_some() {
                         return Err(err::Error::InvalidObstColor {
                             color_index: self.located_parser.span_from_substr(color_index_str),
-                            rgb: rgb.map(|(_, x)| self.located_parser.span_from_substr(x)),
+                            color: rgba.map(|(_, x)| self.located_parser.span_from_substr(x)),
                         });
                     }
 
@@ -315,7 +316,7 @@ impl SimulationParser<'_> {
                         bounds_idx,
                         color_index,
                         block_type,
-                        rgb: rgb.map(|(x, _)| x),
+                        rgba: rgba.map(|(x, _)| x),
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;

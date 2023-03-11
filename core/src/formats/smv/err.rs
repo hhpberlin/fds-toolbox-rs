@@ -84,7 +84,7 @@ pub enum Error {
         #[label("specified index")]
         color_index: SourceSpan,
         #[label("specified RGB")]
-        rgb: Option<SourceSpan>,
+        color: Option<SourceSpan>,
     },
     #[error("Texture origin must be specified on all non-dummy vents, and must not be specified on dummy vents")]
     #[diagnostic(code(fds_tbx::smv::vent_missing_texture_origin))]
@@ -102,7 +102,7 @@ pub enum Error {
         texture_origin: Option<SourceSpan>,
     },
     #[error("Encountered unknown section")]
-    #[diagnostic(code(fds_tbx::smv::unknown_section))]
+    #[diagnostic(code(fds_tbx::smv::unknown_section), severity(warn))]
     UnknownSection {
         #[label("here")]
         section: SourceSpan,
@@ -119,6 +119,19 @@ pub enum Error {
         #[label("expected {expected} here")]
         span: SourceSpan,
         expected: f32,
+    },
+    #[error("Found unexpected constant value, expected {expected}")]
+    #[diagnostic(code(fds_tbx::smv::unexpected_constant_value))]
+    InvalidIntConstant {
+        #[label("expected {expected} here")]
+        span: SourceSpan,
+        expected: i32,
+    },
+    #[error("Found end of input unexpectedly")]
+    #[diagnostic(code(fds_tbx::smv::unexpected_end_of_input))]
+    UnexpectedEndOfInput {
+        #[label("here")]
+        span: SourceSpan,
     },
 }
 
