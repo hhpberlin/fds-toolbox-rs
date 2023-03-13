@@ -46,8 +46,8 @@ pub struct Simulation {
     outlines: Vec<Bounds3F>,
     default_surface_id: String,
     viewtimes: ViewTimes,
-    time_range: Option<TimeRange>,
     xyz_files: Vec<String>,
+    time_range: Option<TimeRange>,
     heat_of_combustion: Option<f32>,
     reaction_fuel: Option<String>,
 }
@@ -733,7 +733,7 @@ impl<'a> SimulationParser<'a> {
                     // }
                     // Quietly discard some sections
                     // TODO: Parse these sections
-                    "PRT5" | "ISOG" | "HIDE_OBST" | "SHOW_OBST" => {
+                    "PRT5" | "ISOG" | "HIDE_OBST" | "SHOW_OBST" | "BNDF" => {
                         input = self.skip_section(input, &None, word)?;
                     }
                     _ => {
