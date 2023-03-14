@@ -1,12 +1,14 @@
+mod err;
 mod util;
 
-use miette::SourceCode;
-use util::*;
 mod mesh;
+
 #[cfg(test)]
 mod tests;
 
+use miette::SourceCode;
 use std::collections::HashMap;
+use util::*;
 
 use winnow::{
     branch::alt,
@@ -20,10 +22,13 @@ use winnow::{
 };
 
 use super::util::{f32, i32, non_ws, u32, usize, InputLocator};
-use crate::{
-    geom::{Bounds3F, Bounds3I, Vec3F},
-    ws_separated,
-};
+use crate::geom::{Bounds3F, Bounds3I, Vec3F};
+
+macro_rules! ws_separated {
+    ($($t:expr),*) => {
+        crate::trace_callsite!(crate::ws_separated!($($t),*))
+    }
+}
 
 #[derive(Debug)]
 pub struct Simulation {
@@ -66,9 +71,10 @@ pub struct ViewTimes {
 
 #[derive(Debug)]
 pub struct Surface {
-    name: String,
-    // TODO: What is this? Better name
-    tmpm: f32,
+    id: String,
+    /// TMPM in FDS
+    /// From doccomment: "Melting temperature of water, conversion factor (K)"
+    water_melting_temp: f32,
     material_emissivity: f32,
     surface_type: i32,
     texture_width: f32,
@@ -167,8 +173,6 @@ pub struct RampValue {
     dependent: f32,
 }
 
-mod err;
-
 impl Simulation {
     pub fn parse_with_warn(
         file: &str,
@@ -180,7 +184,7 @@ impl Simulation {
         // So the closures can be move
         let parser = &parser;
 
-        let map_err = move |err| parser.map_err(err, move || file.to_string());
+        let map_err = move |err| parser.map_err(err, file.to_string());
         // TODO: Avoid `to_string` call for owned input
         parser
             // .parse(warn.map(|warn| Box::new(|e| warn(map_err(e))) as Box<dyn Fn(err::Error)>))
@@ -192,12 +196,14 @@ impl Simulation {
         Self::parse_with_warn(file, None)
     }
 
+    /// Convenience function for parsing a simulation and printing errors to stderr.
+    #[allow(clippy::print_stderr,
+        // TODO: Track https://github.com/rust-lang/rust/issues/54503 to uncomment this
+        // reason = "Printing to stderr is intended here, this is a convenience function for tests"
+    )]
     pub fn parse_with_warn_stdout(file: &str) -> Result<Self, miette::Report> {
         Self::parse_with_warn(file, Some(Box::new(|e| eprintln!("{:?}", e))))
     }
-}
-struct SimulationParser<'a> {
-    pub located_parser: InputLocator<'a>,
 }
 
 // TODO: Track https://github.com/rust-lang/rust/issues/50784 for doctests of private functions
@@ -306,13 +312,6 @@ mod test {
     }
 }
 
-// fn repeat_line<'a, O, E>(
-//     input: &'a mut &'a str,
-//     parser: impl Parser<&'a str, O, winnow::error::Error<&'a str>>,
-// ) -> Result<Vec<O>, winnow::error::ErrMode<winnow::error::Error<&'a str>>> {
-//     parse(input, repeat)
-// }
-
 fn quantity(mut input: &str) -> IResult<&str, Quantity> {
     let label = parse_line(&mut input, full_line)?;
     let bar_label = parse_line(&mut input, full_line)?;
@@ -327,11 +326,16 @@ fn quantity(mut input: &str) -> IResult<&str, Quantity> {
     ))
 }
 
+struct SimulationParser<'a> {
+    pub located_parser: InputLocator<'a>,
+}
+
 impl<'a> SimulationParser<'a> {
+    /// Converts the given [`err::Error`] into a pretty-printable [`miette::Report`].
     fn map_err<Src: SourceCode + Send + Sync + 'static>(
         &self,
         err: err::Error,
-        owned_input_src: impl FnOnce() -> Src,
+        owned_input: Src,
     ) -> miette::Report {
         let err = match err {
             err::Error::SyntaxNonDiagnostic {
@@ -351,17 +355,12 @@ impl<'a> SimulationParser<'a> {
             }
             err => err,
         };
-        miette::Report::new(err).with_source_code(owned_input_src())
-        // err::Error::new(
-        //     self.located_parser.full_input,
-        //     err,
-        // )
+        miette::Report::new(err).with_source_code(owned_input)
     }
 
-    // fn parse_with_report(&self) -> Result<Simulation, miette::Report> {
-    //     self.parse().map_err(|err| self.map_err(err))
-    // }
-
+    /// Checks if the given value matches the given constant,
+    /// if not it returns [`err::Error::InvalidFloatConstant`] with given `&str` as location.
+    /// The signature of `val` matches the return of [`Parser::with_recognized`].
     fn f32_const(&self, val: (f32, &str), const_val: f32) -> Result<(), err::Error> {
         let (val, str) = val;
         if val == const_val {
@@ -374,6 +373,9 @@ impl<'a> SimulationParser<'a> {
         }
     }
 
+    /// Checks if the given value matches the given constant,
+    /// if not it returns [`err::Error::InvalidIntConstant`] with given `&str` as location.
+    /// The signature of `val` matches the return of [`Parser::with_recognized`].
     fn i32_const(&self, val: (i32, &str), const_val: i32) -> Result<(), err::Error> {
         let (val, str) = val;
         if val == const_val {
@@ -386,6 +388,8 @@ impl<'a> SimulationParser<'a> {
         }
     }
 
+    /// Parses the input as ".smv", calling `warn` for any non-critical errors if `warn` is not `None`.
+    // TODO: Should non-critical errors have a separate type? It would make sense but duplicate some code.
     fn parse(&self, warn: Option<Box<dyn Fn(err::Error) + '_>>) -> Result<Simulation, err::Error> {
         // For reference, the SMV file is written by `dump.f90` in FDS.
         // Search for `WRITE(LU_SMV` to find the relevant parts of the code.
@@ -492,7 +496,7 @@ impl<'a> SimulationParser<'a> {
                     "SURFDEF" => default_surface_id = Some(parse_line(&mut input, full_line)?),
                     "SURFACE" => {
                         let name = parse_line(&mut input, full_line)?;
-                        let (tmpm, material_emissivity) =
+                        let (water_melting_temp, material_emissivity) =
                             parse_line(&mut input, ws_separated!(f32, f32))?;
                         let (surface_type, texture_width, texture_height, rgb, transparency) =
                             parse_line(&mut input, ws_separated!(i32, f32, f32, vec3f, f32))?;
@@ -501,8 +505,8 @@ impl<'a> SimulationParser<'a> {
                             alt((tag("null").value(None), full_line.map(Some))),
                         )?;
                         surfaces.push(Surface {
-                            name: name.to_string(),
-                            tmpm,
+                            id: name.to_string(),
+                            water_melting_temp,
                             material_emissivity,
                             surface_type,
                             texture_width,
@@ -624,6 +628,7 @@ impl<'a> SimulationParser<'a> {
                 }
             } else {
                 match word {
+                    // TODO: I can't find any reference to "SMOKG3D" in the current `dump.f90` source code, only "SMOKF3D".
                     "SMOKF3D" | "SMOKG3D" => {
                         let (mesh_index, mass_extinction_coefficient) =
                             parse_line(&mut input, ws_separated!(i32, opt(f32)))?;
@@ -669,16 +674,17 @@ impl<'a> SimulationParser<'a> {
 
                         slices.push(Slice {
                             mesh_index,
-                            slice_type: slice_type.to_string(),
-                            cell_centered,
-                            bounds,
                             file_name: file_name.to_string(),
                             quantity: quantity.to_string(),
                             name: name.to_string(),
                             unit: unit.to_string(),
+                            cell_centered,
+                            slice_type: slice_type.to_string(),
+                            bounds,
                             id: id.map(ToString::to_string),
                         });
                     }
+                    // TODO: I can't find any reference to "DEVICE_ACT" in the current `dump.f90` source code.
                     "DEVICE_ACT" => {
                         let device = parse_line(&mut input, full_line)?;
 
@@ -836,6 +842,7 @@ impl<'a> SimulationParser<'a> {
             input = remainder;
         }
 
+        // If we want to fail on unknown sections instead, uncomment this
         // return Err(err::Error::UnknownSection {
         //     section: self.located_parser.span_from_substr(word),
         // });

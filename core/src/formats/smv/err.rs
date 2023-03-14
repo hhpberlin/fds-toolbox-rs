@@ -4,17 +4,8 @@ use winnow;
 
 use miette::SourceSpan;
 
-// #[derive(Debug, Error, Diagnostic, Constructor)]
-// #[error("{kind}")]
-// pub struct Error<'src> {
-//     #[source_code]
-//     src: &'src str,
-//     #[source]
-//     #[diagnostic_source]
-//     #[related]
-//     kind: ErrorKind,
-// }
-
+/// A parsing error encountered while parsing a ".smv" file.
+/// For documentation on the individual errors, look at the `#[diagnostic(help(...))]` attributes.
 #[derive(Debug, Error, Diagnostic)]
 pub enum Error {
     #[error("Syntax error")]
@@ -24,6 +15,19 @@ pub enum Error {
         location: SourceSpan,
         kind: winnow::error::ErrorKind,
     },
+    // TODO: This is a workaround, find a fix.
+    //       Maybe a secondary enum that has `SyntaxNonDiagnostic { [this] }`
+    //        and `Other(Error)`, implementing `From<...>` for both?
+    //
+    // This value should not be returned as final value, and gets replaced by `SimulationParser::map_err`
+    //
+    // It's a bit of a workaround for converting `winnow` errors to nice pretty-printable errors:
+    //  When `winnow` returns a syntax error it gives the length of the remaining input,
+    //  but `miette`, which we use for pretty-printing the error, takes `SourceSpan` (or `impl Into<SourceSpan>`).
+    //  To get a `SourceSpan` we need the offset from the start of the source, but we only have the offset from the end.
+    //  In order to compute the offset from the start, we need the length of the entire source.
+    //  Since we want to implement `From<[winnow error type]>`, we can't get information about the entire source.
+    //  To solve this, this value exists to store the information we have at the time of calling `From::from`
     #[error("Syntax error")]
     #[diagnostic(code(fds_tbx::smv::generic_syntax_nd))]
     SyntaxNonDiagnostic {
@@ -88,7 +92,6 @@ pub enum Error {
     },
     #[error("Texture origin must be specified on all non-dummy vents, and must not be specified on dummy vents")]
     #[diagnostic(code(fds_tbx::smv::vent_missing_texture_origin))]
-    // #[help("Expected a texture origin for vent {vent_index} of {num_vents_total} vents, because it is within the first {num_non_dummies} vents, which are not dummy vents and must therefore have a texture origin specified.")]
     VentTextureOrigin {
         #[label("in this vent")]
         vent: SourceSpan,
@@ -137,7 +140,6 @@ pub enum Error {
 
 impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {
     fn from(err: winnow::error::ErrMode<winnow::error::Error<&str>>) -> Self {
-        // Self::SyntaxNonDiagnostic(err.map_input(|e| e.into()))
         match err {
             winnow::error::ErrMode::Incomplete(needed) => Self::Incomplete(needed),
             winnow::error::ErrMode::Backtrack(err) | winnow::error::ErrMode::Cut(err) => {

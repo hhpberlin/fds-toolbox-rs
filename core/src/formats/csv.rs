@@ -6,6 +6,7 @@ pub mod cpu;
 pub mod devc;
 pub mod hrr;
 
+// TODO: There's `mass` and `ctrl` csv files as well apparently
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CsvData {
     cpu_entries: Vec<CpuData>,

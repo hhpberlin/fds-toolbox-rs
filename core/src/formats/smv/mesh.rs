@@ -85,38 +85,6 @@ pub enum ErrorKind {
     },
 }
 
-// /// Checks if the current line matches the given tag or returns a fitting error
-// ///
-// /// # Arguments
-// ///
-// /// * `header` - The header of the current section, used for error messages
-// /// * `next` - The next function to get the next line
-// /// * `tag` - The tag to match
-// fn parse_subsection_hdr<'a>(
-//     header: SourceSpan,
-//     mut input: &'a str,
-//     tag: &'static str,
-// ) -> Result<(), err::Error> {
-//     if let Ok(next_line) = parse_line(&mut input, tag) {
-//         if next_line.trim().eq(tag) {
-//             Ok(())
-//         } else {
-//             Err(err::Error::MissingSubSection {
-//                 parent: header,
-//                 name: tag,
-//                 // found: next_line,
-//                 found: None,
-//             })
-//         }
-//     } else {
-//         Err(err::Error::MissingSubSection {
-//             parent: header,
-//             name: tag,
-//             found: None,
-//         })
-//     }
-// }
-
 impl SimulationParser<'_> {
     /// Parses a single line and matches it against `tag`.
     /// Returns the line if it matches, otherwise returns an error
@@ -142,6 +110,12 @@ impl SimulationParser<'_> {
         }
     }
 
+    /// Parses a mesh with all relevant sections
+    /// Assumes the input to be positioned at the start of the line after "OFFSET",
+    /// which is the first section of meshes.
+    ///
+    /// Default texture origin is passed for inserting for obsts that don't have any offset given
+    /// TODO: Find out if that's the right/best behaviour, maybe this should not be applied during parsing at all?
     pub(super) fn parse_mesh<'this: 'data, 'data>(
         &'this self,
         default_texture_origin: Vec3F,
@@ -163,7 +137,17 @@ impl SimulationParser<'_> {
                 move |mut input| {
                     let header = parse_fn(&mut input, subsection_hdr(name))?;
 
-                    // TODO: Why is this a thing? This is just copied from fdsreader right now but idk why it's there
+                    // TODO: Parse this fully:
+                    // From dump.f90:
+                    //    WRITE(LU_SMV,'(/A)') 'TRNX'
+                    //    WRITE(LU_SMV,'(I5)') T%NOC(1)
+                    //    DO N=1,T%NOC(1)
+                    //       > This line right here is what were skipping right now
+                    //       WRITE(LU_SMV,'(I5,2F14.5)') T%IDERIVSTORE(N,1),T%CCSTORE(N,1),T%PCSTORE(N,1)
+                    //    ENDDO
+                    //    DO I=0,M%IBAR
+                    //       WRITE(LU_SMV,'(I5,F14.5)') I,M%X(I)
+                    //    ENDDO
                     let n = parse_line(&mut input, usize)?;
                     for _ in 0..n {
                         // cast the line to the void
@@ -333,6 +317,7 @@ impl SimulationParser<'_> {
                 parse_line(&mut input, ws_separated!(usize, usize))?;
             let num_non_dummies = num_vents_total - num_dummies;
 
+            // See the comment about `HalfObst` above, this is the same thing again
             struct HalfVent {
                 bounds: Bounds3F,
                 vent_index: i32,
@@ -403,6 +388,7 @@ impl SimulationParser<'_> {
         move |mut input| {
             let num_vents = parse_line(&mut input, usize)?;
 
+            // See the comment about `HalfObst` above, this is the same thing again
             struct HalfCircularVent {
                 bounds: Bounds3F,
                 vent_index: i32,
@@ -453,76 +439,3 @@ impl SimulationParser<'_> {
         }
     }
 }
-
-// pub(super) fn parse_mesh<'a, Src: FnMut() -> Result<Located<&'a str>, err::Error>>(
-//     header: Located<&'a str>,
-//     default_texture_origin: Vec3F,
-//     mut next: Src,
-// ) -> Result<Mesh, err::Error> {
-//     let (_, mesh_name) = parse!(header => "GRID" full_line_string)?;
-//     let header: SourceSpan = rest.span().parse_next(header)?.1.into();
-//     let (dimensions, _a) = parse!(next()? => vec3u i32)?;
-
-//     parse_subsection_hdr(header, &mut next, "PDIM")?;
-//     let (bounds, _something) = parse!(next()? => bounds3f vec2f)?;
-
-//     let parse_trn = |mut next: &mut Src, dim: Dim3D| {
-//         // TODO: I'm not too fond of hardcoding the dimension names like this
-//         parse_subsection_hdr(header, &mut next, ["TRNX", "TRNY", "TRNZ"][dim as usize])?;
-
-//         // TODO: Why is this a thing? This is just copied from fdsreader right now but idk why it's there
-//         let n = parse!(next()? => usize)?;
-//         for _ in 0..n {
-//             let _ = next()?;
-//         }
-
-//         repeat_n(
-//             &mut next,
-//             |next, line| {
-//                 let next = next()?;
-//                 let (i, v) = parse!(next => usize f32)?;
-//                 if i != line {
-//                     return Err(err(
-//                         todo!(),
-//                         // next.split_whitespace().next().unwrap_or(next),
-//                         SupErrorKind::MismatchedIndex {
-//                             expected: line,
-//                             got: i,
-//                         },
-//                     ));
-//                 }
-//                 Ok(v)
-//             },
-//             dimensions[dim] as usize,
-//         )
-//     };
-
-//     let trn = Vec3::new(
-//         parse_trn(&mut next, Dim3D::X)?,
-//         parse_trn(&mut next, Dim3D::Y)?,
-//         parse_trn(&mut next, Dim3D::Z)?,
-//     );
-
-//     parse_subsection_hdr(header, &mut next, "OBST")?;
-//     let obsts = parse_obsts(&mut next, default_texture_origin)?;
-
-//     parse_subsection_hdr(header, &mut next, "VENT")?;
-//     let vents = parse_vents(&mut next)?;
-
-//     parse_subsection_hdr(header, &mut next, "CVENT")?;
-//     let circular_vents = parse_circular_vents(&mut next)?;
-
-//     // TODO: fdsreader doesn't parse this, but it's in the .smv file I'm referencing
-//     parse_subsection_hdr(header, &mut next, "OFFSET")?;
-//     let _offset = parse!(next()? => vec3f)?;
-
-//     Ok(Mesh {
-//         name: mesh_name,
-//         dimensions,
-//         bounds,
-//         trn,
-//         obsts,
-//         vents,
-//         circular_vents,
-//     })
-// }

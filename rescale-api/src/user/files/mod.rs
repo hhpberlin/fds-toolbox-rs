@@ -3,8 +3,6 @@ use bytes::Bytes;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
-use std::io::Read;
-
 use crate::api::RescaleApiClient;
 
 /// Represents a response file with various properties.
@@ -50,11 +48,11 @@ pub struct FileMetadata {
 #[derive(Debug, Deserialize)]
 pub struct FileResponse {
     /// The total number of files owned by the current user.
-    count: i32,
+    pub count: i32,
     /// The URL that will return the next page of results.
-    next: Option<String>,
+    pub next: Option<String>,
     /// The URL that will return the previous page of results.
-    previous: Option<String>,
+    pub previous: Option<String>,
     /// An array of File objects.
     pub results: Vec<FileMetadata>,
 }

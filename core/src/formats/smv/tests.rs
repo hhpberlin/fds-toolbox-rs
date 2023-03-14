@@ -1,9 +1,8 @@
-// use ariadne::Report;
-
 use std::fs;
 
 use super::Simulation;
 
+/// Tries to parse the known-good "DemoHaus2.smv" example file included in the repo.
 #[test]
 fn parses_successfully() {
     let input = include_str!("../../../../demo-house/DemoHaus2.smv");
@@ -13,7 +12,11 @@ fn parses_successfully() {
     assert_eq!(sim.chid, "DemoHaus2");
 }
 
+/// Tries to parse a bunch of known-good ".smv" files
 #[test]
+// TODO: Should we print to stdout at all here?
+// TODO: This test is very sketchy
+#[allow(clippy::print_stdout)]
 fn parses_a_lot_of_stuff() {
     // Recurse through all directories in a folder where I have some simulations and parse all .smv files
     // TODO: Make this not depend on my specific file structure - environment var or something?
