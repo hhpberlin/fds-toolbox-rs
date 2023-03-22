@@ -1073,6 +1073,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fds-toolbox-cli"
+version = "0.1.0"
+dependencies = [
+ "fds-toolbox-core",
+]
+
+[[package]]
 name = "fds-toolbox-core"
 version = "0.1.0"
 dependencies = [

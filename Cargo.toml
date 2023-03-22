@@ -4,6 +4,7 @@ members = [
     "core",
     "lazy-data",
     "ui",
+    "cli",
     "rescale-api"
 ]
 
