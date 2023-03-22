@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::Simulation;
+use super::Smv;
 
 /// Tries to parse the known-good "DemoHaus2.smv" example file included in the repo.
 #[test]

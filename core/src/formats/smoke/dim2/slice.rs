@@ -4,6 +4,7 @@ use crate::formats::smoke::parse_err::ParseErr;
 use crate::geom::{Bounds3I, Dim3D, Vec2, Vec2U, Vec3I};
 use byteorder::ReadBytesExt;
 use ndarray::{Array1, Array2, Array3, Axis};
+use tracing::instrument;
 use std::io::Read;
 
 use super::slice_frame::SliceFrame;
@@ -58,16 +59,17 @@ impl SliceInfo {
 }
 
 impl Slice {
+    #[instrument(skip(rdr))]
     pub fn from_reader(mut rdr: impl Read) -> Result<Slice, ParseErr> {
         // TODO: Should the underlying error be annotated with added context?
         let quantity = rdr.read_fortran_string()?;
-        // TODO: Not technically neccessary double allocation
+        // TODO: Not technically neccessary double allocation, once in read_fortran_string, once here
         let quantity = quantity.trim().to_string();
 
         let short_name = rdr.read_fortran_string()?;
         let short_name = short_name.trim().to_string();
 
-        // TODO: Why is units plural? Should it be? Can there be multiple units?
+        // TODO: Why is units plural? Should it be? Can there be multiple units? (name taken from the C# version)
         let units = rdr.read_fortran_string()?;
         let units = units.trim().to_string();
 

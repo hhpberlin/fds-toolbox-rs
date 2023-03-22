@@ -7,6 +7,7 @@ mod mesh;
 mod tests;
 
 use miette::SourceCode;
+use tracing::instrument;
 use std::collections::HashMap;
 use util::*;
 
@@ -31,7 +32,7 @@ macro_rules! ws_separated {
 }
 
 #[derive(Debug)]
-pub struct Simulation {
+pub struct Smv {
     title: String,
     fds_version: String,
     end_version: String,
@@ -173,9 +174,10 @@ pub struct RampValue {
     dependent: f32,
 }
 
-impl Simulation {
+impl Smv {
     pub fn parse_with_warn(
         file: &str,
+        // TODO: Not too fond of passing miette::Report around
         warn: Option<Box<dyn Fn(miette::Report) + '_>>,
     ) -> Result<Self, miette::Report> {
         let parser = SimulationParser {
@@ -390,7 +392,8 @@ impl<'a> SimulationParser<'a> {
 
     /// Parses the input as ".smv", calling `warn` for any non-critical errors if `warn` is not `None`.
     // TODO: Should non-critical errors have a separate type? It would make sense but duplicate some code.
-    fn parse(&self, warn: Option<Box<dyn Fn(err::Error) + '_>>) -> Result<Simulation, err::Error> {
+    #[instrument]
+    fn parse(&self, warn: Option<Box<dyn Fn(err::Error) + '_>>) -> Result<Smv, err::Error> {
         // For reference, the SMV file is written by `dump.f90` in FDS.
         // Search for `WRITE(LU_SMV` to find the relevant parts of the code.
 
@@ -791,7 +794,7 @@ impl<'a> SimulationParser<'a> {
 
         let reaction_fuel = reaction_fuel.map(str::to_string);
 
-        Ok(Simulation {
+        Ok(Smv {
             title,
             fds_version,
             end_version,

@@ -28,6 +28,7 @@ pub(crate) mod geom;
 // pub(crate) mod lazy_data;
 
 pub(crate) mod sync;
+pub mod file;
 
 // #[tokio::main]
 // async fn main() {
