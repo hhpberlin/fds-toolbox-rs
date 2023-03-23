@@ -1,12 +1,10 @@
-use ndarray::{Ix1, Ix3};
+use ndarray::Ix3;
 use serde::{Deserialize, Serialize};
 
-use crate::common::series::{
-    Missing, PotentialResult, TimeSeries0View, TimeSeries2View, TimeSeriesViewSource,
-};
+use crate::common::series::{Missing, PotentialResult, TimeSeries2View, TimeSeriesViewSource};
 
 use super::{
-    csv::devc::{Devices},
+    csv::devc::Devices,
     smoke::dim2::slice::Slice,
     // slcf::Slice,
 };

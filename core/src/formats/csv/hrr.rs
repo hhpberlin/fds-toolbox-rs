@@ -123,12 +123,8 @@ impl HRRStep {
         let mut visited = [false; 13];
         let mut buf: String = String::with_capacity(8);
 
-        fn get_fac<T: FromStr<Err = ParseQuantityError>>(
-            txt: &str,
-            i: usize,
-        ) -> Result<T, Error> {
-            T::from_str(txt)
-                .map_err(|e| Error::ParsingErrorUnits(i, e, txt.to_string()))
+        fn get_fac<T: FromStr<Err = ParseQuantityError>>(txt: &str, i: usize) -> Result<T, Error> {
+            T::from_str(txt).map_err(|e| Error::ParsingErrorUnits(i, e, txt.to_string()))
         }
 
         for (i, (unit, name)) in units.iter().zip(names.iter()).enumerate() {

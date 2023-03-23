@@ -1,14 +1,10 @@
-use std::{collections::HashMap, io::Read, num::ParseFloatError, str::FromStr};
+use std::{io::Read, num::ParseFloatError, str::FromStr};
 
-use ndarray::Ix1;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
 
-use crate::common::series::{
-    Missing, PotentialResult, Series, Series1, Series1View, TimeSeries0View, TimeSeriesView,
-    TimeSeriesViewSource,
-};
+use crate::common::series::{Series, Series1, Series1View, TimeSeries0View, TimeSeriesView};
 
 // TODO: Use 2d-array instead?
 
@@ -122,8 +118,7 @@ impl Devices {
                     if val.is_empty() {
                         continue;
                     }
-                    val.parse()
-                        .map_err(|x| Error::ParsingError(i + 2, 0, x))?
+                    val.parse().map_err(|x| Error::ParsingError(i + 2, 0, x))?
                 }
                 None => return Err(Error::WrongValueCount(i + 2, 0, len)),
             };

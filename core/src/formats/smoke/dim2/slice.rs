@@ -4,8 +4,8 @@ pub use crate::formats::smoke::parse_err::Error;
 use crate::geom::{Bounds3I, Dim3D, Vec2, Vec2U, Vec3I};
 use byteorder::ReadBytesExt;
 use ndarray::{Array1, Array2, Array3, Axis};
-use tracing::instrument;
 use std::io::Read;
+use tracing::instrument;
 
 use super::slice_frame::SliceFrame;
 

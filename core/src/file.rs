@@ -5,12 +5,7 @@ use futures::future::join_all;
 use thiserror::Error;
 
 use crate::formats::{
-    csv::{
-        self,
-        cpu::CpuData,
-        devc::{DeviceReadings, Devices},
-        hrr::HRRStep,
-    },
+    csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
     smoke::dim2::slice::{self, Slice},
     smv::{self, Smv},
 };
@@ -219,7 +214,10 @@ impl<Fs: FileSystem> Simulation<Fs> {
             .collect())
     }
 
-    async fn csv_devc(&self, name: &str) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
-        Ok(self.csv(name, Devices::from_reader).await?)
+    async fn csv_devc(
+        &self,
+        name: &str,
+    ) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
+        self.csv(name, Devices::from_reader).await
     }
 }
