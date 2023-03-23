@@ -1,6 +1,6 @@
 use crate::common::series::TimeSeries2;
 use crate::formats::read_ext::{ReadExt, U32Ext};
-use crate::formats::smoke::parse_err::ParseErr;
+pub use crate::formats::smoke::parse_err::Error;
 use crate::geom::{Bounds3I, Dim3D, Vec2, Vec2U, Vec3I};
 use byteorder::ReadBytesExt;
 use ndarray::{Array1, Array2, Array3, Axis};
@@ -60,7 +60,7 @@ impl SliceInfo {
 
 impl Slice {
     #[instrument(skip(rdr))]
-    pub fn from_reader(mut rdr: impl Read) -> Result<Slice, ParseErr> {
+    pub fn from_reader(mut rdr: impl Read) -> Result<Slice, Error> {
         // TODO: Should the underlying error be annotated with added context?
         let quantity = rdr.read_fortran_string()?;
         // TODO: Not technically neccessary double allocation, once in read_fortran_string, once here
@@ -102,7 +102,7 @@ impl Slice {
         let flat_dim = match flat_dim {
             Some((dim, _)) => dim,
             None => {
-                return Err(ParseErr::BadBoundsSize);
+                return Err(Error::BadBoundsSize);
             }
         };
 
@@ -121,7 +121,7 @@ impl Slice {
                 Ok(frame) => {
                     frames.push(frame);
                 }
-                Err(ParseErr::NoBlocks) => {
+                Err(Error::NoBlocks) => {
                     // TODO: Avoid copying all the data here?
                     //       Instead maybe write directly to a shared Vec from the beginning
                     //       Although resizing the Vec might just be doing the same thing
@@ -140,7 +140,7 @@ impl Slice {
 }
 
 impl TimeSeries2 {
-    fn from_frames(info: &SliceInfo, frames: Vec<SliceFrame>) -> Result<Self, ParseErr> {
+    fn from_frames(info: &SliceInfo, frames: Vec<SliceFrame>) -> Result<Self, Error> {
         let area = info.area();
         // TODO: Store usize directly?
         let area = Vec2::new(area.x.try_into_usize()?, area.y.try_into_usize()?);

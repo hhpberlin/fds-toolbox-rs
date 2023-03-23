@@ -1,4 +1,4 @@
-use miette::Diagnostic;
+use miette::{Diagnostic, SourceCode};
 use thiserror::Error;
 use winnow;
 
@@ -149,5 +149,15 @@ impl From<winnow::error::ErrMode<winnow::error::Error<&str>>> for Error {
                 }
             }
         }
+    }
+}
+
+impl Error {
+    /// Converts the given [`err::Error`] into a pretty-printable [`miette::Report`].
+    pub fn add_src<Src: SourceCode + Send + Sync + 'static>(
+        self,
+        owned_input: Src,
+    ) -> miette::Report {
+        miette::Report::new(self).with_source_code(owned_input)
     }
 }

@@ -7,21 +7,21 @@ use uom::si::{f32::Time, time::second};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CpuData {
-    mpi_rank: u32,
-    main_time: Time,
-    divg_time: Time,
-    mass_time: Time,
-    velo_time: Time,
-    pres_time: Time,
-    wall_time: Time,
-    dump_time: Time,
-    part_time: Time,
-    radi_time: Time,
-    fire_time: Time,
-    evac_time: Time,
-    hvac_time: Time,
-    comm_time: Time,
-    total_time: Time,
+    pub mpi_rank: u32,
+    pub main_time: Time,
+    pub divg_time: Time,
+    pub mass_time: Time,
+    pub velo_time: Time,
+    pub pres_time: Time,
+    pub wall_time: Time,
+    pub dump_time: Time,
+    pub part_time: Time,
+    pub radi_time: Time,
+    pub fire_time: Time,
+    pub evac_time: Time,
+    pub hvac_time: Time,
+    pub comm_time: Time,
+    pub total_time: Time,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

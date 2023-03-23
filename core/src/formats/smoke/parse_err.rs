@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::formats::read_ext::{ReadBlockErr, ReadStrErr, ReadValErr};
 
 #[derive(Error, Debug)]
-pub enum ParseErr {
+pub enum Error {
     #[error("Bad block")]
     BadBlock(#[from] ReadBlockErr),
     #[error("Bad string: {0}")]

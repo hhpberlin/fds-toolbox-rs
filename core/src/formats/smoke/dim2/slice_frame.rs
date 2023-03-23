@@ -2,7 +2,7 @@ use std::io::Read;
 
 use crate::formats::{
     read_ext::{ReadBlockErr, ReadExt, U32Ext},
-    smoke::parse_err::ParseErr,
+    smoke::parse_err::Error,
 };
 
 use uom::si::{f32::Time, time::second};
@@ -21,10 +21,10 @@ impl SliceFrame {
         mut rdr: impl Read,
         slice: &SliceInfo,
         volume: u32,
-    ) -> Result<SliceFrame, ParseErr> {
+    ) -> Result<SliceFrame, Error> {
         rdr.read_fixed_u32(4)
             // TODO: Should IO Error really be discarded?
-            .map_err(|_x| ParseErr::NoBlocks)?;
+            .map_err(|_x| Error::NoBlocks)?;
 
         let time = Time::new::<second>(rdr.read_f32::<byteorder::LittleEndian>()?);
 
@@ -34,7 +34,7 @@ impl SliceFrame {
 
         // 4 bytes per value = 4 * volume = block_size
         if volume * 4 != block_size {
-            return Err(ParseErr::BadFrameSize {
+            return Err(Error::BadFrameSize {
                 read: block_size,
                 expected: volume,
             });
@@ -58,7 +58,7 @@ impl SliceFrame {
         let block_size_postfix = block_size_postfix.try_into_usize()?;
 
         if block_size != block_size_postfix {
-            return Err(ParseErr::BadBlock(ReadBlockErr::MismatchedPostfixLength(
+            return Err(Error::BadBlock(ReadBlockErr::MismatchedPostfixLength(
                 block_size,
                 block_size_postfix,
             )));

@@ -20,6 +20,7 @@ use winnow::{
 /// The free functions then becoming constructors that return those closures.
 /// This is basically the same idea behind winnow combinators like [many0](winnow::multi::many0) which
 /// take an input to configure the combinator and then return a function.
+#[derive(Debug)]
 pub struct InputLocator<'a> {
     pub full_input: &'a str,
 }

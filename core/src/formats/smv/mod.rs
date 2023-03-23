@@ -3,12 +3,13 @@ mod util;
 
 mod mesh;
 
+pub use err::Error;
+
 #[cfg(test)]
 mod tests;
 
-use miette::SourceCode;
-use tracing::instrument;
 use std::collections::HashMap;
+use tracing::instrument;
 use util::*;
 
 use winnow::{
@@ -33,74 +34,78 @@ macro_rules! ws_separated {
 
 #[derive(Debug)]
 pub struct Smv {
-    title: String,
-    fds_version: String,
-    end_version: String,
-    input_file: String,
-    revision: String,
-    chid: String,
-    solid_ht3d: Option<i32>,
-    meshes: Vec<mesh::Mesh>,
-    devices: HashMap<String, Device>,
-    hrrpuv_cutoff: f32,
-    smoke_albedo: f32,
+    pub title: String,
+    pub fds_version: String,
+    pub end_version: String,
+    pub input_file: String,
+    pub revision: String,
+    pub chid: String,
+    pub solid_ht3d: Option<i32>,
+    pub meshes: Vec<mesh::Mesh>,
+    pub devices: HashMap<String, Device>,
+    pub hrrpuv_cutoff: f32,
+    pub smoke_albedo: f32,
     /// From dump.f90: "Parameter passed to smokeview (in .smv file) to control generation of blockages"
-    i_blank: bool,
-    gravity_vec: Vec3F,
-    surfaces: Vec<Surface>,
-    ramps: Vec<Ramp>,
-    outlines: Vec<Bounds3F>,
-    default_surface_id: String,
-    viewtimes: ViewTimes,
-    xyz_files: Vec<String>,
-    time_range: Option<TimeRange>,
-    heat_of_combustion: Option<f32>,
-    reaction_fuel: Option<String>,
+    pub i_blank: bool,
+    pub gravity_vec: Vec3F,
+    pub surfaces: Vec<Surface>,
+    pub ramps: Vec<Ramp>,
+    pub outlines: Vec<Bounds3F>,
+    pub default_surface_id: String,
+    pub viewtimes: ViewTimes,
+    pub xyz_files: Vec<String>,
+    pub time_range: Option<TimeRange>,
+    pub heat_of_combustion: Option<f32>,
+    pub reaction_fuel: Option<String>,
+    pub slices: Vec<Slice>,
+    pub plot3d: Vec<Plot3D>,
+    pub smoke3d: Vec<Smoke3D>,
+    pub csv_files: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug)]
 pub struct TimeRange {
-    time_start: f32,
-    time_end: f32,
+    pub time_start: f32,
+    pub time_end: f32,
 }
 
 #[derive(Debug)]
 pub struct ViewTimes {
-    time_end: f32,
-    num_frames: i32,
+    pub time_end: f32,
+    pub num_frames: i32,
 }
 
 #[derive(Debug)]
 pub struct Surface {
-    id: String,
+    pub id: String,
     /// TMPM in FDS
     /// From doccomment: "Melting temperature of water, conversion factor (K)"
-    water_melting_temp: f32,
-    material_emissivity: f32,
-    surface_type: i32,
-    texture_width: f32,
-    texture_height: f32,
-    rgb: Vec3F,
-    transparency: f32,
-    texture: Option<String>,
+    pub water_melting_temp: f32,
+    pub material_emissivity: f32,
+    pub surface_type: i32,
+    pub texture_width: f32,
+    pub texture_height: f32,
+    pub rgb: Vec3F,
+    pub transparency: f32,
+    pub texture: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct Material {
-    name: String,
-    rgb: Vec3F,
+    pub name: String,
+    pub rgb: Vec3F,
 }
 
 #[derive(Debug)]
 pub struct Device {
-    id: String,
-    quantity: String,
-    position: Vec3F,
-    orientation: Vec3F,
-    state_index: i32,
-    bounds: Option<Bounds3F>,
-    activations: Vec<DeviceActivation>,
-    property_id: String,
+    pub id: String,
+    pub quantity: String,
+    pub position: Vec3F,
+    pub orientation: Vec3F,
+    pub state_index: i32,
+    pub bounds: Option<Bounds3F>,
+    pub activations: Vec<DeviceActivation>,
+    pub property_id: String,
 }
 
 #[derive(Debug)]
@@ -120,81 +125,97 @@ pub enum Smoke3DType {
 
 #[derive(Debug)]
 pub struct Smoke3D {
-    mesh_index: i32,
-    file_name: String,
-    quantity: Quantity,
-    smoke_type: Smoke3DType,
-    mass_extinction_coefficient: Option<f32>,
+    pub mesh_index: i32,
+    pub file_name: String,
+    pub quantity: Quantity,
+    pub smoke_type: Smoke3DType,
+    pub mass_extinction_coefficient: Option<f32>,
 }
 
 #[derive(Debug)]
 pub struct Slice {
-    mesh_index: i32,
-    file_name: String,
-    quantity: String,
-    name: String,
-    unit: String,
-    cell_centered: bool,
+    pub mesh_index: i32,
+    pub file_name: String,
+    pub quantity: String,
+    pub name: String,
+    pub unit: String,
+    pub cell_centered: bool,
     // TODO: Find all options
-    slice_type: String,
-    bounds: Bounds3I,
-    id: Option<String>,
+    pub slice_type: String,
+    pub bounds: Bounds3I,
+    pub id: Option<String>,
 }
 
 #[derive(Debug)]
 pub struct Plot3D {
-    file_name: String,
-    mesh_index: i32,
-    quantities: [Quantity; 5],
+    pub file_name: String,
+    pub mesh_index: i32,
+    pub quantities: [Quantity; 5],
 }
 
 #[derive(Debug)]
 pub struct Property {
-    name: String,
-    smv_ids: Vec<String>,
-    smv_props: Vec<String>,
+    pub name: String,
+    pub smv_ids: Vec<String>,
+    pub smv_props: Vec<String>,
 }
 
 #[derive(Debug)]
 pub struct Quantity {
-    label: String,
-    bar_label: String,
-    unit: String,
+    pub label: String,
+    pub bar_label: String,
+    pub unit: String,
 }
 
 #[derive(Debug)]
 pub struct Ramp {
-    name: String,
-    values: Vec<RampValue>,
+    pub name: String,
+    pub values: Vec<RampValue>,
 }
 
 #[derive(Debug)]
 pub struct RampValue {
-    independent: f32,
-    dependent: f32,
+    pub independent: f32,
+    pub dependent: f32,
 }
 
 impl Smv {
     pub fn parse_with_warn(
         file: &str,
-        // TODO: Not too fond of passing miette::Report around
-        warn: Option<Box<dyn Fn(miette::Report) + '_>>,
-    ) -> Result<Self, miette::Report> {
+        warn: Option<Box<dyn FnMut(err::Error) + '_>>,
+    ) -> Result<Self, err::Error> {
         let parser = SimulationParser {
             located_parser: InputLocator::new(file),
         };
         // So the closures can be move
         let parser = &parser;
 
-        let map_err = move |err| parser.map_err(err, file.to_string());
-        // TODO: Avoid `to_string` call for owned input
+        let map_err = move |err| parser.map_err(err);
         parser
-            // .parse(warn.map(|warn| Box::new(|e| warn(map_err(e))) as Box<dyn Fn(err::Error)>))
-            .parse(warn.map(|warn| Box::new(move |e| warn(map_err(e))) as Box<dyn Fn(err::Error)>))
+            .parse(
+                warn.map(|mut warn| {
+                    Box::new(move |e| warn(map_err(e))) as Box<dyn FnMut(err::Error)>
+                }),
+            )
             .map_err(map_err)
     }
 
-    pub fn parse(file: &str) -> Result<Self, miette::Report> {
+    pub fn parse_with_warn_report(
+        file: &str,
+        warn: Option<Box<dyn FnMut(miette::Report) + '_>>,
+    ) -> Result<Self, miette::Report> {
+        // TODO: Avoid `to_string` call for owned input, atleast once for error, maybe not for warnings
+        Self::parse_with_warn(
+            file,
+            warn.map(|mut warn| {
+                Box::new(move |e: err::Error| warn(e.add_src(file.to_string())))
+                    as Box<dyn FnMut(err::Error)>
+            }),
+        )
+        .map_err(|e| e.add_src(file.to_string()))
+    }
+
+    pub fn parse(file: &str) -> Result<Self, err::Error> {
         Self::parse_with_warn(file, None)
     }
 
@@ -204,7 +225,7 @@ impl Smv {
         // reason = "Printing to stderr is intended here, this is a convenience function for tests"
     )]
     pub fn parse_with_warn_stdout(file: &str) -> Result<Self, miette::Report> {
-        Self::parse_with_warn(file, Some(Box::new(|e| eprintln!("{:?}", e))))
+        Self::parse_with_warn_report(file, Some(Box::new(|e| eprintln!("{:?}", e))))
     }
 }
 
@@ -328,17 +349,14 @@ fn quantity(mut input: &str) -> IResult<&str, Quantity> {
     ))
 }
 
+#[derive(Debug)]
 struct SimulationParser<'a> {
     pub located_parser: InputLocator<'a>,
 }
 
 impl<'a> SimulationParser<'a> {
     /// Converts the given [`err::Error`] into a pretty-printable [`miette::Report`].
-    fn map_err<Src: SourceCode + Send + Sync + 'static>(
-        &self,
-        err: err::Error,
-        owned_input: Src,
-    ) -> miette::Report {
+    fn map_err(&self, err: err::Error) -> err::Error {
         let err = match err {
             err::Error::SyntaxNonDiagnostic {
                 remaining_length_bytes,
@@ -357,7 +375,7 @@ impl<'a> SimulationParser<'a> {
             }
             err => err,
         };
-        miette::Report::new(err).with_source_code(owned_input)
+        err
     }
 
     /// Checks if the given value matches the given constant,
@@ -392,8 +410,11 @@ impl<'a> SimulationParser<'a> {
 
     /// Parses the input as ".smv", calling `warn` for any non-critical errors if `warn` is not `None`.
     // TODO: Should non-critical errors have a separate type? It would make sense but duplicate some code.
-    #[instrument]
-    fn parse(&self, warn: Option<Box<dyn Fn(err::Error) + '_>>) -> Result<Smv, err::Error> {
+    #[instrument(skip(warn))]
+    fn parse(
+        &'a self,
+        mut warn: Option<Box<dyn FnMut(err::Error) + 'a>>,
+    ) -> Result<Smv, err::Error> {
         // For reference, the SMV file is written by `dump.f90` in FDS.
         // Search for `WRITE(LU_SMV` to find the relevant parts of the code.
 
@@ -427,7 +448,7 @@ impl<'a> SimulationParser<'a> {
         let mut devices = HashMap::new();
         let mut smoke3d = Vec::new();
         let mut slices = Vec::new();
-        let mut pl3d = Vec::new();
+        let mut plot3d = Vec::new();
         let mut properties = Vec::new();
 
         let mut xyz_files = Vec::new();
@@ -465,7 +486,10 @@ impl<'a> SimulationParser<'a> {
                     "CSVF" => {
                         let name = parse_line(&mut input, full_line)?;
                         let file_name = parse_line(&mut input, full_line)?;
-                        csv_files.insert(name, file_name);
+                        csv_files
+                            .entry(name)
+                            .or_insert_with(Vec::new)
+                            .push(file_name);
                     }
                     "NMESHES" => num_meshes = Some(parse_line(&mut input, usize)?),
                     "HRRPUVCUT" => {
@@ -623,10 +647,10 @@ impl<'a> SimulationParser<'a> {
                     // Quietly discard some sections
                     // TODO: Parse these sections
                     "FACE" | "CADGEOM" | "VERT" | "CLASS_OF_PARTICLES" => {
-                        input = self.skip_section(input, &None, word)?;
+                        input = self.skip_section(input, &mut None, word)?;
                     }
                     _ => {
-                        input = self.skip_section(input, &warn, word)?;
+                        input = self.skip_section(input, &mut warn, word)?;
                     }
                 }
             } else {
@@ -729,7 +753,7 @@ impl<'a> SimulationParser<'a> {
                         )?;
                         let quantities = [q1, q2, q3, q4, q5];
 
-                        pl3d.push(Plot3D {
+                        plot3d.push(Plot3D {
                             mesh_index,
                             file_name: file_name.to_string(),
                             quantities,
@@ -743,10 +767,10 @@ impl<'a> SimulationParser<'a> {
                     // Quietly discard some sections
                     // TODO: Parse these sections
                     "PRT5" | "ISOG" | "HIDE_OBST" | "SHOW_OBST" | "BNDF" => {
-                        input = self.skip_section(input, &None, word)?;
+                        input = self.skip_section(input, &mut None, word)?;
                     }
                     _ => {
-                        input = self.skip_section(input, &warn, word)?;
+                        input = self.skip_section(input, &mut warn, word)?;
                     }
                 }
             }
@@ -794,6 +818,14 @@ impl<'a> SimulationParser<'a> {
 
         let reaction_fuel = reaction_fuel.map(str::to_string);
 
+        // TODO: This is a bit ugly
+        let csv_files = HashMap::from_iter(csv_files.iter().map(|(k, v)| {
+            (
+                k.to_string(),
+                v.iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+            )
+        }));
+
         Ok(Smv {
             title,
             fds_version,
@@ -808,22 +840,26 @@ impl<'a> SimulationParser<'a> {
             smoke_albedo,
             i_blank,
             gravity_vec,
+            surfaces,
             ramps,
             outlines,
             default_surface_id,
-            surfaces,
             viewtimes,
-            time_range,
             xyz_files,
+            time_range,
             heat_of_combustion,
             reaction_fuel,
+            slices,
+            plot3d,
+            smoke3d,
+            csv_files,
         })
     }
 
     fn skip_section<'b>(
         &'b self,
         mut input: &'b str,
-        warn: &Option<Box<dyn Fn(err::Error) + 'b>>,
+        warn: &mut Option<Box<dyn FnMut(err::Error) + 'b>>,
         word: &'b str,
     ) -> Result<&'b str, err::Error> {
         // Skip the current line
@@ -851,7 +887,7 @@ impl<'a> SimulationParser<'a> {
         // });
 
         // TODO: Track https://github.com/rust-lang/rust/issues/91345 and use .inspect
-        warn.iter().for_each(|x| {
+        warn.iter_mut().for_each(|x| {
             x(err::Error::UnknownSection {
                 section: self.located_parser.span_from_substr(word),
             })
