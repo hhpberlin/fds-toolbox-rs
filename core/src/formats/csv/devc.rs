@@ -16,11 +16,11 @@ use crate::common::series::{
 pub struct Devices {
     pub time_in_seconds: Series1,
     devices: Vec<DeviceReadings>,
-    devices_by_name: HashMap<String, DeviceIdx>,
+    // devices_by_name: HashMap<String, DeviceIdx>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct DeviceIdx(usize);
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+// pub struct DeviceIdx(usize);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceReadings {
@@ -36,7 +36,7 @@ impl DeviceReadings {
 }
 
 #[derive(Error, Debug)]
-pub enum DevicesParsingError {
+pub enum Error {
     #[error("Missing units header (first line)")]
     MissingUnitsLine,
     #[error("Missing names header (second line)")]
@@ -65,7 +65,7 @@ pub enum DevicesParsingError {
 }
 
 impl Devices {
-    pub fn from_reader(rdr: impl Read) -> Result<Self, DevicesParsingError> {
+    pub fn from_reader(rdr: impl Read) -> Result<Self, Error> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .trim(csv::Trim::All)
@@ -78,18 +78,18 @@ impl Devices {
         let mut rdr = rdr.into_records();
 
         let units = match rdr.next() {
-            Some(val) => val.map_err(DevicesParsingError::ParsingErrorUnitsCsv)?,
-            None => return Err(DevicesParsingError::MissingUnitsLine),
+            Some(val) => val.map_err(Error::ParsingErrorUnitsCsv)?,
+            None => return Err(Error::MissingUnitsLine),
         };
         let names = match rdr.next() {
-            Some(val) => val.map_err(DevicesParsingError::ParsingErrorNamesCsv)?,
-            None => return Err(DevicesParsingError::MissingNamesLine),
+            Some(val) => val.map_err(Error::ParsingErrorNamesCsv)?,
+            None => return Err(Error::MissingNamesLine),
         };
 
         let units_len = units.len();
         let names_len = names.len();
         if units_len != names_len || units_len < 1 {
-            return Err(DevicesParsingError::InvalidUnitsAndNamesCount {
+            return Err(Error::InvalidUnitsAndNamesCount {
                 units_len,
                 names_len,
             });
@@ -101,10 +101,10 @@ impl Devices {
                 let mut s = "1 ".to_string();
                 s.push_str(val);
                 Time::from_str(&s)
-                    .map_err(|x| DevicesParsingError::InvalidTimeUnit(x, val.to_string()))?
+                    .map_err(|x| Error::InvalidTimeUnit(x, val.to_string()))?
                     .value
             }
-            None => return Err(DevicesParsingError::MissingTimeUnit),
+            None => return Err(Error::MissingTimeUnit),
         };
 
         let units: Vec<_> = units_iter.zip(names.iter().skip(1)).collect();
@@ -115,7 +115,7 @@ impl Devices {
         let len = devices.len();
 
         for (i, x) in rdr.enumerate() {
-            let x = x.map_err(|x| DevicesParsingError::ParsingErrorCsv(i + 2, x))?;
+            let x = x.map_err(|x| Error::ParsingErrorCsv(i + 2, x))?;
             let mut x = x.iter();
             let time: f32 = match x.next() {
                 Some(val) => {
@@ -123,9 +123,9 @@ impl Devices {
                         continue;
                     }
                     val.parse()
-                        .map_err(|x| DevicesParsingError::ParsingError(i + 2, 0, x))?
+                        .map_err(|x| Error::ParsingError(i + 2, 0, x))?
                 }
-                None => return Err(DevicesParsingError::WrongValueCount(i + 2, 0, len)),
+                None => return Err(Error::WrongValueCount(i + 2, 0, len)),
             };
             times.push(time_fac * time);
 
@@ -137,7 +137,7 @@ impl Devices {
                 if j < len {
                     let val = x
                         .parse::<f32>()
-                        .map_err(|x| DevicesParsingError::ParsingError(i + 2, j + 1, x))?;
+                        .map_err(|x| Error::ParsingError(i + 2, j + 1, x))?;
                     devices[j].push(val);
                 }
                 j += 1;
@@ -146,7 +146,7 @@ impl Devices {
                 if j == 0 {
                     continue;
                 }
-                return Err(DevicesParsingError::WrongValueCount(i + 2, j, len));
+                return Err(Error::WrongValueCount(i + 2, j, len));
             }
         }
 
@@ -160,57 +160,61 @@ impl Devices {
             })
             .collect::<Vec<_>>();
 
-        let devices_by_name = devices
-            .iter()
-            .enumerate()
-            .map(|(i, x)| (x.name.clone(), DeviceIdx(i)))
-            .collect::<HashMap<_, _>>();
+        // let devices_by_name = devices
+        //     .iter()
+        //     .enumerate()
+        //     .map(|(i, x)| (x.name.clone(), DeviceIdx(i)))
+        //     .collect::<HashMap<_, _>>();
 
         let times = Series::from_vec(times);
 
         Ok(Devices {
             time_in_seconds: times,
             devices,
-            devices_by_name,
+            // devices_by_name,
         })
     }
 
     pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
-        let idx = self.get_device_idx_by_name(name)?;
-        self.get_device_by_idx(idx)
+        self.devices.iter().find(|x| x.name == name)
     }
 
-    pub fn get_device_by_idx(&self, name: DeviceIdx) -> Option<&DeviceReadings> {
-        self.devices.get(name.0)
-    }
+    // pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
+    //     let idx = self.get_device_idx_by_name(name)?;
+    //     self.get_device_by_idx(idx)
+    // }
 
-    pub fn get_device_idx_by_name(&self, name: &str) -> Option<DeviceIdx> {
-        self.devices_by_name.get(name).copied()
-    }
+    // pub fn get_device_by_idx(&self, name: DeviceIdx) -> Option<&DeviceReadings> {
+    //     self.devices.get(name.0)
+    // }
 
-    pub fn iter_device_named_ids(&self) -> impl Iterator<Item = (&str, DeviceIdx)> {
-        self.devices_by_name.iter().map(|(k, v)| (k.as_str(), *v))
-    }
+    // pub fn get_device_idx_by_name(&self, name: &str) -> Option<DeviceIdx> {
+    //     self.devices_by_name.get(name).copied()
+    // }
 
-    pub fn iter_devices(&self) -> impl Iterator<Item = &DeviceReadings> {
-        self.devices.iter()
-    }
+    // pub fn iter_device_named_ids(&self) -> impl Iterator<Item = (&str, DeviceIdx)> {
+    //     self.devices_by_name.iter().map(|(k, v)| (k.as_str(), *v))
+    // }
 
-    pub fn enumerate_devices(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
-        self.devices
-            .iter()
-            .enumerate()
-            .map(|(i, x)| (DeviceIdx(i), x))
-    }
+    // pub fn iter_devices(&self) -> impl Iterator<Item = &DeviceReadings> {
+    //     self.devices.iter()
+    // }
+
+    // pub fn enumerate_devices(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
+    //     self.devices
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(i, x)| (DeviceIdx(i), x))
+    // }
 }
 
-impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
-    fn get_time_series(&self, id: DeviceIdx) -> PotentialResult<TimeSeries0View> {
-        self.get_device_by_idx(id)
-            .map(|x| x.view(self.time_in_seconds.view()))
-            .ok_or(Missing::InvalidKey)
-    }
-}
+// impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
+//     fn get_time_series(&self, id: DeviceIdx) -> PotentialResult<TimeSeries0View> {
+//         self.get_device_by_idx(id)
+//             .map(|x| x.view(self.time_in_seconds.view()))
+//             .ok_or(Missing::InvalidKey)
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -229,6 +233,10 @@ mod tests {
 
         assert_eq!(devices.time_in_seconds.iter().collect::<Vec<_>>(), [0.0e0]);
         assert_eq!(devices.devices.len(), 3);
+
+        // assert_eq!(devices.devices.iter().find(|x| x.name == "Zuluft_1").unwrap().unit, "m3/s");
+        // assert_eq!(devices.devices.iter().find(|x| x.name == "Abluft_1").unwrap().unit, "C");
+        // assert_eq!(devices.devices.iter().find(|x| x.name == "T_B01").unwrap().unit, "1/m");
 
         assert_eq!(devices.get_device_by_name("Zuluft_1").unwrap().unit, "m3/s");
         assert_eq!(devices.get_device_by_name("Abluft_1").unwrap().unit, "C");

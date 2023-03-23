@@ -6,7 +6,7 @@ use crate::common::series::{
 };
 
 use super::{
-    csv::devc::{DeviceIdx, Devices},
+    csv::devc::{Devices},
     smoke::dim2::slice::Slice,
     // slcf::Slice,
 };
@@ -17,13 +17,13 @@ pub struct Simulation {
     pub slcf: Vec<Slice>,
 }
 
-impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
-    fn get_time_series(&self, idx: TimeSeriesIdx) -> PotentialResult<TimeSeries0View> {
-        match idx {
-            TimeSeriesIdx::Device(idx) => self.devc.get_time_series(idx),
-        }
-    }
-}
+// impl TimeSeriesViewSource<TimeSeriesIdx, f32, Ix1> for Simulation {
+//     fn get_time_series(&self, idx: TimeSeriesIdx) -> PotentialResult<TimeSeries0View> {
+//         match idx {
+//             TimeSeriesIdx::Device(idx) => self.devc.get_time_series(idx),
+//         }
+//     }
+// }
 
 impl TimeSeriesViewSource<SliceSeriesIdx, f32, Ix3> for Simulation {
     fn get_time_series(&self, idx: SliceSeriesIdx) -> PotentialResult<TimeSeries2View> {
@@ -40,7 +40,7 @@ pub enum SimulationData2D<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TimeSeriesIdx {
-    Device(DeviceIdx),
+    // Device(DeviceIdx),
 }
 
 // TODO: This is a hack

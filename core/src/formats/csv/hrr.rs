@@ -44,7 +44,7 @@ pub enum HRRStepDataType {
 }
 
 #[derive(Error, Debug)]
-pub enum HRRStepsParseError {
+pub enum Error {
     #[error("Missing units header (first line)")]
     MissingUnitsLine,
     #[error("Missing names header (second line)")]
@@ -77,6 +77,7 @@ pub enum HRRStepsParseError {
     ParsingError(usize, usize, ParseFloatError),
 }
 
+// TODO: idk why i made this a macro, can this be a function?
 macro_rules! force_unit {
     ($type:ident, $buf:ident, $factors:ident, $idx:expr) => {
         $type {
@@ -88,7 +89,7 @@ macro_rules! force_unit {
 }
 
 impl HRRStep {
-    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, HRRStepsParseError> {
+    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, Error> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .trim(csv::Trim::All)
@@ -101,18 +102,18 @@ impl HRRStep {
         let mut rdr = rdr.into_records();
 
         let units = match rdr.next() {
-            Some(val) => val.map_err(HRRStepsParseError::ParsingErrorUnitsCsv)?,
-            None => return Err(HRRStepsParseError::MissingUnitsLine),
+            Some(val) => val.map_err(Error::ParsingErrorUnitsCsv)?,
+            None => return Err(Error::MissingUnitsLine),
         };
         let names = match rdr.next() {
-            Some(val) => val.map_err(HRRStepsParseError::ParsingErrorNamesCsv)?,
-            None => return Err(HRRStepsParseError::MissingNamesLine),
+            Some(val) => val.map_err(Error::ParsingErrorNamesCsv)?,
+            None => return Err(Error::MissingNamesLine),
         };
 
         let units_len = units.len();
         let names_len = names.len();
         if units_len != names_len || units_len != 13 {
-            return Err(HRRStepsParseError::InvalidUnitsAndNamesCount {
+            return Err(Error::InvalidUnitsAndNamesCount {
                 units_len,
                 names_len,
             });
@@ -125,9 +126,9 @@ impl HRRStep {
         fn get_fac<T: FromStr<Err = ParseQuantityError>>(
             txt: &str,
             i: usize,
-        ) -> Result<T, HRRStepsParseError> {
+        ) -> Result<T, Error> {
             T::from_str(txt)
-                .map_err(|e| HRRStepsParseError::ParsingErrorUnits(i, e, txt.to_string()))
+                .map_err(|e| Error::ParsingErrorUnits(i, e, txt.to_string()))
         }
 
         for (i, (unit, name)) in units.iter().zip(names.iter()).enumerate() {
@@ -150,14 +151,14 @@ impl HRRStep {
                 "Q_TOTAL" => (10, get_fac::<Power>(&buf, i)?.value),
                 "MLR_FUEL" => (11, get_fac::<MassRate>(&buf, i)?.value),
                 "MLR_TOTAL" => (12, get_fac::<MassRate>(&buf, i)?.value),
-                _ => return Err(HRRStepsParseError::ParsingErrorNames(i, name.to_string())),
+                _ => return Err(Error::ParsingErrorNames(i, name.to_string())),
             };
             factors[factor.0] = (i, factor.1);
             visited[factor.0] = true;
         }
 
         if !visited.iter().all(|x| *x) {
-            return Err(HRRStepsParseError::MissingNames);
+            return Err(Error::MissingNames);
         }
 
         // HRRStep::deserialize(deserializer);
@@ -169,7 +170,7 @@ impl HRRStep {
             // TODO: Read directly into fields instead of using buf,
             //       reverse usage of factors basically, target idx instead of source
 
-            let x = x.map_err(|x| HRRStepsParseError::ParsingErrorCsv(i + 2, x))?;
+            let x = x.map_err(|x| Error::ParsingErrorCsv(i + 2, x))?;
 
             let mut j = 0;
             for x in x.iter() {
@@ -179,7 +180,7 @@ impl HRRStep {
                 if j < buf.len() {
                     buf[j] = x
                         .parse::<f32>()
-                        .map_err(|x| HRRStepsParseError::ParsingError(i + 2, j, x))?;
+                        .map_err(|x| Error::ParsingError(i + 2, j, x))?;
                 }
                 j += 1;
             }
@@ -187,7 +188,7 @@ impl HRRStep {
                 if j == 0 {
                     continue;
                 }
-                return Err(HRRStepsParseError::WrongValueCount(i + 2, j));
+                return Err(Error::WrongValueCount(i + 2, j));
             }
 
             steps.push(HRRStep {

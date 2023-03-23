@@ -1090,6 +1090,7 @@ dependencies = [
  "crossbeam",
  "csv",
  "derive_more",
+ "futures",
  "miette",
  "ndarray",
  "rmp-serde",

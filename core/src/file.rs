@@ -1,9 +1,19 @@
-use std::{error::Error, io::Read, borrow::Borrow};
+use std::{borrow::Borrow, error::Error, io::Read};
 
 use async_trait::async_trait;
+use futures::future::join_all;
 use thiserror::Error;
 
-use crate::formats::{smv::{Smv, self}, smoke::dim2::slice::{Slice, self}, csv};
+use crate::formats::{
+    csv::{
+        self,
+        cpu::CpuData,
+        devc::{DeviceReadings, Devices},
+        hrr::HRRStep,
+    },
+    smoke::dim2::slice::{self, Slice},
+    smv::{self, Smv},
+};
 
 #[async_trait]
 pub trait FileSystem {
@@ -102,7 +112,11 @@ struct Simulation<Fs: FileSystem> {
 }
 
 impl<Fs: FileSystem> Simulation<Fs> {
-    pub async fn parse(fs: Fs, directory: Fs::Path, chid: String) -> Result<Self, ParseError<Fs::Error, smv::Error>> {
+    pub async fn parse(
+        fs: Fs,
+        directory: Fs::Path,
+        chid: String,
+    ) -> Result<Self, ParseError<Fs::Error, smv::Error>> {
         // & doesn't seem to infer the type properly, .borrow() does (PathBuf -> &Path instead &PathBuf)
         let path = fs.file_path(directory.borrow(), &format!("{}.smv", chid));
         let mut file = fs.read(path.borrow()).await.map_err(ParseError::Fs)?;
@@ -112,20 +126,24 @@ impl<Fs: FileSystem> Simulation<Fs> {
         let size = 0;
         let mut string = String::with_capacity(size as usize);
         file.read_to_string(&mut string).map_err(ParseError::Io)?;
-       
+
         let smv = Smv::parse(&string).map_err(ParseError::Parse)?;
 
         // TODO: Add proper error handling
         debug_assert_eq!(smv.chid, chid);
 
-        Ok(Self { smv, fs, directory, chid })
+        Ok(Self {
+            smv,
+            fs,
+            directory,
+            chid,
+        })
     }
 
     async fn file(&self, file_name: &str) -> Result<Fs::File, Fs::Error> {
         let path = self.fs.file_path(self.directory.borrow(), file_name);
         self.fs.read(path.borrow()).await
     }
-
 
     async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {
         let slice = &self.smv.slices[idx];
@@ -156,4 +174,52 @@ impl<Fs: FileSystem> Simulation<Fs> {
 
     //     Ok(vec)
     // }
+
+    async fn csv<T, Err: Error>(
+        &self,
+        name: &str,
+        parser: impl Fn(Fs::File) -> Result<T, Err>,
+    ) -> Result<Vec<T>, ParseError<Fs::Error, Err>> {
+        let files = &self.smv.csv_files[name];
+
+        let futures = files.iter().map(|file| async {
+            match self.file(file).await {
+                Ok(file) => parser(file).map_err(ParseError::Parse),
+                Err(e) => Err(ParseError::Fs(e)),
+            }
+        });
+
+        // TODO: This allocs alot
+        let parsed = join_all(futures).await;
+
+        parsed.into_iter().collect()
+    }
+
+    async fn csv_cpu(
+        &self,
+        name: &str,
+    ) -> Result<Vec<CpuData>, ParseError<Fs::Error, csv::cpu::Error>> {
+        Ok(self
+            .csv(name, CpuData::from_reader)
+            .await?
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+
+    async fn csv_hrr(
+        &self,
+        name: &str,
+    ) -> Result<Vec<HRRStep>, ParseError<Fs::Error, csv::hrr::Error>> {
+        Ok(self
+            .csv(name, HRRStep::from_reader)
+            .await?
+            .into_iter()
+            .flatten()
+            .collect())
+    }
+
+    async fn csv_devc(&self, name: &str) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
+        Ok(self.csv(name, Devices::from_reader).await?)
+    }
 }

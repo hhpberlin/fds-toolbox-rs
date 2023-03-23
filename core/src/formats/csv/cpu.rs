@@ -3,6 +3,7 @@ use std::io::Read;
 use csv::ErrorKind;
 use serde::{Deserialize, Serialize};
 
+use thiserror::Error;
 use uom::si::{f32::Time, time::second};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,8 +65,12 @@ struct CpuDataUntyped {
 //     MissingUnitsLine,
 // }
 
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub struct Error(#[from] csv::Error);
+
 impl CpuData {
-    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, csv::Error> {
+    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, Error> {
         let mut rdr = csv::ReaderBuilder::new()
             // .has_headers(false)
             .trim(csv::Trim::All)
@@ -91,7 +96,7 @@ impl CpuData {
                     {
                         continue;
                     }
-                    return Err(e);
+                    return Err(Error(e));
                 }
             };
             let record = CpuData {
