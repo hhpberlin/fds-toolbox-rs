@@ -179,7 +179,7 @@ where
 pub fn word<I>(i: I) -> IResult<I, I::Slice>
 where
     I: StreamIsPartial + Stream,
-    <I as Stream>::Token: AsChar,
+    <I as Stream>::Token: AsChar + Copy,
 {
     preceded(space0, non_ws).parse_next(i)
 }
@@ -187,7 +187,7 @@ where
 pub fn from_str<I, T: FromStr>(i: I, context: impl Debug + Clone) -> IResult<I, T>
 where
     I: StreamIsPartial + Stream,
-    <I as Stream>::Token: AsChar,
+    <I as Stream>::Token: AsChar + Copy,
     <I as Stream>::Slice: AsRef<str>,
 {
     non_ws
@@ -206,7 +206,7 @@ macro_rules! from_str_impl {
         $(pub fn $t<I>(i: I) -> IResult<I, $t>
         where
             I: StreamIsPartial + Stream,
-            <I as Stream>::Token: AsChar,
+            <I as Stream>::Token: AsChar + Copy,
             <I as Stream>::Slice: AsRef<str>,
         {
             from_str(i, stringify!($t))

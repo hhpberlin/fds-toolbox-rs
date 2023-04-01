@@ -18,7 +18,7 @@ tracing = "0.1"
 # nom = "7.1"
 miette = { version = "5.5.0", features = ["fancy"] }
 # winnow = { version = "0.3.3", features = ["debug"] }
-winnow = { version = "0.3.3", features = [] }
+winnow = { version = "0.4.1", features = [] }
 # ariadne = { version = "0.1" }
 
 chrono = "0.4"

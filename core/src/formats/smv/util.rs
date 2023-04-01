@@ -53,7 +53,7 @@ macro_rules! impl_from {
         pub fn $name<I>(i: I) -> IResult<I, $ret>
         where
             I: StreamIsPartial + Stream,
-            <I as Stream>::Token: AsChar,
+            <I as Stream>::Token: AsChar + Copy,
             <I as Stream>::Slice: AsRef<str>,
         {
             ws_separated!($($t),+)
