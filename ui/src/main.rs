@@ -114,38 +114,38 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        self.tabs
-            .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
-                0,
-                TimeSeriesIdx::Device(
-                    self.simulations[0]
-                        .devc
-                        .get_device_idx_by_name("T_B05")
-                        .unwrap(),
-                ),
-            )])));
-        self.tabs
-            .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
-                0,
-                TimeSeriesIdx::Device(
-                    self.simulations[0]
-                        .devc
-                        .get_device_idx_by_name("AST_1OG_Glaswand_N2")
-                        .unwrap(),
-                ),
-            )])));
-        self.tabs.push(FdsToolboxTab::Plot(PlotTab::new(
-            self.simulations[0]
-                .devc
-                .iter_device_named_ids()
-                .map(|(_, idx)| SimulationIdx(0, TimeSeriesIdx::Device(idx)))
-                .collect::<Vec<_>>(),
-        )));
-        self.tabs
-            .push(FdsToolboxTab::Slice(SliceTab::new(SimulationIdx(
-                0,
-                SliceSeriesIdx(0),
-            ))));
+        // self.tabs
+        //     .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
+        //         0,
+        //         TimeSeriesIdx::Device(
+        //             self.simulations[0]
+        //                 .devc
+        //                 .get_device_idx_by_name("T_B05")
+        //                 .unwrap(),
+        //         ),
+        //     )])));
+        // self.tabs
+        //     .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(
+        //         0,
+        //         TimeSeriesIdx::Device(
+        //             self.simulations[0]
+        //                 .devc
+        //                 .get_device_idx_by_name("AST_1OG_Glaswand_N2")
+        //                 .unwrap(),
+        //         ),
+        //     )])));
+        // self.tabs.push(FdsToolboxTab::Plot(PlotTab::new(
+        //     self.simulations[0]
+        //         .devc
+        //         .iter_device_named_ids()
+        //         .map(|(_, idx)| SimulationIdx(0, TimeSeriesIdx::Device(idx)))
+        //         .collect::<Vec<_>>(),
+        // )));
+        // self.tabs
+        //     .push(FdsToolboxTab::Slice(SliceTab::new(SimulationIdx(
+        //         0,
+        //         SliceSeriesIdx(0),
+        //     ))));
     }
 
     fn subscription(event: Event, status: Status) -> Option<Message> {

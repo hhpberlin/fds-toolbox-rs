@@ -80,39 +80,39 @@ impl PlotTab {
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
 
-        for (idx, device) in model
-            .simulations
-            .iter()
-            .flat_map(|x| x.devc.enumerate_devices())
-        {
-            // TODO: This does not work with multiple simulations
-            let global_idx = SimulationIdx(0, TimeSeriesIdx::Device(idx));
+        // for (idx, device) in model
+        //     .simulations
+        //     .iter()
+        //     .flat_map(|x| x.devc.enumerate_devices())
+        // {
+        //     // TODO: This does not work with multiple simulations
+        //     let global_idx = SimulationIdx(0, TimeSeriesIdx::Device(idx));
 
-            let info = series
-                .entry(global_idx)
-                .or_insert_with(|| PlotTabSeries::new(global_idx));
+        //     let info = series
+        //         .entry(global_idx)
+        //         .or_insert_with(|| PlotTabSeries::new(global_idx));
 
-            sidebar = sidebar
-                .push(row![
-                    container(checkbox(
-                        format!("{} ({})", device.name, device.unit),
-                        info.selected,
-                        move |checked| {
-                            if checked {
-                                Message::Add(global_idx)
-                            } else {
-                                Message::Remove(global_idx)
-                            }
-                        },
-                    ))
-                    .width(Length::Shrink),
-                    horizontal_space(Length::Fill),
-                    container(array_stats_vis(device.values.stats))
-                        .width(Length::Fixed(100.))
-                        .height(Length::Fixed(20.)),
-                ])
-                .max_width(400);
-        }
+        //     sidebar = sidebar
+        //         .push(row![
+        //             container(checkbox(
+        //                 format!("{} ({})", device.name, device.unit),
+        //                 info.selected,
+        //                 move |checked| {
+        //                     if checked {
+        //                         Message::Add(global_idx)
+        //                     } else {
+        //                         Message::Remove(global_idx)
+        //                     }
+        //                 },
+        //             ))
+        //             .width(Length::Shrink),
+        //             horizontal_space(Length::Fill),
+        //             container(array_stats_vis(device.values.stats))
+        //                 .width(Length::Fixed(100.))
+        //                 .height(Length::Fixed(20.)),
+        //         ])
+        //         .max_width(400);
+        // }
 
         scrollable(sidebar).into()
     }
