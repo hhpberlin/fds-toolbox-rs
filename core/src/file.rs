@@ -1,7 +1,7 @@
-use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, io::Read, sync::Arc};
+use std::{borrow::Borrow, error::Error, fmt::Debug, io::Read};
 
 use async_trait::async_trait;
-use futures::{future::join_all, SinkExt, Stream, StreamExt};
+use futures::{future::join_all, StreamExt};
 use thiserror::Error;
 
 use crate::formats::{
@@ -50,30 +50,12 @@ impl FileSystem for OsFs {
     }
 }
 
-// pub struct ParsedFile<T, Fs: FileSystem> {
-//     parsed: T,
-//     fs: Fs,
-//     directory: Fs::Path,
-// }
-
-// impl<T, Fs: FileSystem> ParsedFile<T, Fs> {
-//     pub fn new(parsed: T, path: Fs::Path) -> Self {
-//         Self { parsed, path }
-//     }
-// }
-
 trait Parse: Sized {
     type Error;
     type Warning;
 
     fn parse(file: impl Read, warn: MaybeFn<Self::Warning>) -> Result<Self, Self::Error>;
 }
-
-// impl<T: Parse> T {
-//     fn parse(file: impl Read) -> Result<Self, T::Error> {
-//         T::parse(file, None)
-//     }
-// }
 
 #[derive(Error, Debug)]
 enum ParseError<FsErr: Error, ParseErr: Error> {
@@ -82,27 +64,7 @@ enum ParseError<FsErr: Error, ParseErr: Error> {
     Parse(ParseErr),
 }
 
-// impl<T: Parse, Fs: FileSystem> ParsedFile<T, Fs> {
-//     pub fn parse(file: Fs::File) -> Result<Self, ParseError<Fs::Error, T::Error>> {
-//         file.read
-//     }
-// }
-
 type MaybeFn<T> = Option<Box<dyn Fn(T)>>;
-
-// impl<Fs: FileSystem> ParsedFile<Smv, Fs> {
-//     fn parse(fs: Fs, path: Fs::PathRef, warn: MaybeFn<smv::Error>) -> Result<Self, ParseError<Fs::Error, smv::Error>> {
-//         let file = fs.read(path).await?;
-//         let buf = String::new();
-//         file.read_to_string(&mut buf)?;
-//         let parsed = Smv::parse(buf, warn).map_err(ParseError::Parse)?;
-//         Ok(Self { parsed, fs, path })
-//     }
-
-//     fn slice(&self) {
-//         self.
-//     }
-// }
 
 struct Simulation<Fs: FileSystem> {
     pub smv: Smv,
@@ -171,24 +133,6 @@ where
 
     // }
 
-    // async fn csv(&self, name: &str) -> Result<Vec<()>, ParseError<Fs::Error, ()>> {
-    //     let files = self.smv.csv_files[name];
-
-    //     // TODO: use smth like futures join_all to await in parallel
-    //     // let idk = files.iter().map(|file| {
-    //     //     let file = self.file(file).await.map_err(ParseError::Fs)?;
-    //     // }).collect();
-
-    //     let mut vec = Vec::new();
-
-    //     for file in files {
-    //         let file = self.file(&file).await.map_err(ParseError::Fs)?;
-    //         let csv = csv::cpu::
-    //     }
-
-    //     Ok(vec)
-    // }
-
     async fn csv<T, Err: Error>(
         &self,
         name: &str,
@@ -209,67 +153,9 @@ where
         parsed.into_iter().collect()
     }
 
-    // #[derive(Debug, Error)]
-    //     pub enum CpuError {
-    //         #[error("Error occured during parsing: {0}")]
-    //         Parse(csv::cpu::Error),
-    //         #[error("Found multiple _cpu.csv files in .smv: {0:?}")]
-    //         MultipleEntries(Vec<String>),
-    //         // #[error()]
-    //         // NoEntry,
-    //     }
-
-    //     async fn csv_cpu(&self) -> Result< {
-    //         let files = self.smv.csv_files["cpu"];
-    //         match files[..] {
-    //             [a] => {},
-    //             _ => {},
-    //         }
-    //         if files.len() > 1 {
-    //             return Err(CpuError::MultipleEntries(files));
-    //         }
-
-    //         let stuff = self.smv.csv_files["cpu"].iter().map(|x| {
-    //             self.csv_cpu_from_name(x)
-    //         });
-    //     }
-
-    // async fn csv_cpu(&self) -> Result<Option<Vec<CpuData>>, ParseError<Fs::Error, csv::cpu::Error>> {
-    //     let Some(files) = self.smv.csv_files.get("cpu") else {
-    //         return Ok(None);
-    //     };
-
-    //     // use futures::stream::TryStreamExt;
-    //     // let stuff = futures::stream::iter(files)
-    //     //     .map(|x| async move { self.csv_cpu_from_name(&x).await })
-    //     //     .collect();
-
-    //     let mut data = Vec::new();
-
-    //     for file in files {
-    //         data.extend(self.csv_cpu_from_name(file).await?);
-    //     }
-
-    //     // let test = Self::tsrt(stuff);
-
-    //     // let stuff = futures::stream::iter(stuff)
-    //     //     .try_flatten();
-
-    //     Ok(Some(data))
-    // }
-
-    // fn tsrt<S: Stream>(s: S) -> S::Item { () }
-
-    async fn csv_cpu_from_name(
+    async fn csv_cpu(
         &self,
-        // name: &str,
     ) -> Result<Option<Vec<CpuData>>, ParseError<Fs::Error, csv::cpu::Error>> {
-        // Ok(self
-        //     .csv("cpu", CpuData::from_reader)
-        //     .await?
-        //     .into_iter()
-        //     .flatten()
-        //     .collect())
         let file_name = format!("{}_cpu.csv", self.chid);
         if !self.exists(&file_name).await.map_err(ParseError::Fs)? {
             return Ok(None);
@@ -279,24 +165,7 @@ where
         Ok(Some(data))
     }
 
-    // async fn csv_hrr(&self) -> Result<Option<Vec<HRRStep>>, ParseError<Fs::Error, csv::hrr::Error>> {
-    //     let Some(files) = self.smv.csv_files.get("hrr") else {
-    //         return Ok(None);
-    //     };
-
-    //     let mut data = Vec::new();
-
-    //     for file in files {
-    //         data.extend(self.csv_hrr_from_name(file).await?);
-    //     }
-
-    //     Ok(Some(data))
-    // }
-
-    async fn csv_hrr_from_name(
-        &self,
-        // name: &str,
-    ) -> Result<Vec<HRRStep>, ParseError<Fs::Error, csv::hrr::Error>> {
+    async fn csv_hrr(&self) -> Result<Vec<HRRStep>, ParseError<Fs::Error, csv::hrr::Error>> {
         Ok(self
             .csv("hrr", HRRStep::from_reader)
             .await?
@@ -305,60 +174,10 @@ where
             .collect())
     }
 
-    // async fn csv_devc(&self) -> Result<Option<Vec<HRRStep>>, ParseError<Fs::Error, csv::devc::Error>> {
-    //     let Some(files) = self.smv.csv_files.get("devc") else {
-    //         return Ok(None);
-    //     };
-
-    //     let mut data = Vec::new();
-
-    //     for file in files {
-    //         data.extend(self.csv_hrr_from_name(file).await?);
-    //     }
-
-    //     Ok(Some(data))
-    // }
-
-    async fn csv_devc_from_name(
-        &self,
-        // name: &str,
-    ) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
+    async fn csv_devc(&self) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
         self.csv("devc", Devices::from_reader).await
     }
 }
-
-// #[derive(Default)]
-// struct MemFs {
-//     content: HashMap<String, Vec<u8>>,
-// }
-
-// #[derive(Debug, Error)]
-// enum MemFsErr {
-//     #[error("No file with path {0} found")]
-//     KeyNotFound(String),
-// }
-
-// #[async_trait]
-// impl FileSystem for MemFs {
-//     type Path = String;
-//     type PathRef = str;
-//     type Error = MemFsErr;
-//     type File<'a> = &'a [u8];
-
-//     async fn read<'this: 'file, 'file>(&'this self, path: &'this Self::PathRef) -> Result<Self::File<'file>, Self::Error> {
-//         match self.content.get(path) {
-//             Some(file) => Ok(&file[..]),
-//             None => Err(MemFsErr::KeyNotFound(path.to_string())),
-//         }
-//     }
-
-//     fn file_path(&self, directory: &Self::PathRef, file_name: &str) -> Self::Path {
-//         let mut path = directory.to_string();
-//         path += "/";
-//         path += file_name;
-//         path
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -388,16 +207,16 @@ mod tests {
     #[tokio::test]
     async fn csv() {
         let sim = sim().await;
-        let cpu = sim.csv_cpu_from_name().await.unwrap();
-        let hrr = sim.csv_hrr_from_name().await.unwrap();
-        let devc = sim.csv_devc_from_name().await.unwrap();
+        let _cpu = sim.csv_cpu().await.unwrap();
+        let _hrr = sim.csv_hrr().await.unwrap();
+        let _devc = sim.csv_devc().await.unwrap();
     }
 
     #[tokio::test]
     async fn slcf() {
         let sim = sim().await;
         for s in 0..sim.smv.slices.len() {
-            let slcf = sim.slice(s).await.unwrap();
+            let _slcf = sim.slice(s).await.unwrap();
         }
     }
 }
