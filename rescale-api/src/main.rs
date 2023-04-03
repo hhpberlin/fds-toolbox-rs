@@ -1,4 +1,4 @@
-use std::{fs, env};
+use std::{env, fs};
 
 use fds_toolbox_core::formats::smv::Smv;
 use rescale_api::{api::RescaleApiClient, user::files};
