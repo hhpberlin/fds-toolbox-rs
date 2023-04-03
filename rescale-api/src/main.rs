@@ -1,3 +1,5 @@
+use std::{fs, env};
+
 use fds_toolbox_core::formats::smv::Smv;
 use rescale_api::{api::RescaleApiClient, user::files};
 
@@ -8,6 +10,14 @@ pub mod user;
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let key = env!("RESCALE_API_KEY");
     let client = RescaleApiClient::new_eu(key);
+
+    if env::args().any(|x| x == "dl") {
+        let files = files::list_filtered(&client, Some("_devc.csv"), None).await?;
+        for file in files.results {
+            let content = files::get_bytes(&client, &file.id).await?;
+            fs::write(file.name, content)?;
+        }
+    }
 
     let files = files::list_filtered(&client, Some(".smv"), None).await?;
     dbg!(&files);
