@@ -1,4 +1,4 @@
-use std::{io::Read, num::ParseFloatError, str::FromStr};
+use std::{io::Read, num::ParseFloatError, str::FromStr, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -10,9 +10,14 @@ use crate::common::series::{Series, Series1, Series1View, TimeSeries0View, TimeS
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
-    pub time_in_seconds: Series1,
+    pub time_in_seconds: Arc<Series1>,
     devices: Vec<DeviceReadings>,
     // devices_by_name: HashMap<String, DeviceIdx>,
+}
+
+pub struct Device {
+    pub time_in_seconds: Arc<Series1>,
+    pub readings: DeviceReadings,
 }
 
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

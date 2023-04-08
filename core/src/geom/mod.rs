@@ -76,7 +76,7 @@ impl<T> From<Vec2<T>> for (T, T) {
     }
 }
 
-#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash)]
 pub struct Vec3<T> {
     pub x: T,
     pub y: T,
@@ -135,7 +135,7 @@ impl<T> Index<Dim3D> for Vec3<T> {
 }
 
 // TODO: Should this really derive Default?
-#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash)]
 pub struct Bounds3<T> {
     pub min: Vec3<T>,
     pub max: Vec3<T>,

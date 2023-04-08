@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, ops::Index};
 
-use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis};
+use async_trait::async_trait;
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis, Ix4};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
@@ -114,6 +115,7 @@ pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
 
 pub type TimeSeries0<Value = f32, Time = f32> = TimeSeries<Value, Ix1, Time>;
 pub type TimeSeries2<Value = f32, Time = f32> = TimeSeries<Value, Ix3, Time>;
+pub type TimeSeries3<Value = f32, Time = f32> = TimeSeries<Value, Ix4, Time>;
 
 impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
     pub fn new(
@@ -167,6 +169,7 @@ pub struct TimeSeriesView<'a, Value: Copy, Ix: Dimension, Time: Copy = f32> {
 
 pub type TimeSeries0View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix1, Time>;
 pub type TimeSeries2View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix3, Time>;
+pub type TimeSeries3View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix4, Time>;
 
 impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, Time> {
     pub fn new(
@@ -309,6 +312,12 @@ pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time:
     // fn get_time_series_iter(&self, ids: impl Iterator<Item = Id>) -> impl Iterator<Item = TimeSeriesView> {
     //     ids.filter_map(move |id| self.get_time_series(id))
     // }
+}
+
+#[async_trait]
+pub trait TimeSeriesSourceAsync<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time: Copy = f32> {
+    type Error: std::error::Error;
+    async fn get_time_series(&self, id: Id) -> Result<TimeSeries<Value, Ix, Time>, Self::Error>;
 }
 
 // pub type TimeSeries1ViewSource<Id, Value = f32, Time = f32> = TimeSeriesViewSource<Id, Value, Ix1, Time>;
