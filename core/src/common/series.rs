@@ -153,6 +153,15 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
         self.time_in_seconds.data.len()
     }
 
+    pub fn size(&self) -> usize {
+        self.values.data.len() + self.time_in_seconds.data.len()
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        self.values.data.len() * std::mem::size_of::<Value>()
+            + self.time_in_seconds.data.len() * std::mem::size_of::<Time>()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
