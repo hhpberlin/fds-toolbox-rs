@@ -1075,6 +1075,8 @@ name = "fds-toolbox-cli"
 version = "0.1.0"
 dependencies = [
  "fds-toolbox-core",
+ "moka",
+ "tokio",
 ]
 
 [[package]]
@@ -1106,6 +1108,7 @@ version = "0.1.0"
 dependencies = [
  "async-compression",
  "async-trait",
+ "bytemuck",
  "color-eyre",
  "dashmap",
  "fds-toolbox-core",
@@ -3255,6 +3258,7 @@ name = "rescale-api"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "color-eyre",
  "fds-toolbox-core",
  "reqwest",
  "serde",

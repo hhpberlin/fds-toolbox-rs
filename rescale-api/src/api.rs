@@ -26,7 +26,7 @@ impl RescaleApiClient {
         Self::new(token, "https://platform.rescale.com/api/v2/".to_string())
     }
 
-    pub fn request_inner<U: IntoUrl>(&self, method: Method, url: U) -> reqwest::RequestBuilder {
+    pub fn request_full_url<U: IntoUrl>(&self, method: Method, url: U) -> reqwest::RequestBuilder {
         self.client
             .request(method, url)
             .header("Authorization", self.token.header_value())
@@ -34,7 +34,7 @@ impl RescaleApiClient {
 
     // TODO: This regularly double allocs, once in this method body and once in the caller.
     pub fn request(&self, method: Method, url: impl Display) -> reqwest::RequestBuilder {
-        self.request_inner(method, format!("{}{}", self.api_url, url))
+        self.request_full_url(method, format!("{}{}", self.api_url, url))
     }
 }
 

@@ -15,5 +15,8 @@ bytes = "1.4"
 # TODO: Remove this dependency for library version
 tokio = { version = "1.13.0", features = ["full"] }
 
+color-eyre = "0.6.2"
+
 # TODO: Remove or lock to cfg(test)
+#       The rescale api should be independent of the actual fds toolbox
 fds-toolbox-core = { path = "../core" }

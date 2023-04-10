@@ -48,6 +48,8 @@ pub struct FileMetadata {
 #[derive(Debug, Deserialize)]
 pub struct FileResponse {
     /// The total number of files owned by the current user.
+    /// TODO: This description seems sus, shouldn't it be the total number of files
+    ///       in the response or matching the query? Considering you can query for filenames as well this seems odd.
     pub count: i32,
     /// The URL that will return the next page of results.
     pub next: Option<String>,
@@ -55,6 +57,119 @@ pub struct FileResponse {
     pub previous: Option<String>,
     /// An array of File objects.
     pub results: Vec<FileMetadata>,
+}
+
+impl FileResponse {
+    // Shared code between next_page and previous_page.
+    async fn page(
+        &self,
+        client: &RescaleApiClient,
+        url: &str,
+    ) -> Result<FileResponse, reqwest::Error> {
+        let response = client
+            .request_full_url(Method::GET, url)
+            .send()
+            .await?
+            .json::<FileResponse>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Returns the next page of results.
+    pub async fn next_page(
+        &self,
+        client: &RescaleApiClient,
+    ) -> Option<Result<FileResponse, reqwest::Error>> {
+        match &self.next {
+            Some(url) => Some(self.page(client, url).await),
+            None => None,
+        }
+    }
+
+    /// Returns the previous page of results.
+    pub async fn previous_page(
+        &self,
+        client: &RescaleApiClient,
+    ) -> Option<Result<FileResponse, reqwest::Error>> {
+        match &self.previous {
+            Some(url) => Some(self.page(client, url).await),
+            None => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FileRequest<'a> {
+    client: &'a RescaleApiClient,
+    search: Option<&'a str>,
+    owner: Option<i32>,
+}
+
+impl<'a> FileRequest<'a> {
+    pub fn new(client: &'a RescaleApiClient, search: Option<&'a str>, owner: Option<i32>) -> Self {
+        FileRequest {
+            client,
+            search,
+            owner,
+        }
+    }
+
+    pub fn new_unfiltered(client: &'a RescaleApiClient) -> Self {
+        Self::new(client, None, None)
+    }
+
+    pub async fn get(&self) -> Result<FileResponse, reqwest::Error> {
+        list_filtered(self.client, self.search, self.owner).await
+    }
+
+    /// Creates a 'fake' iterator that can be used to iterate over the pages of a file response.
+    /// This is a workaround for the fact that async iterators are not yet stable.
+    pub async fn fake_iter_pages(&self) -> FileIter {
+        let response = self.get().await;
+        FileIter(*self, response.ok())
+    }
+
+    pub async fn for_all(&self, mut f: impl FnMut(&FileMetadata)) -> Result<(), reqwest::Error> {
+        let mut files = self
+            .fake_iter_pages()
+            .await;
+
+        while let Some(res) = files.next_page().await {
+            res?;
+
+            for file in files.iter_current_page() {
+                f(file);
+                // let content = files::get_bytes(&client, &file.id).await?;
+                // fs::write(&file.name, content)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct FileIter<'a>(FileRequest<'a>, Option<FileResponse>);
+
+impl FileIter<'_> {
+    pub async fn next_page(&mut self) -> Option<Result<(), reqwest::Error>> {
+        let response = self.1.take()?;
+        let next = response.next_page(self.0.client).await;
+        match next {
+            Some(Ok(response)) => {
+                self.1 = Some(response);
+                Some(Ok(()))
+            }
+            x => {
+                self.1 = None;
+                x.map(|x| x.map(|_| ()))
+            }
+        }
+    }
+
+    pub fn iter_current_page(&self) -> impl Iterator<Item = &FileMetadata> {
+        self.1.iter().flat_map(|x| x.results.iter())
+    }
 }
 
 // async fn upload_file(token: &str, file_name: &str, file_content: &[u8]) -> Result<FileMetadata, reqwest::Error> {
@@ -99,6 +214,18 @@ pub struct FileResponse {
 
 //     Ok(files)
 // }
+
+pub fn list_req(client: &RescaleApiClient) -> FileRequest {
+    FileRequest::new_unfiltered(client)
+}
+
+pub fn list_filtered_req<'a>(
+    client: &'a RescaleApiClient,
+    search: Option<&'a str>,
+    owner: Option<i32>,
+) -> FileRequest<'a> {
+    FileRequest::new(client, search, owner)
+}
 
 pub async fn list(client: &RescaleApiClient) -> Result<FileResponse, reqwest::Error> {
     list_filtered(client, None, None).await
