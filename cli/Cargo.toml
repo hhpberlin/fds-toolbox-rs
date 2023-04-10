@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 fds-toolbox-core = { path = "../core" }
+
+moka = { version = "0.10", features = ["future"] }
+tokio = { version = "1.27", features = ["full"] }
