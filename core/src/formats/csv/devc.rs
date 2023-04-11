@@ -8,16 +8,14 @@ use crate::common::series::{Series, Series1, Series1View, TimeSeries0View, TimeS
 
 // TODO: Use 2d-array instead?
 
+// TODO: Rename to DeviceList
+//       rust-analyzer currently doesn't want me to it seems
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Devices {
-    pub time_in_seconds: Arc<Series1>,
-    devices: Vec<DeviceReadings>,
+    // pub time_in_seconds: Arc<Series1>,
+    pub time_in_seconds: Series1,
+    pub(crate) devices: Vec<DeviceReadings>,
     // devices_by_name: HashMap<String, DeviceIdx>,
-}
-
-pub struct Device {
-    pub time_in_seconds: Arc<Series1>,
-    pub readings: DeviceReadings,
 }
 
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -34,10 +32,15 @@ impl DeviceReadings {
     pub fn view<'a>(&'a self, time_in_seconds: Series1View<'a>) -> TimeSeries0View<'a> {
         TimeSeriesView::new(time_in_seconds, self.values.view(), &self.unit, &self.name)
     }
+
+    pub fn size_in_bytes(&self) -> usize {
+        self.values.size_in_bytes() + self.unit.len() + self.name.len()
+    }
 }
 
+// Errors within a single _devc.csv file
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum ParsingError {
     #[error("Missing units header (first line)")]
     MissingUnitsLine,
     #[error("Missing names header (second line)")]
@@ -65,8 +68,85 @@ pub enum Error {
     ParsingError(usize, usize, ParseFloatError),
 }
 
+// Errors when joining multiple _devc.csv files
+#[derive(Error, Debug)]
+pub enum JoinError {
+    #[error("Times don't match: device at 0 and device at {0} have different times. `time_in_seconds` must be the same for all devices.")]
+    TimeMismatch(usize),
+    #[error("Can't merge 0 devices.")]
+    EmptyVec,
+}
+
+// Errors when parsing and merging multiple _devc.csv files
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Parsing error: {0}")]
+    ParsingError(ParsingError),
+    #[error("Joining error: {0}")]
+    JoinError(JoinError),
+}
+
 impl Devices {
-    pub fn from_reader(rdr: impl Read) -> Result<Self, Error> {
+    pub fn size_in_bytes(&self) -> usize {
+        self.time_in_seconds.size_in_bytes()
+            + self
+                .devices
+                .iter()
+                .map(|d| d.size_in_bytes())
+                .sum::<usize>()
+    }
+
+    // TODO: This could probably be made to take an iterator instead of a vec.
+    //       Problem is that we currently iterate twice.
+    //       This could be reduced to a single iteration, but at the expense of early termination on errors before allocating anything.
+    pub fn merge(devices: Vec<Self>) -> Result<Devices, JoinError> {
+        let mut iter = devices.iter().enumerate();
+
+        // Take the first timeline and check all others against it
+        let time_in_seconds = iter
+            .next()
+            .ok_or(JoinError::EmptyVec)?
+            .1
+            .time_in_seconds
+            .view();
+
+        for (i, d) in iter {
+            if d.time_in_seconds.view() != time_in_seconds {
+                return Err(JoinError::TimeMismatch(i));
+            }
+        }
+
+        let mut iter = devices.into_iter();
+        // We extract the first device-list as owned to take ownership of time_in_seconds,
+        //  instead of cloning it.
+        let first_device = iter.next().ok_or(JoinError::EmptyVec)?;
+        let Devices {
+            time_in_seconds,
+            devices: first_devices,
+        } = first_device;
+
+        // Since we already extracted the first device-list,
+        //  we have to reinsert its `devices` into the iterator, hence the `once` call.
+        let mut devices = std::iter::once(first_devices)
+            .chain(iter.map(|x| x.devices))
+            .flat_map(|d| d)
+            .collect::<Vec<_>>();
+        Ok(Devices {
+            time_in_seconds,
+            devices,
+        })
+    }
+
+    pub fn from_readers<R: Read>(rdr: impl Iterator<Item = R>) -> Result<Self, Error> {
+        let device_lists =rdr.map(Self::from_reader)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(Error::ParsingError)?;
+            
+        Self::merge(device_lists)
+            .map_err(Error::JoinError)
+    }
+
+    pub fn from_reader(rdr: impl Read) -> Result<Self, ParsingError> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .trim(csv::Trim::All)
@@ -79,18 +159,18 @@ impl Devices {
         let mut rdr = rdr.into_records();
 
         let units = match rdr.next() {
-            Some(val) => val.map_err(Error::ParsingErrorUnitsCsv)?,
-            None => return Err(Error::MissingUnitsLine),
+            Some(val) => val.map_err(ParsingError::ParsingErrorUnitsCsv)?,
+            None => return Err(ParsingError::MissingUnitsLine),
         };
         let names = match rdr.next() {
-            Some(val) => val.map_err(Error::ParsingErrorNamesCsv)?,
-            None => return Err(Error::MissingNamesLine),
+            Some(val) => val.map_err(ParsingError::ParsingErrorNamesCsv)?,
+            None => return Err(ParsingError::MissingNamesLine),
         };
 
         let units_len = units.len();
         let names_len = names.len();
         if units_len != names_len || units_len < 1 {
-            return Err(Error::InvalidUnitsAndNamesCount {
+            return Err(ParsingError::InvalidUnitsAndNamesCount {
                 units_len,
                 names_len,
             });
@@ -102,10 +182,10 @@ impl Devices {
                 let mut s = "1 ".to_string();
                 s.push_str(val);
                 Time::from_str(&s)
-                    .map_err(|x| Error::InvalidTimeUnit(x, val.to_string()))?
+                    .map_err(|x| ParsingError::InvalidTimeUnit(x, val.to_string()))?
                     .value
             }
-            None => return Err(Error::MissingTimeUnit),
+            None => return Err(ParsingError::MissingTimeUnit),
         };
 
         let units: Vec<_> = units_iter.zip(names.iter().skip(1)).collect();
@@ -116,16 +196,16 @@ impl Devices {
         let len = devices.len();
 
         for (i, x) in rdr.enumerate() {
-            let x = x.map_err(|x| Error::ParsingErrorCsv(i + 2, x))?;
+            let x = x.map_err(|x| ParsingError::ParsingErrorCsv(i + 2, x))?;
             let mut x = x.iter();
             let time: f32 = match x.next() {
                 Some(val) => {
                     if val.is_empty() {
                         continue;
                     }
-                    val.parse().map_err(|x| Error::ParsingError(i + 2, 0, x))?
+                    val.parse().map_err(|x| ParsingError::ParsingError(i + 2, 0, x))?
                 }
-                None => return Err(Error::WrongValueCount(i + 2, 0, len)),
+                None => return Err(ParsingError::WrongValueCount(i + 2, 0, len)),
             };
             times.push(time_fac * time);
 
@@ -137,7 +217,7 @@ impl Devices {
                 if j < len {
                     let val = x
                         .parse::<f32>()
-                        .map_err(|x| Error::ParsingError(i + 2, j + 1, x))?;
+                        .map_err(|x| ParsingError::ParsingError(i + 2, j + 1, x))?;
                     devices[j].push(val);
                 }
                 j += 1;
@@ -146,7 +226,7 @@ impl Devices {
                 if j == 0 {
                     continue;
                 }
-                return Err(Error::WrongValueCount(i + 2, j, len));
+                return Err(ParsingError::WrongValueCount(i + 2, j, len));
             }
         }
 
