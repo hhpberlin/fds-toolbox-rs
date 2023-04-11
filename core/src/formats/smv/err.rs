@@ -6,7 +6,7 @@ use miette::SourceSpan;
 
 /// A parsing error encountered while parsing a ".smv" file.
 /// For documentation on the individual errors, look at the `#[diagnostic(help(...))]` attributes.
-#[derive(Debug, Error, Diagnostic)]
+#[derive(Debug, Error, Clone, Copy, Diagnostic)]
 pub enum Error {
     #[error("Syntax error")]
     #[diagnostic(code(fds_tbx::smv::generic_syntax), help("error kind: {kind:#?}"))]
@@ -19,7 +19,7 @@ pub enum Error {
     //       Maybe a secondary enum that has `SyntaxNonDiagnostic { [this] }`
     //        and `Other(Error)`, implementing `From<...>` for both?
     //
-    // This value should not be returned as final value, and gets replaced by `SimulationParser::map_err`
+    // This value should not be returned as final value, and gets replaced with `Error::Syntax` by `SimulationParser::map_err`
     //
     // It's a bit of a workaround for converting `winnow` errors to nice pretty-printable errors:
     //  When `winnow` returns a syntax error it gives the length of the remaining input,

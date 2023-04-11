@@ -24,7 +24,7 @@ use winnow::{
 };
 
 use super::util::{f32, i32, non_ws, u32, usize, InputLocator};
-use crate::geom::{Bounds3F, Bounds3I, Vec3F};
+use crate::{geom::{Bounds3F, Bounds3I, Vec3F}, trace_callsite};
 
 macro_rules! ws_separated {
     ($($t:expr),*) => {
@@ -493,9 +493,14 @@ impl<'a> SimulationParser<'a> {
                     }
                     "NMESHES" => num_meshes = Some(parse_line(&mut input, usize)?),
                     "HRRPUVCUT" => {
-                        // This line is hardcoded as 1 in FDS
-                        let _ = parse_line(&mut input, "1")?;
-                        hrrpuv_cutoff = Some(parse_line(&mut input, f32)?)
+                        // The first line is hardcoded as 1 in FDS, however older versions had this as a list of floats where this first line was the length of the list.
+                        let cutoffs = parse(&mut input, repeat(line(f32)))?;
+                        // hrrpuv_cutoff = parse_line(&mut input, (line("1"), line(f32))?;
+                        if cutoffs.len() == 1 {
+                            hrrpuv_cutoff = Some(cutoffs[0]);
+                        } else {
+                            // Do nothing, discard the list
+                        }
                     }
                     "TIMES" => {
                         let (time_start, time_end) =
@@ -581,17 +586,13 @@ impl<'a> SimulationParser<'a> {
                         });
                     }
                     "DEVICE" => {
-                        let device_id = take_till0("%").map(str::trim);
+                        let device_id = take_till0("%\n\r").map(str::trim);
                         let quant = preceded("%", full_line);
-                        let (device_id, quantity) = parse_line(&mut input, (device_id, quant))?;
+                        let (device_id, quantity) = parse_line(&mut input, trace_callsite!((device_id, quant)))?;
 
-                        // TODO: This is a bit ugly
-                        let close = preceded((space0, "%"), full_line);
-
-                        // TODO: idk what this is
+                        let property_id = preceded((space0, "%"), full_line);
                         let bounds = preceded("#", bounds3f);
 
-                        // TODO: what are a and b?
                         let (position, orientation, state_index, zero, bounds, property_id) =
                             parse_line(
                                 &mut input,
@@ -601,7 +602,7 @@ impl<'a> SimulationParser<'a> {
                                     i32,
                                     i32.with_recognized(),
                                     opt(bounds),
-                                    close
+                                    property_id
                                 ),
                             )?;
 
