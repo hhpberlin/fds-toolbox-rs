@@ -1,23 +1,38 @@
 // use fds_toolbox_core::file::ParsedFile;
 
-use moka::future::Cache;
+use std::path::PathBuf;
+
+use clap::{arg, Parser};
+use color_eyre::eyre;
+use fds_toolbox_core::file::{OsFs, Simulation};
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Path to the .smv file
+    #[arg(short, long, value_name = "FILE")]
+    smv: PathBuf,
+}
 
 #[tokio::main]
-async fn main() {
-    // let hello = ParsedFile::new(parsed, path);
-    let cache = Cache::new(100);
+async fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
 
-    cache.insert(5, "Past moment").await;
+    let args = Cli::parse();
 
-    dbg!(cache.get_with(5, async { "Future moment" }).await);
+    dbg!(&args.smv);
 
-    dbg!(cache.get_with(6, async { "Future moment" }).await);
+    let sim = Simulation::parse_smv(
+        OsFs,
+        args.smv
+            .parent()
+            .ok_or(eyre::eyre!("Missing Directory"))?
+            .to_path_buf(),
+        &args.smv,
+    )
+    .await?;
 
-    let cc = cache.clone();
-    let f = async move { cc.get_with(7, async { "Future moment" }).await };
-    tokio::spawn(f);
+    dbg!(sim.path);
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-    dbg!(cache.get(&7));
+    Ok(())
 }
