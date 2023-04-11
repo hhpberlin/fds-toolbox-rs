@@ -131,9 +131,7 @@ impl<'a> FileRequest<'a> {
     }
 
     pub async fn for_all(&self, mut f: impl FnMut(&FileMetadata)) -> Result<(), reqwest::Error> {
-        let mut files = self
-            .fake_iter_pages()
-            .await;
+        let mut files = self.fake_iter_pages().await;
 
         while let Some(res) = files.next_page().await {
             res?;

@@ -138,12 +138,12 @@ impl Devices {
     }
 
     pub fn from_readers<R: Read>(rdr: impl Iterator<Item = R>) -> Result<Self, Error> {
-        let device_lists =rdr.map(Self::from_reader)
+        let device_lists = rdr
+            .map(Self::from_reader)
             .collect::<Result<Vec<_>, _>>()
             .map_err(Error::ParsingError)?;
-            
-        Self::merge(device_lists)
-            .map_err(Error::JoinError)
+
+        Self::merge(device_lists).map_err(Error::JoinError)
     }
 
     pub fn from_reader(rdr: impl Read) -> Result<Self, ParsingError> {
@@ -203,7 +203,8 @@ impl Devices {
                     if val.is_empty() {
                         continue;
                     }
-                    val.parse().map_err(|x| ParsingError::ParsingError(i + 2, 0, x))?
+                    val.parse()
+                        .map_err(|x| ParsingError::ParsingError(i + 2, 0, x))?
                 }
                 None => return Err(ParsingError::WrongValueCount(i + 2, 0, len)),
             };

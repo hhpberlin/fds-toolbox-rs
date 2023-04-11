@@ -18,9 +18,7 @@ pub async fn main() -> color_eyre::Result<()> {
         let filter = filter.as_deref();
         let req = files::list_filtered_req(&client, filter, None);
 
-        let mut files = req
-            .fake_iter_pages()
-            .await;
+        let mut files = req.fake_iter_pages().await;
 
         while let Some(res) = files.next_page().await {
             res?;

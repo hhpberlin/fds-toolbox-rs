@@ -163,8 +163,7 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
     }
 
     pub fn size_in_bytes(&self) -> usize {
-        self.values.size_in_bytes()
-            + self.time_in_seconds.size_in_bytes()
+        self.values.size_in_bytes() + self.time_in_seconds.size_in_bytes()
     }
 
     pub fn is_empty(&self) -> bool {

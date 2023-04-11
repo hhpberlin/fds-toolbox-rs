@@ -4,13 +4,18 @@ use async_trait::async_trait;
 use fds_toolbox_core::{
     common::series::{TimeSeries0, TimeSeries2, TimeSeries3},
     file::{FileSystem, OsFs, ParseError, Simulation, SimulationPath},
-    formats::{csv::{self, devc::Devices, cpu::CpuData, hrr::HRRStep}, smoke::dim2::slice::{self, Slice}, smv},
+    formats::{
+        csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
+        smoke::dim2::slice::{self, Slice},
+        smv,
+    },
 };
 use moka::future::Cache;
 use thiserror::Error;
 
 // TODO: Remove dead_code. Here for a dark cockpit.
 #[allow(dead_code)]
+// TODO: Hand impl Debug
 pub struct MokaStore {
     cache: Cache<SimulationDataIdx, SimulationData>,
     simulations: HashMap<SimulationPath<Fs>, Simulation<Fs>>,
@@ -163,9 +168,9 @@ pub enum SimulationDataError {
     Devc(#[from] csv::devc::Error),
 }
 
-impl<ParseErr: Error> From<ParseError<FsErr, ParseErr>>
-    for SimulationDataError
-    where SimulationDataError: From<ParseErr>
+impl<ParseErr: Error> From<ParseError<FsErr, ParseErr>> for SimulationDataError
+where
+    SimulationDataError: From<ParseErr>,
 {
     fn from(value: ParseError<FsErr, ParseErr>) -> Self {
         match value {

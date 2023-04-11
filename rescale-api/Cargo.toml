@@ -16,6 +16,7 @@ bytes = "1.4"
 tokio = { version = "1.13.0", features = ["full"] }
 
 color-eyre = "0.6.2"
+# miette = { version = "5.7.0", features = ["fancy"] }
 
 # TODO: Remove or lock to cfg(test)
 #       The rescale api should be independent of the actual fds toolbox

@@ -24,7 +24,10 @@ use winnow::{
 };
 
 use super::util::{f32, i32, non_ws, u32, usize, InputLocator};
-use crate::{geom::{Bounds3F, Bounds3I, Vec3F}, trace_callsite};
+use crate::{
+    geom::{Bounds3F, Bounds3I, Vec3F},
+    trace_callsite,
+};
 
 macro_rules! ws_separated {
     ($($t:expr),*) => {
@@ -588,7 +591,8 @@ impl<'a> SimulationParser<'a> {
                     "DEVICE" => {
                         let device_id = take_till0("%\n\r").map(str::trim);
                         let quant = preceded("%", full_line);
-                        let (device_id, quantity) = parse_line(&mut input, trace_callsite!((device_id, quant)))?;
+                        let (device_id, quantity) =
+                            parse_line(&mut input, trace_callsite!((device_id, quant)))?;
 
                         let property_id = preceded((space0, "%"), full_line);
                         let bounds = preceded("#", bounds3f);
