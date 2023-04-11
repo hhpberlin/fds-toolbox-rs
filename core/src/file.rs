@@ -3,12 +3,12 @@ use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::
 use async_trait::async_trait;
 use derive_more::Constructor;
 use futures::future::join_all;
-use ndarray::{Ix1, Ix2, Ix3};
+use ndarray::Ix3;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    common::series::{TimeSeries, TimeSeriesSourceAsync, TimeSeriesView, TimeSeriesViewSource},
+    common::series::{TimeSeries, TimeSeriesSourceAsync},
     formats::{
         csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
         smoke::dim2::slice::{self, Slice},
@@ -75,6 +75,16 @@ pub enum ParseError<FsErr: Error, ParseErr: Error> {
     Parse(ParseErr),
 }
 
+impl<FsErr: Error, ParseErr: Error> ParseError<FsErr, ParseErr> {
+    pub fn map_parse_err<E: Error>(self, f: impl FnOnce(ParseErr) -> E) -> ParseError<FsErr, E> {
+        match self {
+            Self::Fs(e) => ParseError::Fs(e),
+            Self::Io(e) => ParseError::Io(e),
+            Self::Parse(e) => ParseError::Parse(f(e)),
+        }
+    }
+}
+
 type MaybeFn<T> = Option<Box<dyn Fn(T)>>;
 
 #[derive(Debug)]
@@ -134,6 +144,15 @@ impl<K: Eq + Hash, V> IndexedVec<K, V> {
     }
 }
 
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub enum SmvErr {
+    Normal(smv::Error),
+    // TODO: Find a way to pass the fancy errors around; `miette::Report`
+    //       does not implement `Error` and therefore cannot be used as an error type.
+    // FancyMiette(miette::Report),
+}
+
 impl<Fs: FileSystem> Simulation<Fs>
 // where
 //     Fs::Path: Debug,
@@ -142,23 +161,52 @@ impl<Fs: FileSystem> Simulation<Fs>
         fs: Fs,
         directory: Fs::Path,
         chid: String,
-    ) -> Result<Self, ParseError<Fs::Error, smv::Error>> {
+    ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
         // & doesn't seem to infer the type properly, .borrow() does (PathBuf -> &Path instead &PathBuf)
         let path = fs.file_path(directory.borrow(), &format!("{}.smv", chid));
 
-        let mut file = fs.read(path.borrow()).await.map_err(ParseError::Fs)?;
+        Self::parse_core(fs, directory, Some(chid), path.borrow()).await
+    }
 
-        // TODO
+    pub async fn parse_smv(
+        fs: Fs,
+        directory: Fs::Path,
+        smv: &Fs::PathRef,
+    ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
+        Self::parse_core(fs, directory, None, smv).await
+    }
+
+    async fn parse_core(
+        fs: Fs,
+        directory: Fs::Path,
+        chid: Option<String>,
+        smv: &Fs::PathRef,
+    ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
+        let mut file = fs.read(smv).await.map_err(ParseError::Fs)?;
+
+        // TODO: Use actual file size to pre-allocate string
         // let size = file.metadata().map(|m| m.len()).unwrap_or(0);
         let size = 0;
         let mut string = String::with_capacity(size as usize);
         file.read_to_string(&mut string).map_err(ParseError::Io)?;
         drop(file);
 
-        let smv = Smv::parse(&string).map_err(ParseError::Parse)?;
+        let smv = Smv::parse(&string).map_err(|e| {
+            // TODO: This is a hack to log errors at all, it should be cleanly passed up the stack or otherwise handled properly
+            eprintln!("{:?}", e.add_src(string));
 
-        // TODO: Add proper error handling
-        debug_assert_eq!(smv.chid, chid);
+            ParseError::Parse(SmvErr::Normal(e))
+        })?;
+        // .map_err(|e| ParseError::Parse(SmvErr::FancyMiette(e.add_src(string))))?;
+
+        let chid = match chid {
+            Some(chid) => {
+                // TODO: Add proper error handling
+                debug_assert_eq!(smv.chid, chid);
+                chid
+            }
+            None => smv.chid.clone(),
+        };
 
         let slice_index = smv
             .slices
@@ -167,13 +215,16 @@ impl<Fs: FileSystem> Simulation<Fs>
             .map(|(i, slice)| ((slice.mesh_index, slice.bounds), i))
             .collect();
 
-        let path = SimulationPath::new(fs, directory, chid.clone());
+        let path = SimulationPath::new(fs, directory, chid);
 
-        Ok(Self { smv, path, slice_index })
+        Ok(Self {
+            smv,
+            path,
+            slice_index,
+        })
     }
 
-    async fn read(&self, file_name: &str) -> Result<Fs::File, Fs::Error>
-    {
+    async fn read(&self, file_name: &str) -> Result<Fs::File, Fs::Error> {
         self.path.fs.read(self.path(file_name).borrow()).await
     }
 
@@ -182,7 +233,9 @@ impl<Fs: FileSystem> Simulation<Fs>
     }
 
     fn path(&self, file_name: &str) -> <Fs as FileSystem>::Path {
-        self.path.fs.file_path(self.path.directory.borrow(), file_name)
+        self.path
+            .fs
+            .file_path(self.path.directory.borrow(), file_name)
     }
 
     pub async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {
@@ -242,8 +295,13 @@ impl<Fs: FileSystem> Simulation<Fs>
             .collect())
     }
 
-    pub async fn csv_devc(&self) -> Result<Vec<Devices>, ParseError<Fs::Error, csv::devc::Error>> {
-        self.csv("devc", Devices::from_reader).await
+    pub async fn csv_devc(&self) -> Result<Devices, ParseError<Fs::Error, csv::devc::Error>> {
+        let device_lists = self
+            .csv("devc", Devices::from_reader)
+            .await
+            .map_err(|e| e.map_parse_err(csv::devc::Error::ParsingError))?;
+
+        Devices::merge(device_lists).map_err(|e| ParseError::Parse(csv::devc::Error::JoinError(e)))
     }
 }
 
