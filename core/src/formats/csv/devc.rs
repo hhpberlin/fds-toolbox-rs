@@ -1,4 +1,4 @@
-use std::{io::Read, num::ParseFloatError, str::FromStr, sync::Arc};
+use std::{io::Read, num::ParseFloatError, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -127,9 +127,9 @@ impl Devices {
 
         // Since we already extracted the first device-list,
         //  we have to reinsert its `devices` into the iterator, hence the `once` call.
-        let mut devices = std::iter::once(first_devices)
+        let devices = std::iter::once(first_devices)
             .chain(iter.map(|x| x.devices))
-            .flat_map(|d| d)
+            .flatten()
             .collect::<Vec<_>>();
         Ok(Devices {
             time_in_seconds,

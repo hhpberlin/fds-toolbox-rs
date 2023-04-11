@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error, hash::Hash, io::Read, path::Path, 
 
 use async_trait::async_trait;
 use fds_toolbox_core::{
-    common::series::{TimeSeries0, TimeSeries2, TimeSeries3},
+    common::series::TimeSeries3,
     file::{FileSystem, OsFs, ParseError, Simulation, SimulationPath},
     formats::{
         csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
@@ -137,7 +137,7 @@ impl SimulationData {
         match self {
             SimulationData::Devc(x) => x.size_in_bytes(),
             SimulationData::Slice(x) => x.data.size_in_bytes(),
-            SimulationData::Cpu(x) => std::mem::size_of::<CpuData>(),
+            SimulationData::Cpu(_x) => std::mem::size_of::<CpuData>(),
             SimulationData::Hrr(x) => x.len() * std::mem::size_of::<HRRStep>(),
             SimulationData::S3d(x) => x.size_in_bytes(),
             SimulationData::P3d(x) => x.size_in_bytes(),
@@ -182,13 +182,13 @@ where
 }
 
 impl MokaStore {
-    pub fn new(max_capacity: u64) -> Self {
+    pub fn new(_max_capacity: u64) -> Self {
         Self {
             cache: Cache::builder()
                 // Up to 10,000 entries.
                 .max_capacity(10_000)
                 // Create the cache.
-                .weigher(|k, v: &SimulationData| {
+                .weigher(|_k, v: &SimulationData| {
                     // This is a rather arbitrary way of weighing the values.
 
                     let s = v.size();
@@ -196,7 +196,7 @@ impl MokaStore {
                     // Evicting values with references just loses the value and doesn't free the memory, so we weigh them higher to prevent that.
                     let r = v.ref_count();
 
-                    (s.ilog2() as u32) * (r as u32)
+                    s.ilog2() * (r as u32)
                 })
                 .build(),
             simulations: HashMap::new(),
@@ -212,7 +212,7 @@ impl MokaStore {
             .get(&idx.0)
             .ok_or(SimulationDataError::InvalidSimulationKey)?;
         match idx.1 {
-            SimulationDataIdx::Devc(idx) => match simulation.csv_devc().await {
+            SimulationDataIdx::Devc(_idx) => match simulation.csv_devc().await {
                 Ok(devc) => Ok(SimulationData::Devc(Arc::new(devc))),
                 Err(err) => Err(err.into()),
             },
@@ -220,14 +220,14 @@ impl MokaStore {
                 Ok(slice) => Ok(SimulationData::Slice(Arc::new(slice))),
                 Err(err) => Err(err.into()),
             },
-            SimulationDataIdx::Cpu(idx) => todo!(),
-            SimulationDataIdx::Hrr(idx) => todo!(),
-            SimulationDataIdx::S3d(idx) => todo!(),
-            SimulationDataIdx::P3d(idx) => todo!(),
+            SimulationDataIdx::Cpu(_idx) => todo!(),
+            SimulationDataIdx::Hrr(_idx) => todo!(),
+            SimulationDataIdx::S3d(_idx) => todo!(),
+            SimulationDataIdx::P3d(_idx) => todo!(),
         }
     }
 
-    pub fn get(&self, idx: SimulationDataIdx) {
+    pub fn get(&self, _idx: SimulationDataIdx) {
         // self.cache.get_with(key, init)
         // self.cache.entry(idx).or_insert_with(init)
         // self.cache.get
