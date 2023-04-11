@@ -1,12 +1,13 @@
 use std::{borrow::Borrow, ops::Index};
 
 use async_trait::async_trait;
-use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, RemoveAxis, Ix4};
+use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, Ix4, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
 use super::arr_meta::ArrayStats;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+// TODO: Manually implement (Partial)Eq to assure stats are checked first to avoid reading the entire array if possible
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct Series<T, Ix: Dimension> {
     data: Array<T, Ix>,
     pub stats: ArrayStats<T>,
@@ -30,6 +31,10 @@ impl<T: Copy, Ix: Dimension> Series<T, Ix> {
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        self.data.len() * std::mem::size_of::<T>() + std::mem::size_of::<ArrayStats<T>>()
     }
 }
 
@@ -63,7 +68,7 @@ impl<T> Index<usize> for Series1<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub struct SeriesView<'a, T: Copy, Ix: Dimension, Ref: 'a = ()> {
     pub data: ArrayView<'a, T, Ix>,
     // TODO: Should we borrow this instead?
@@ -158,8 +163,8 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
     }
 
     pub fn size_in_bytes(&self) -> usize {
-        self.values.data.len() * std::mem::size_of::<Value>()
-            + self.time_in_seconds.data.len() * std::mem::size_of::<Time>()
+        self.values.size_in_bytes()
+            + self.time_in_seconds.size_in_bytes()
     }
 
     pub fn is_empty(&self) -> bool {
