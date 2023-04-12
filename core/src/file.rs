@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::{
     common::series::{TimeSeries, TimeSeriesSourceAsync},
     formats::{
-        csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
+        csv::{self, cpu::CpuData, devc::DeviceList, hrr::HRRStep},
         smoke::dim2::slice::{self, Slice},
         smv::{self, Smv},
     },
@@ -21,7 +21,7 @@ use crate::{
 pub trait FileSystem: Send + Sync {
     type Path: Borrow<Self::PathRef> + Send + Sync + Debug;
     type PathRef: ?Sized + Send + Sync + Debug;
-    type Error: Error;
+    type Error: Error + Send + Sync + 'static;
     type File: Read;
 
     async fn read(&self, path: &Self::PathRef) -> Result<Self::File, Self::Error>;
@@ -193,7 +193,8 @@ impl<Fs: FileSystem> Simulation<Fs>
 
         let smv = Smv::parse(&string).map_err(|e| {
             // TODO: This is a hack to log errors at all, it should be cleanly passed up the stack or otherwise handled properly
-            eprintln!("{:?}", e.add_src(string));
+            //       Maybe log via tracing? Not optimal since it doesn't strongly associate the error with the fileslice_index(mesh_index, bounds)
+            // eprintln!("{:?}", e.add_src(string));
 
             ParseError::Parse(SmvErr::Normal(e))
         })?;
@@ -295,13 +296,14 @@ impl<Fs: FileSystem> Simulation<Fs>
             .collect())
     }
 
-    pub async fn csv_devc(&self) -> Result<Devices, ParseError<Fs::Error, csv::devc::Error>> {
+    pub async fn csv_devc(&self) -> Result<DeviceList, ParseError<Fs::Error, csv::devc::Error>> {
         let device_lists = self
-            .csv("devc", Devices::from_reader)
+            .csv("devc", DeviceList::from_reader)
             .await
             .map_err(|e| e.map_parse_err(csv::devc::Error::ParsingError))?;
 
-        Devices::merge(device_lists).map_err(|e| ParseError::Parse(csv::devc::Error::JoinError(e)))
+        DeviceList::merge(device_lists)
+            .map_err(|e| ParseError::Parse(csv::devc::Error::JoinError(e)))
     }
 }
 

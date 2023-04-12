@@ -39,7 +39,7 @@ struct CpuDataUntyped {
     velo_time: f32,
     #[serde(rename = "PRES")]
     pres_time: f32,
-    #[serde(rename = "WELL")]
+    #[serde(rename = "WALL")]
     wall_time: f32,
     #[serde(rename = "DUMP")]
     dump_time: f32,

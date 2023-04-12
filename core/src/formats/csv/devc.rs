@@ -11,10 +11,10 @@ use crate::common::series::{Series, Series1, Series1View, TimeSeries0View, TimeS
 // TODO: Rename to DeviceList
 //       rust-analyzer currently doesn't want me to it seems
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Devices {
+pub struct DeviceList {
     // pub time_in_seconds: Arc<Series1>,
     pub time_in_seconds: Series1,
-    pub(crate) devices: Vec<DeviceReadings>,
+    pub devices: Vec<DeviceReadings>,
     // devices_by_name: HashMap<String, DeviceIdx>,
 }
 
@@ -86,7 +86,7 @@ pub enum Error {
     JoinError(JoinError),
 }
 
-impl Devices {
+impl DeviceList {
     pub fn size_in_bytes(&self) -> usize {
         self.time_in_seconds.size_in_bytes()
             + self
@@ -99,7 +99,7 @@ impl Devices {
     // TODO: This could probably be made to take an iterator instead of a vec.
     //       Problem is that we currently iterate twice.
     //       This could be reduced to a single iteration, but at the expense of early termination on errors before allocating anything.
-    pub fn merge(devices: Vec<Self>) -> Result<Devices, JoinError> {
+    pub fn merge(devices: Vec<Self>) -> Result<DeviceList, JoinError> {
         let mut iter = devices.iter().enumerate();
 
         // Take the first timeline and check all others against it
@@ -120,7 +120,7 @@ impl Devices {
         // We extract the first device-list as owned to take ownership of time_in_seconds,
         //  instead of cloning it.
         let first_device = iter.next().ok_or(JoinError::EmptyVec)?;
-        let Devices {
+        let DeviceList {
             time_in_seconds,
             devices: first_devices,
         } = first_device;
@@ -131,7 +131,7 @@ impl Devices {
             .chain(iter.map(|x| x.devices))
             .flatten()
             .collect::<Vec<_>>();
-        Ok(Devices {
+        Ok(DeviceList {
             time_in_seconds,
             devices,
         })
@@ -249,7 +249,7 @@ impl Devices {
 
         let times = Series::from_vec(times);
 
-        Ok(Devices {
+        Ok(DeviceList {
             time_in_seconds: times,
             devices,
             // devices_by_name,
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn basic_parsing() {
-        let devices = Devices::from_reader(
+        let devices = DeviceList::from_reader(
             r#"s, m3/s, C, 1/m
         Time,   Zuluft_1,   Abluft_1,   T_B01
         0.0E+0, 1.2E+3,     -2.3E-2,    4.1E-12
@@ -347,7 +347,7 @@ mod tests {
 
     #[test]
     fn time_unit() {
-        let devices = Devices::from_reader(
+        let devices = DeviceList::from_reader(
             r#"h
         Time
         1"#
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn time_unit_error() {
-        Devices::from_reader(
+        DeviceList::from_reader(
             r#"one of the time-units of all time
         Time
         1"#
@@ -372,13 +372,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn missing_names() {
-        Devices::from_reader(r#"s"#.as_bytes()).unwrap();
+        DeviceList::from_reader(r#"s"#.as_bytes()).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn invalid_number() {
-        Devices::from_reader(
+        DeviceList::from_reader(
             r#"s
         Time
         a 'number'"#

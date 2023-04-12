@@ -24,7 +24,7 @@
 
 use std::fmt::Debug;
 
-use fds_toolbox_core::formats::csv::devc::Devices;
+use fds_toolbox_core::formats::csv::devc::DeviceList;
 
 use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
 use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
@@ -194,7 +194,7 @@ impl Application for FdsToolbox {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let simulations = Simulations::new(vec![Simulation {
             // TODO: Prompt for files, this is all for testing
-            devc: Devices::from_reader(
+            devc: DeviceList::from_reader(
                 include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
             )
             .unwrap(),

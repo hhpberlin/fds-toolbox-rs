@@ -6,6 +6,8 @@ use uom::{
     si::f32::{MassRate, Power, Time},
     str::ParseQuantityError,
 };
+
+// TODO: Make this SoA instead of AoS
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub struct HRRStep {
@@ -19,6 +21,7 @@ pub struct HRRStep {
     q_diff: Power,
     q_pres: Power,
     q_part: Power,
+    // TODO: Make this field optional, it doesn't exist in older files
     q_geom: Power,
     q_enth: Power,
     q_total: Power,

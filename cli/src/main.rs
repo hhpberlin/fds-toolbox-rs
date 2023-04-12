@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{arg, Parser};
 use color_eyre::eyre;
-use fds_toolbox_core::file::{OsFs, Simulation};
+use fds_toolbox_core::file::{OsFs, Simulation, FileSystem};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -31,8 +31,23 @@ async fn main() -> color_eyre::Result<()> {
         &args.smv,
     )
     .await?;
+    // .map_err(eyre!("Parsing bruh moment"))?;
 
-    dbg!(sim.path);
+    dbg!(&sim.path);
 
+    dbg!(sim.csv_cpu().await?);
+    // dbg!(sim.csv_devc().await?.time_in_seconds.stats);
+    // dbg!(sim.csv_hrr().await?.len());
+
+    devc(sim).await?;
+
+    Ok(())
+}
+
+async fn devc<Fs: FileSystem>(sim: Simulation<Fs>) -> color_eyre::Result<()> {
+    let devc = sim.csv_devc().await?;
+    devc.devices.iter().for_each(|d| {
+        println!("{}", d.name);
+    });
     Ok(())
 }

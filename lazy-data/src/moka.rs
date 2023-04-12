@@ -5,7 +5,7 @@ use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{FileSystem, OsFs, ParseError, Simulation, SimulationPath},
     formats::{
-        csv::{self, cpu::CpuData, devc::Devices, hrr::HRRStep},
+        csv::{self, cpu::CpuData, devc::DeviceList, hrr::HRRStep},
         smoke::dim2::slice::{self, Slice},
         smv,
     },
@@ -113,7 +113,7 @@ pub enum SimulationDataIdx {
 
 #[derive(Debug, Clone)]
 pub enum SimulationData {
-    Devc(Arc<Devices>),
+    Devc(Arc<DeviceList>),
     Cpu(Arc<CpuData>),
     Hrr(Arc<Vec<HRRStep>>),
     Slice(Arc<Slice>),
