@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::{
     common::series::{TimeSeries, TimeSeriesSourceAsync},
     formats::{
-        csv::{self, cpu::CpuData, devc::DeviceList, hrr::HRRStep},
+        csv::{self, cpu::{CpuInfo, CpuData}, devc::DeviceList, hrr::HRRStep},
         smoke::dim2::slice::{self, Slice},
         smv::{self, Smv},
     },
@@ -277,7 +277,7 @@ impl<Fs: FileSystem> Simulation<Fs>
 
     pub async fn csv_cpu(
         &self,
-    ) -> Result<Option<Vec<CpuData>>, ParseError<Fs::Error, csv::cpu::Error>> {
+    ) -> Result<Option<CpuData>, ParseError<Fs::Error, csv::cpu::Error>> {
         let file_name = format!("{}_cpu.csv", self.path.chid);
         if !self.exists(&file_name).await.map_err(ParseError::Fs)? {
             return Ok(None);

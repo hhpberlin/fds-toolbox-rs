@@ -29,3 +29,4 @@ serde = { version = "1.0", features = ["derive"] }
 # bytemuck = "1.13"
 
 fds-toolbox-core = { path = "../core" }
+get-size = "0.1.3"

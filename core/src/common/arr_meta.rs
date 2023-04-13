@@ -3,11 +3,12 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
+use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 
 use super::range::RangeIncl;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, GetSize)]
 pub struct ArrayStats<Num, NumDivisible = Num, NumSq = Num> {
     pub range: RangeIncl<Num>,
     pub mean: NumDivisible,

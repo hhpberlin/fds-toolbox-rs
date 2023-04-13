@@ -5,11 +5,12 @@ use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{FileSystem, OsFs, ParseError, Simulation, SimulationPath},
     formats::{
-        csv::{self, cpu::CpuData, devc::DeviceList, hrr::HRRStep},
+        csv::{self, cpu::{CpuInfo, CpuData}, devc::DeviceList, hrr::HRRStep},
         smoke::dim2::slice::{self, Slice},
-        smv,
+        smv::{self, Smv},
     },
 };
+use get_size::GetSize;
 use moka::future::Cache;
 use thiserror::Error;
 
@@ -113,8 +114,9 @@ pub enum SimulationDataIdx {
 
 #[derive(Debug, Clone)]
 pub enum SimulationData {
+    Smv(Arc<Smv>),
     Devc(Arc<DeviceList>),
-    Cpu(Arc<CpuData>),
+    Cpu(Option<Arc<CpuData>>),
     Hrr(Arc<Vec<HRRStep>>),
     Slice(Arc<Slice>),
     S3d(Arc<TimeSeries3>),
@@ -124,9 +126,10 @@ pub enum SimulationData {
 impl SimulationData {
     fn ref_count(&self) -> usize {
         match self {
+            SimulationData::Smv(x) => Arc::strong_count(x),
             SimulationData::Devc(x) => Arc::strong_count(x),
             SimulationData::Slice(x) => Arc::strong_count(x),
-            SimulationData::Cpu(x) => Arc::strong_count(x),
+            SimulationData::Cpu(x) => x.as_ref().map(Arc::strong_count).unwrap_or(1),
             SimulationData::Hrr(x) => Arc::strong_count(x),
             SimulationData::S3d(x) => Arc::strong_count(x),
             SimulationData::P3d(x) => Arc::strong_count(x),
@@ -135,12 +138,13 @@ impl SimulationData {
 
     fn size(&self) -> usize {
         match self {
-            SimulationData::Devc(x) => x.size_in_bytes(),
-            SimulationData::Slice(x) => x.data.size_in_bytes(),
-            SimulationData::Cpu(_x) => std::mem::size_of::<CpuData>(),
-            SimulationData::Hrr(x) => x.len() * std::mem::size_of::<HRRStep>(),
-            SimulationData::S3d(x) => x.size_in_bytes(),
-            SimulationData::P3d(x) => x.size_in_bytes(),
+            SimulationData::Smv(x) => x.get_size(),
+            SimulationData::Devc(x) => x.get_size(),
+            SimulationData::Slice(x) => x.get_size(),
+            SimulationData::Cpu(x) => x.get_size(),
+            SimulationData::Hrr(x) => x.get_size(),
+            SimulationData::S3d(x) => x.get_size(),
+            SimulationData::P3d(x) => x.get_size(),
         }
     }
 }
@@ -182,11 +186,11 @@ where
 }
 
 impl MokaStore {
-    pub fn new(_max_capacity: u64) -> Self {
+    pub fn new(max_capacity: u64) -> Self {
         Self {
             cache: Cache::builder()
                 // Up to 10,000 entries.
-                .max_capacity(10_000)
+                .max_capacity(max_capacity)
                 // Create the cache.
                 .weigher(|_k, v: &SimulationData| {
                     // This is a rather arbitrary way of weighing the values.
@@ -211,17 +215,29 @@ impl MokaStore {
             .simulations
             .get(&idx.0)
             .ok_or(SimulationDataError::InvalidSimulationKey)?;
+
+        fn convert<T, E: Into<SimulationDataError>>(
+            res: Result<T, E>,
+            f: impl FnOnce(Arc<T>) -> SimulationData,
+        ) -> Result<SimulationData, SimulationDataError> {
+            match res {
+                Ok(x) => Ok(f(Arc::new(x))),
+                Err(err) => Err(err.into()),
+            }
+        }
+
         match idx.1 {
-            SimulationDataIdx::Devc(_idx) => match simulation.csv_devc().await {
-                Ok(devc) => Ok(SimulationData::Devc(Arc::new(devc))),
-                Err(err) => Err(err.into()),
+            SimulationDataIdx::Devc(_idx) => convert(simulation.csv_devc().await, SimulationData::Devc),
+            SimulationDataIdx::Slice(idx) => {
+                convert(simulation.slice(idx.0).await, SimulationData::Slice)
+            }
+            SimulationDataIdx::Cpu(_idx) => {
+                match simulation.csv_cpu().await {
+                    Ok(x) => Ok(SimulationData::Cpu(x.map(Arc::new))),
+                    Err(err) => Err(err.into()),
+                }
             },
-            SimulationDataIdx::Slice(idx) => match simulation.slice(idx.0).await {
-                Ok(slice) => Ok(SimulationData::Slice(Arc::new(slice))),
-                Err(err) => Err(err.into()),
-            },
-            SimulationDataIdx::Cpu(_idx) => todo!(),
-            SimulationDataIdx::Hrr(_idx) => todo!(),
+            SimulationDataIdx::Hrr(_idx) => convert(simulation.csv_hrr().await, SimulationData::Hrr),
             SimulationDataIdx::S3d(_idx) => todo!(),
             SimulationDataIdx::P3d(_idx) => todo!(),
         }

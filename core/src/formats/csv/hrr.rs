@@ -1,5 +1,6 @@
 use std::{io::Read, num::ParseFloatError, str::FromStr};
 
+use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{
@@ -30,6 +31,10 @@ pub struct HRRStep {
     #[serde(rename = "MLR_TOTAL")]
     mass_flow_rate_total: MassRate,
 }
+
+// Can't use derive because no default implementation for `uom` types exists,
+// and derive impl tries calling `GetSize` functions for all members.
+impl GetSize for HRRStep {}
 
 pub enum HRRStepDataType {
     HeatReleaseRate,

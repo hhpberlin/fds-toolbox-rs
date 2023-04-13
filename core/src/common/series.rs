@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, ops::Index};
 
 use async_trait::async_trait;
+use get_size::GetSize;
 use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, Ix4, RemoveAxis};
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,13 @@ use super::arr_meta::ArrayStats;
 pub struct Series<T, Ix: Dimension> {
     data: Array<T, Ix>,
     pub stats: ArrayStats<T>,
+}
+
+impl<T, Ix: Dimension> GetSize for Series<T, Ix> {
+    fn get_size(&self) -> usize {
+        // TODO: This does not account for a little bit of overhead from the `Array` struct itself
+        self.data.len() * std::mem::size_of::<T>() + std::mem::size_of::<ArrayStats<T>>()
+    }
 }
 
 pub type Series1<T = f32> = Series<T, Ix1>;
@@ -31,10 +39,6 @@ impl<T: Copy, Ix: Dimension> Series<T, Ix> {
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         self.data.iter().copied()
-    }
-
-    pub fn size_in_bytes(&self) -> usize {
-        self.data.len() * std::mem::size_of::<T>() + std::mem::size_of::<ArrayStats<T>>()
     }
 }
 
@@ -118,6 +122,16 @@ pub struct TimeSeries<Value: Copy, Ix: Dimension, Time: Copy = f32> {
     name: String,
 }
 
+// Can't use derive here because it doesn't understand that `Ix` does not need to impl `GetSize`
+impl<Value: Copy, Ix: Dimension, Time: Copy> GetSize for TimeSeries<Value, Ix, Time> {
+    fn get_heap_size(&self) -> usize {
+        self.time_in_seconds.get_heap_size()
+            + self.values.get_heap_size()
+            + self.unit.get_heap_size()
+            + self.name.get_heap_size()
+    }
+}
+
 pub type TimeSeries0<Value = f32, Time = f32> = TimeSeries<Value, Ix1, Time>;
 pub type TimeSeries2<Value = f32, Time = f32> = TimeSeries<Value, Ix3, Time>;
 pub type TimeSeries3<Value = f32, Time = f32> = TimeSeries<Value, Ix4, Time>;
@@ -156,14 +170,6 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
 
     pub fn len(&self) -> usize {
         self.time_in_seconds.data.len()
-    }
-
-    pub fn size(&self) -> usize {
-        self.values.data.len() + self.time_in_seconds.data.len()
-    }
-
-    pub fn size_in_bytes(&self) -> usize {
-        self.values.size_in_bytes() + self.time_in_seconds.size_in_bytes()
     }
 
     pub fn is_empty(&self) -> bool {

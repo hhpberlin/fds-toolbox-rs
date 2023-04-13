@@ -29,8 +29,11 @@ csv = "1.1"
 ndarray = { version = "0.15", features = ["serde"] }
 byteorder = "1.4"
 futures = "0.3.27"
+once_cell = "1.17.1"
 # strum = "0.24.1"
 # strum_macros = "0.24.3"
+
+get-size = { version = "^0.1", features = ["derive"] }
 
 # [target.'cfg(loom)'.dependencies]
 # loom = "0.5"

@@ -3,13 +3,14 @@ use crate::formats::read_ext::{ReadExt, U32Ext};
 pub use crate::formats::smoke::parse_err::Error;
 use crate::geom::{Bounds3I, Dim3D, Vec2, Vec2U, Vec3I};
 use byteorder::ReadBytesExt;
+use get_size::GetSize;
 use ndarray::{Array1, Array2, Array3, Axis};
 use std::io::Read;
 use tracing::instrument;
 
 use super::slice_frame::SliceFrame;
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct SliceInfo {
     pub bounds: Bounds3I,
     pub flat_dim: Dim3D,
@@ -18,7 +19,7 @@ pub struct SliceInfo {
     pub units: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Slice {
     pub info: SliceInfo,
     pub data: TimeSeries2,

@@ -4,9 +4,10 @@
 use std::ops::Index;
 
 use derive_more::{Add, Constructor, Mul, Sub, Sum};
+use get_size::GetSize;
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, GetSize)]
 pub enum Dim3D {
     X = 0,
     Y = 1,
@@ -76,7 +77,7 @@ impl<T> From<Vec2<T>> for (T, T) {
     }
 }
 
-#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash)]
+#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash, GetSize)]
 pub struct Vec3<T> {
     pub x: T,
     pub y: T,
@@ -135,7 +136,7 @@ impl<T> Index<Dim3D> for Vec3<T> {
 }
 
 // TODO: Should this really derive Default?
-#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash)]
+#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash, GetSize)]
 pub struct Bounds3<T> {
     pub min: Vec3<T>,
     pub max: Vec3<T>,
@@ -176,7 +177,7 @@ impl Bounds3I {
 }
 
 // Not using Bounds3 so bounds for arithmetic operations can be applied to Bounds3 later, without restricting this ones type arguments
-#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, GetSize)]
 pub struct Surfaces3<T> {
     pub neg_x: T,
     pub pos_x: T,

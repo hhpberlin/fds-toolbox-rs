@@ -1,13 +1,14 @@
-use std::io::Read;
+use std::{collections::HashMap, io::Read};
 
 use csv::ErrorKind;
+use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 use uom::si::{f32::Time, time::second};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CpuData {
+pub struct CpuInfo {
     pub mpi_rank: u32,
     pub main_time: Time,
     pub divg_time: Time,
@@ -25,8 +26,18 @@ pub struct CpuData {
     pub total_time: Time,
 }
 
+// Can't use derive because no default implementation for `uom` types exists,
+// and derive impl tries calling `GetSize` functions for all members.
+impl GetSize for CpuInfo {}
+
+#[derive(Debug, Serialize, Deserialize, GetSize)]
+pub struct CpuData {
+    pub info: Vec<CpuInfo>,
+    by_mpi_rank: HashMap<u32, usize>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-struct CpuDataUntyped {
+struct CpuInfoUntyped {
     #[serde(rename = "Rank")]
     mpi_rank: u32,
     #[serde(rename = "MAIN")]
@@ -70,7 +81,25 @@ struct CpuDataUntyped {
 pub struct Error(#[from] csv::Error);
 
 impl CpuData {
-    pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, Error> {
+    pub fn from_reader(rdr: impl Read) -> Result<Self, Error> {
+        let info = CpuInfo::from_reader(rdr)?;
+
+        let by_mpi_rank = info
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (c.mpi_rank, i))
+            .collect::<HashMap<_, _>>();
+
+        Ok(Self { info, by_mpi_rank })
+    }
+
+    pub fn by_mpi_rank(&self, mpi_rank: u32) -> Option<&CpuInfo> {
+        self.by_mpi_rank.get(&mpi_rank).map(|&i| &self.info[i])
+    }
+}
+
+impl CpuInfo {
+    fn from_reader(rdr: impl Read) -> Result<Vec<Self>, Error> {
         let mut rdr = csv::ReaderBuilder::new()
             // .has_headers(false)
             .trim(csv::Trim::All)
@@ -83,7 +112,7 @@ impl CpuData {
         let mut buf = Vec::new();
 
         for result in rdr.deserialize() {
-            let record: CpuDataUntyped = match result {
+            let record: CpuInfoUntyped = match result {
                 Ok(record) => record,
                 Err(e) => {
                     // Skip empty lines
@@ -99,7 +128,7 @@ impl CpuData {
                     return Err(Error(e));
                 }
             };
-            let record = CpuData {
+            let record = CpuInfo {
                 mpi_rank: record.mpi_rank,
                 main_time: Time::new::<second>(record.main_time),
                 divg_time: Time::new::<second>(record.divg_time),
@@ -129,7 +158,7 @@ mod tests {
 
     #[test]
     fn basic_parsing() {
-        let cpus = CpuData::from_reader(r#"Rank,MAIN,DIVG,MASS,VELO,PRES,WELL,DUMP,PART,RADI,FIRE,EVAC,HVAC,COMM,Total T_USED (s)
+        let cpus = CpuInfo::from_reader(r#"Rank,MAIN,DIVG,MASS,VELO,PRES,WELL,DUMP,PART,RADI,FIRE,EVAC,HVAC,COMM,Total T_USED (s)
         1,1.2E3,4.5E6,-1.2E3,3.4E-5,0,123,-123,1e1,2e-1,.1e1,-.2e-0,-.1,01,1e01
         "#.as_bytes()).unwrap();
         assert_eq!(cpus.len(), 1);
@@ -153,7 +182,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn missing_headers() {
-        CpuData::from_reader(
+        CpuInfo::from_reader(
             r#"Rank,MAIN
         1,1.2E3"#
                 .as_bytes(),

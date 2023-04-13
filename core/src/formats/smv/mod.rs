@@ -4,6 +4,7 @@ mod util;
 mod mesh;
 
 pub use err::Error;
+use get_size::GetSize;
 
 #[cfg(test)]
 mod tests;
@@ -35,7 +36,7 @@ macro_rules! ws_separated {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Smv {
     pub title: String,
     pub fds_version: String,
@@ -66,19 +67,19 @@ pub struct Smv {
     pub csv_files: HashMap<String, Vec<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct TimeRange {
     pub time_start: f32,
     pub time_end: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct ViewTimes {
     pub time_end: f32,
     pub num_frames: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Surface {
     pub id: String,
     /// TMPM in FDS
@@ -93,13 +94,13 @@ pub struct Surface {
     pub texture: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Material {
     pub name: String,
     pub rgb: Vec3F,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Device {
     pub id: String,
     pub quantity: String,
@@ -111,7 +112,7 @@ pub struct Device {
     pub property_id: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct DeviceActivation {
     // TODO: Find out what these names mean and give them better names
     a: i32,
@@ -119,14 +120,14 @@ pub struct DeviceActivation {
     c: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub enum Smoke3DType {
     // TODO: Find out what these names mean and give them better names
     F,
     G,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Smoke3D {
     pub mesh_index: i32,
     pub file_name: String,
@@ -135,7 +136,7 @@ pub struct Smoke3D {
     pub mass_extinction_coefficient: Option<f32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Slice {
     pub mesh_index: i32,
     pub file_name: String,
@@ -149,34 +150,34 @@ pub struct Slice {
     pub id: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Plot3D {
     pub file_name: String,
     pub mesh_index: i32,
     pub quantities: [Quantity; 5],
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Property {
     pub name: String,
     pub smv_ids: Vec<String>,
     pub smv_props: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Quantity {
     pub label: String,
     pub bar_label: String,
     pub unit: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Ramp {
     pub name: String,
     pub values: Vec<RampValue>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct RampValue {
     pub independent: f32,
     pub dependent: f32,

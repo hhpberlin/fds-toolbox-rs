@@ -11,7 +11,7 @@ use crate::{
     ws_separated,
 };
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Obst {
     name: Option<String>,
     id: u32,
@@ -28,7 +28,7 @@ pub struct Obst {
     rgba: Option<(Vec3F, f32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 struct Vent {
     bounds: Bounds3F,
     vent_index: i32,
@@ -41,7 +41,7 @@ struct Vent {
     rgba: Option<(Vec3F, f32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct CircularVent {
     bounds: Bounds3F,
     vent_index: i32,
@@ -54,7 +54,7 @@ pub struct CircularVent {
     rgba: Option<(Vec3F, f32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, GetSize)]
 pub struct Mesh {
     name: String,
     offset: Vec3F,

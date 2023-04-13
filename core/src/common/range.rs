@@ -3,9 +3,10 @@ use std::{
     ops::{Add, Div, Mul, RangeInclusive, Sub},
 };
 
+use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, GetSize)]
 pub struct RangeIncl<N> {
     pub min: N,
     pub max: N,

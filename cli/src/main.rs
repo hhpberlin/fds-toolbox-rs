@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use clap::{arg, Parser};
 use color_eyre::eyre;
 use fds_toolbox_core::file::{OsFs, Simulation, FileSystem};
+use fds_toolbox_lazy_data::moka::MokaStore;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -33,6 +34,8 @@ async fn main() -> color_eyre::Result<()> {
     .await?;
     // .map_err(eyre!("Parsing bruh moment"))?;
 
+    let moka = MokaStore::new(10_000);
+
     dbg!(&sim.path);
 
     dbg!(sim.csv_cpu().await?);
@@ -47,7 +50,7 @@ async fn main() -> color_eyre::Result<()> {
 async fn devc<Fs: FileSystem>(sim: Simulation<Fs>) -> color_eyre::Result<()> {
     let devc = sim.csv_devc().await?;
     devc.devices.iter().for_each(|d| {
-        println!("{}", d.name);
+        // println!("{}", d.name, d.values.stats);
     });
     Ok(())
 }

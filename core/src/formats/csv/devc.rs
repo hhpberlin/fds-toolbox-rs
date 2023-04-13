@@ -1,5 +1,6 @@
 use std::{io::Read, num::ParseFloatError, str::FromStr};
 
+use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::{si::f32::Time, str::ParseQuantityError};
@@ -10,7 +11,7 @@ use crate::common::series::{Series, Series1, Series1View, TimeSeries0View, TimeS
 
 // TODO: Rename to DeviceList
 //       rust-analyzer currently doesn't want me to it seems
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, GetSize)]
 pub struct DeviceList {
     // pub time_in_seconds: Arc<Series1>,
     pub time_in_seconds: Series1,
@@ -21,7 +22,7 @@ pub struct DeviceList {
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 // pub struct DeviceIdx(usize);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, GetSize)]
 pub struct DeviceReadings {
     pub unit: String,
     pub name: String,
@@ -31,10 +32,6 @@ pub struct DeviceReadings {
 impl DeviceReadings {
     pub fn view<'a>(&'a self, time_in_seconds: Series1View<'a>) -> TimeSeries0View<'a> {
         TimeSeriesView::new(time_in_seconds, self.values.view(), &self.unit, &self.name)
-    }
-
-    pub fn size_in_bytes(&self) -> usize {
-        self.values.size_in_bytes() + self.unit.len() + self.name.len()
     }
 }
 
@@ -87,15 +84,6 @@ pub enum Error {
 }
 
 impl DeviceList {
-    pub fn size_in_bytes(&self) -> usize {
-        self.time_in_seconds.size_in_bytes()
-            + self
-                .devices
-                .iter()
-                .map(|d| d.size_in_bytes())
-                .sum::<usize>()
-    }
-
     // TODO: This could probably be made to take an iterator instead of a vec.
     //       Problem is that we currently iterate twice.
     //       This could be reduced to a single iteration, but at the expense of early termination on errors before allocating anything.
