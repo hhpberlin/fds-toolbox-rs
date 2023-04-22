@@ -1,12 +1,15 @@
-use std::{pin::Pin, sync::Arc, sync::Weak};
+use std::{pin::Pin, sync::Arc, sync::Weak, fmt::Debug};
 
 use chrono::Duration;
+use derive_more::Constructor;
 use futures::Future;
 use parking_lot::Mutex;
 use thiserror::Error;
 use tokio::{sync::broadcast, task::JoinHandle, time::Instant};
 
 pub type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + 'a>>;
+
+// The following code is stolen from fasterthanlime
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("stringified error: {inner}")]
@@ -22,34 +25,30 @@ impl CachedError {
     }
 }
 
-// impl<T: std::fmt::Display> From<T> for CachedError {
-//     fn from(e: T) -> Self {
-//         CachedError::new(e)
-//     }
-// }
-
-// impl From<miette::Report> for CachedError {
-//     fn from(e: miette::Report) -> Self {
-//         CachedError::new(e)
-//     }
-// }
-
-// impl From<broadcast::error::RecvError> for CachedError {
-//     fn from(e: broadcast::error::RecvError) -> Self {
-//         CachedError::new(e)
-//     }
-// }
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Cached<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    inner: Arc<Mutex<CachedLastVideoInner<T>>>,
-    refresh_interval: Duration,
+    inner: Arc<Mutex<CachedInner<T>>>,
 }
 
-struct CachedLastVideoInner<T>
+impl<T> Cached<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    pub fn empty() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(CachedInner {
+                last_fetched: None,
+                inflight: None,
+            })),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct CachedInner<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -110,9 +109,8 @@ where
 
         // if we reached here, we're waiting for an in-flight request (we weren't
         // able to serve from cache)
-        Ok(rx
-            .recv()
+        rx.recv()
             .await
-            .map_err(|_| CachedError::new("in-flight request died"))??)
+            .map_err(|_| CachedError::new("in-flight request died"))?
     }
 }
