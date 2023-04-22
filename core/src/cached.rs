@@ -1,11 +1,9 @@
-use std::{pin::Pin, sync::Arc, sync::Weak, fmt::Debug};
+use std::{fmt::Debug, pin::Pin, sync::Arc, sync::Weak};
 
-use chrono::Duration;
-use derive_more::Constructor;
 use futures::Future;
 use parking_lot::Mutex;
-use thiserror::Error;
-use tokio::{sync::broadcast, task::JoinHandle, time::Instant};
+
+use tokio::{sync::broadcast, time::Instant};
 
 pub type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + 'a>>;
 
@@ -68,7 +66,7 @@ where
         let mut rx = {
             let mut inner = self.inner.lock();
 
-            if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
+            if let Some((_fetched_at, value)) = inner.last_fetched.as_ref() {
                 return Ok(value.clone());
             }
 

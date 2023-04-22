@@ -6,12 +6,10 @@ use clap::{arg, Parser};
 use color_eyre::eyre;
 use fds_toolbox_core::{
     cached::Cached,
-    file::{FileSystem, OsFs, Simulation, SimulationPath},
+    file::{FileSystem, Simulation},
 };
-use fds_toolbox_lazy_data::moka::{
-    DevcIdx, Fs, MokaStore, SimulationData, SimulationDataIdx, SimulationsDataIdx,
-};
-use tokio::{join, select};
+
+use tokio::join;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -84,7 +82,7 @@ async fn main() -> color_eyre::Result<()> {
 
 async fn devc<Fs: FileSystem>(sim: &Simulation<Fs>) -> color_eyre::Result<()> {
     let devc = sim.csv_devc().await?;
-    devc.devices.iter().for_each(|d| {
+    devc.devices.iter().for_each(|_d| {
         // println!("{}", d.name, d.values.stats);
     });
     Ok(())

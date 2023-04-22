@@ -1,7 +1,4 @@
-use crate::formats::{
-    read_ext::{ReadBlockErr, ReadExt, U32Ext},
-    smoke::parse_err::Error,
-};
+use crate::formats::{read_ext::ReadExt, smoke::parse_err::Error};
 use byteorder::ReadBytesExt;
 use std::io::Read;
 
@@ -33,7 +30,7 @@ impl S3D {
 
         let Size = Vec3I::new(x, y, z);
         let mut ret = S3D {
-            Size: Size,
+            Size,
             MinValues: Size,
             MaxValues: Size,
             Frames: Vec::new(),

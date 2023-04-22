@@ -1,18 +1,12 @@
-use std::{collections::HashMap, error::Error, hash::Hash, io::Read, path::Path, sync::Arc};
+use std::{error::Error, hash::Hash, io::Read, path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{self, FileSystem, OsFs, ParseError, Simulation, SimulationPath},
     formats::{
-        csv::{
-            self,
-            cpu::{CpuData, CpuInfo},
-            devc::DeviceList,
-            hrr::HrrStep,
-        },
+        csv::{self, cpu::CpuData, devc::DeviceList, hrr::HrrStep},
         smoke::dim2::slice::{self, Slice},
-        smv::{self, Smv},
     },
 };
 use get_size::GetSize;
