@@ -34,6 +34,7 @@ once_cell = "1.17.1"
 # strum_macros = "0.24.3"
 
 get-size = { version = "^0.1", features = ["derive"] }
+parking_lot = "0.12.1"
 
 # [target.'cfg(loom)'.dependencies]
 # loom = "0.5"

@@ -3,6 +3,7 @@ use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::
 use async_trait::async_trait;
 use derive_more::Constructor;
 use futures::future::join_all;
+use get_size::GetSize;
 use ndarray::Ix3;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -10,7 +11,12 @@ use thiserror::Error;
 use crate::{
     common::series::{TimeSeries, TimeSeriesSourceAsync},
     formats::{
-        csv::{self, cpu::{CpuInfo, CpuData}, devc::DeviceList, hrr::HRRStep},
+        csv::{
+            self,
+            cpu::{CpuData, CpuInfo},
+            devc::DeviceList,
+            hrr::HrrStep,
+        },
         smoke::dim2::slice::{self, Slice},
         smv::{self, Smv},
     },
@@ -97,6 +103,18 @@ pub struct Simulation<Fs: FileSystem> {
     slice_index: HashMap<(i32, Bounds3I), usize>,
 }
 
+// I don't want to restrict `Fs` to be `GetSize` on the struct itself
+// and the derive macro doesn't properly do this itself.
+impl<Fs> GetSize for Simulation<Fs>
+where
+    Fs: FileSystem + GetSize,
+    Fs::Path: GetSize,
+{
+    fn get_heap_size(&self) -> usize {
+        self.path.get_heap_size() + self.smv.get_heap_size() + self.slice_index.get_heap_size()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Constructor)]
 pub struct SimulationPath<Fs: FileSystem> {
     /// The file system used to read the simulation files
@@ -105,6 +123,30 @@ pub struct SimulationPath<Fs: FileSystem> {
     pub directory: Fs::Path,
     /// The simulation id
     pub chid: String,
+}
+
+impl<Fs: FileSystem> SimulationPath<Fs> {
+    pub fn map<NewFs: FileSystem>(
+        self,
+        f: impl FnOnce(Fs) -> NewFs,
+        fd: impl FnOnce(Fs::Path) -> NewFs::Path,
+    ) -> SimulationPath<NewFs> {
+        SimulationPath {
+            fs: f(self.fs),
+            directory: fd(self.directory),
+            chid: self.chid,
+        }
+    }
+}
+
+impl<Fs> GetSize for SimulationPath<Fs>
+where
+    Fs: FileSystem + GetSize,
+    Fs::Path: GetSize,
+{
+    fn get_heap_size(&self) -> usize {
+        self.chid.get_heap_size() + self.directory.get_heap_size() + self.fs.get_heap_size()
+    }
 }
 
 #[derive(Debug)]
@@ -153,10 +195,13 @@ pub enum SmvErr {
     // FancyMiette(miette::Report),
 }
 
-impl<Fs: FileSystem> Simulation<Fs>
-// where
-//     Fs::Path: Debug,
-{
+impl<Fs: FileSystem> SimulationPath<Fs> {
+    pub async fn parse(self) -> Result<Simulation<Fs>, ParseError<Fs::Error, SmvErr>> {
+        Simulation::parse(self.fs, self.directory, self.chid).await
+    }
+}
+
+impl<Fs: FileSystem> Simulation<Fs> {
     pub async fn parse(
         fs: Fs,
         directory: Fs::Path,
@@ -275,9 +320,7 @@ impl<Fs: FileSystem> Simulation<Fs>
         parsed.into_iter().collect()
     }
 
-    pub async fn csv_cpu(
-        &self,
-    ) -> Result<Option<CpuData>, ParseError<Fs::Error, csv::cpu::Error>> {
+    pub async fn csv_cpu(&self) -> Result<Option<CpuData>, ParseError<Fs::Error, csv::cpu::Error>> {
         let file_name = format!("{}_cpu.csv", self.path.chid);
         if !self.exists(&file_name).await.map_err(ParseError::Fs)? {
             return Ok(None);
@@ -287,9 +330,9 @@ impl<Fs: FileSystem> Simulation<Fs>
         Ok(Some(data))
     }
 
-    pub async fn csv_hrr(&self) -> Result<Vec<HRRStep>, ParseError<Fs::Error, csv::hrr::Error>> {
+    pub async fn csv_hrr(&self) -> Result<Vec<HrrStep>, ParseError<Fs::Error, csv::hrr::Error>> {
         Ok(self
-            .csv("hrr", HRRStep::from_reader)
+            .csv("hrr", HrrStep::from_reader)
             .await?
             .into_iter()
             .flatten()

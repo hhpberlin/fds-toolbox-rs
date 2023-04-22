@@ -77,7 +77,9 @@ impl<T> From<Vec2<T>> for (T, T) {
     }
 }
 
-#[derive(Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash, GetSize)]
+#[derive(
+    Add, Sub, Mul, Sum, Constructor, Default, PartialEq, Eq, Debug, Copy, Clone, Hash, GetSize,
+)]
 pub struct Vec3<T> {
     pub x: T,
     pub y: T,

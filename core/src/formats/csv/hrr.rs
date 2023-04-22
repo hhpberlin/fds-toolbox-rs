@@ -11,7 +11,7 @@ use uom::{
 // TODO: Make this SoA instead of AoS
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub struct HRRStep {
+pub struct HrrStep {
     #[serde(rename = "Time")]
     time: Time,
     #[serde(rename = "HRR")]
@@ -34,7 +34,7 @@ pub struct HRRStep {
 
 // Can't use derive because no default implementation for `uom` types exists,
 // and derive impl tries calling `GetSize` functions for all members.
-impl GetSize for HRRStep {}
+impl GetSize for HrrStep {}
 
 pub enum HRRStepDataType {
     HeatReleaseRate,
@@ -96,7 +96,7 @@ macro_rules! force_unit {
     };
 }
 
-impl HRRStep {
+impl HrrStep {
     pub fn from_reader(rdr: impl Read) -> Result<Vec<Self>, Error> {
         let rdr = csv::ReaderBuilder::new()
             .has_headers(false)
@@ -195,7 +195,7 @@ impl HRRStep {
                 return Err(Error::WrongValueCount(i + 2, j));
             }
 
-            steps.push(HRRStep {
+            steps.push(HrrStep {
                 time: force_unit!(Time, buf, factors, 0),
                 heat_release_rate: force_unit!(Power, buf, factors, 1),
                 q_radi: force_unit!(Power, buf, factors, 2),
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn basic_parsing() {
-        let hrrs = HRRStep::from_reader(r#"s,kW,kW,kW,kW,kW,kW,kW,kW,kW,kW,kg/s,kg/s
+        let hrrs = HrrStep::from_reader(r#"s,kW,kW,kW,kW,kW,kW,kW,kW,kW,kW,kg/s,kg/s
         Time,HRR,Q_RADI,Q_CONV,Q_COND,Q_DIFF,Q_PRES,Q_PART,Q_GEOM,Q_ENTH,Q_TOTAL,MLR_FUEL,MLR_TOTAL
          0.0000000E+000, 0.0000000E+000,-8.0996608E-001,-4.3266538E-006, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000,-8.0997040E-001, 0.0000000E+000, 0.0000000E+000
          1.0206207E+000, 1.3223356E-001,-4.4154689E-002, 3.3198851E-004,-1.1500706E-004,-1.6679039E-005, 0.0000000E+000, 0.0000000E+000, 0.0000000E+000, 2.2088911E-002, 8.8279171E-002, 6.8489026E-006, 6.8489026E-006

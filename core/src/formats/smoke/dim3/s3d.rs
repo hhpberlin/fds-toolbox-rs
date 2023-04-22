@@ -1,14 +1,14 @@
-use std::io::Read;
-use byteorder::ReadBytesExt;
 use crate::formats::{
     read_ext::{ReadBlockErr, ReadExt, U32Ext},
     smoke::parse_err::Error,
 };
+use byteorder::ReadBytesExt;
+use std::io::Read;
 
-use crate::geom::Vec3I;
 use crate::formats::smoke::dim3::slice_frame::SliceFrame;
+use crate::geom::Vec3I;
 
-pub struct  S3D {
+pub struct S3D {
     pub Size: Vec3I,
     pub MinValues: Vec3I, //should be a byte array, I hate rust
     pub MaxValues: Vec3I, //should be a byte array, I hate rust
@@ -30,7 +30,7 @@ impl S3D {
         rdr.read_fixed_u32(4)?;
         let z: i32 = 1 + rdr.read_i32::<byteorder::LittleEndian>()?;
         rdr.read_fixed_u32(4)?;
-        
+
         let Size = Vec3I::new(x, y, z);
         let mut ret = S3D {
             Size: Size,

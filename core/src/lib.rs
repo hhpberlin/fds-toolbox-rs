@@ -22,6 +22,7 @@
 // TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
 
+pub mod cached;
 pub mod common;
 pub mod formats;
 pub(crate) mod geom;

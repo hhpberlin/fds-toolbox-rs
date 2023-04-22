@@ -627,6 +627,7 @@ dependencies = [
  "miette",
  "ndarray",
  "once_cell",
+ "parking_lot",
  "serde",
  "thiserror",
  "tokio",
