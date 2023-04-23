@@ -3,3 +3,5 @@
 pub mod moka;
 // pub mod remote;
 // pub mod serialization;
+pub mod cached;
+pub mod memman;
