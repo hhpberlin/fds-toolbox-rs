@@ -27,69 +27,46 @@ impl CachedError {
 }
 
 #[derive(Clone, Debug)]
-pub struct Cached<T>
+pub struct Cached<T>(pub(crate) Arc<CachedInner<T>>)
 where
-    T: Clone + Send + Sync + 'static,
-{
-    // TODO: Use RwLock instead?
-    inner: Arc<Mutex<CachedInner<T>>>,
-    refresh_interval: Option<Duration>,
-}
-
-// (Partial)Eq and Hash all use reference equality, not value equality
-
-// impl<T> Eq for Cached<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: Eq,
-// {
-// }
-
-// impl<T> PartialEq for Cached<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: PartialEq,
-// {
-//     fn eq(&self, other: &Self) -> bool {
-//         std::ptr::eq(self, other)
-//     }
-// }
-// impl<T> Hash for Cached<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: Hash,
-// {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         (self as *const _ as usize).hash(state);
-//     }
-// }
+    T: Clone + Send + Sync + 'static;
 
 impl<T> Cached<T>
 where
     T: Clone + Send + Sync + 'static,
 {
     pub fn empty(refresh_interval: Option<Duration>) -> Self {
-        Self {
-            inner: Arc::new(Mutex::new(CachedInner {
+        Self(Arc::new(CachedInner {
+            mutex: Mutex::new(CachedValue {
                 last_fetched: None,
                 inflight: None,
                 last_accessed: None,
-            })),
+            }),
             refresh_interval,
-        }
+        }))
     }
 }
 
 impl<T: Send + Sync + 'static> Cached<Arc<T>> {
     pub fn empty_enrolled(refresh_interval: Option<Duration>) -> Self {
         let cached = Self::empty(refresh_interval);
-        MEMORY_MANAGER.enroll(cached.inner);
+        // MEMORY_MANAGER.enroll(cached.inner);
+        todo!();
         cached
     }
 }
 
 #[derive(Debug)]
-struct CachedInner<T>
+pub struct CachedInner<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    mutex: Mutex<CachedValue<T>>,
+    refresh_interval: Option<Duration>,
+}
+
+#[derive(Debug)]
+struct CachedValue<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -98,84 +75,36 @@ where
     inflight: Option<Weak<broadcast::Sender<Result<T, CachedError>>>>,
 }
 
-// pub trait Data {
-//     fn addr(&self) -> usize;
-//     fn get_size(&self) -> usize;
-//     fn get_last_accessed(&self) -> Option<Instant>;
-//     fn free(&self);
-// }
-
-// impl<T: Data> Data for CachedInner<T>
-// where
-//     T: Clone + Send + Sync + 'static,
+// impl<T> Cached<T> where
+// T: Clone + Send + Sync + 'static,
 // {
-//     fn addr(&self) -> usize {
-//         self as *const _ as usize
+//     pub async fn get_cached<F, E>(&self, f: F) -> Result<T, CachedError>
+//     where
+//         F: FnOnce() -> BoxFut<'static, Result<T, E>>,
+//         E: std::fmt::Display + 'static,
+//     {
+//         self.0.get_cached(f).await
 //     }
 
-//     fn get_size(&self) -> usize {
-//         self.last_fetched
-//             .as_ref()
-//             .map(|(_, v)| v.get_size())
-//             .unwrap_or(0)
+//     pub fn try_get_sync(&self) -> Option<Result<T, CachedError>> {
+//         self.0.try_get_sync()
 //     }
 
-//     fn get_last_accessed(&self) -> Option<Instant> {
-//         self.last_accessed
-//     }
-
-//     fn free(&self) {
-//         self.las
+//     pub fn get_last_accessed(&self) -> Option<Instant> {
+//         self.0.get_last_accessed()
 //     }
 // }
 
-// impl<T> Eq for CachedInner<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: Eq,
-// {
-// }
+impl<T> std::ops::Deref for Cached<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type Target = CachedInner<T>;
 
-// impl<T> PartialEq for CachedInner<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: PartialEq,
-// {
-//     fn eq(&self, other: &Self) -> bool {
-//         self as *const _ == other as *const _
-//     }
-// }
-
-// // impl<T> PartialEq for CachedInner<T>
-// // where
-// //     T: Clone + Send + Sync + 'static,
-// //     T: PartialEq,
-// // {
-// //     fn eq(&self, other: &Self) -> bool {
-// //         self.last_fetched == other.last_fetched && self.last_accessed == other.last_accessed
-// //     }
-// // }
-
-// impl<T> Hash for CachedInner<T>
-// where
-//     T: Clone + Send + Sync + 'static,
-//     T: Hash,
-// {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         (self as *const _ as usize).hash(state);
-//     }
-// }
-
-// // impl<T> Hash for CachedInner<T>
-// // where
-// //     T: Clone + Send + Sync + 'static,
-// //     T: Hash,
-// // {
-// //     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-// //         self.last_fetched.hash(state);
-// //         self.last_accessed.hash(state);
-// //     }
-// // }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl<T> Cached<T>
 where
@@ -187,7 +116,7 @@ where
         E: std::fmt::Display + 'static,
     {
         let mut rx = {
-            let mut inner = self.inner.lock();
+            let mut inner = self.mutex.lock();
             inner.last_accessed = Some(Instant::now());
 
             if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
@@ -210,7 +139,7 @@ where
                 let (tx, rx) = broadcast::channel::<Result<T, CachedError>>(1);
                 let tx = Arc::new(tx);
                 inner.inflight = Some(Arc::downgrade(&tx));
-                let inner = self.inner.clone();
+                let inner = self.clone();
 
                 let fut = f();
 
@@ -219,7 +148,7 @@ where
 
                     {
                         // only sync code in this block
-                        let mut inner = inner.lock();
+                        let mut inner = inner.mutex.lock();
                         inner.inflight = None;
 
                         match res {
@@ -245,9 +174,16 @@ where
             .await
             .map_err(|_| CachedError::new("in-flight request died"))?
     }
+}
 
+
+
+impl<T> CachedInner<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
     pub fn try_get_sync(&self) -> Option<Result<T, CachedError>> {
-        let mut inner = self.inner.lock();
+        let mut inner = self.mutex.lock();
         inner.last_accessed = Some(Instant::now());
 
         let Some((fetched_at, value)) = inner.last_fetched.as_ref() else {
@@ -269,13 +205,13 @@ where
     }
 
     pub fn get_last_accessed(&self) -> Option<Instant> {
-        let inner = self.inner.lock();
+        let inner = self.mutex.lock();
         inner.last_accessed
     }
 
     pub async fn try_get(&self) -> Option<Result<T, CachedError>> {
         let mut rx = {
-            let mut inner = self.inner.lock();
+            let mut inner = self.mutex.lock();
             inner.last_accessed = Some(Instant::now());
 
             if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
@@ -308,7 +244,7 @@ where
     }
 
     pub fn clear(&self) -> Option<T> {
-        let mut inner = self.inner.lock();
+        let mut inner = self.mutex.lock();
         inner.last_fetched.take().map(|(_, v)| v)
     }
 }

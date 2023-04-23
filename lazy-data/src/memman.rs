@@ -8,61 +8,94 @@ use tokio::time::Instant;
 
 use lazy_static::lazy_static;
 
-use crate::cached::Cached;
+use crate::cached::{Cached, CachedInner};
 
 pub struct MemoryManager {
-    data: DashSet<DynData>,
+    data: DashSet<CachedDyn>,
 }
 
 lazy_static! {
     pub static ref MEMORY_MANAGER: MemoryManager = MemoryManager::new();
 }
 
-struct DynData(Arc<dyn Data + Send + Sync + 'static>);
+pub struct CachedDyn(Arc<dyn CachedData + Send + Sync + 'static>);
 
-impl Hash for DynData {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.addr().hash(state);
-        // state.write_usize(self as *const DynData as usize)
-    }
-}
-
-impl PartialEq for DynData {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.addr() == other.0.addr()
-    }
-}
-
-impl Eq for DynData {}
+// struct DynData(Arc<dyn Data>);
 
 // impl Hash for DynData {
 //     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         self.0.get_size().hash(state);
+//         self.0.addr().hash(state);
+//         // state.write_usize(self as *const DynData as usize)
 //     }
 // }
 
 // impl PartialEq for DynData {
 //     fn eq(&self, other: &Self) -> bool {
-//         // self.0.type_id() == other.0.type_id()
-//         let a = &self.0 as &dyn Any;
-
+//         self.0.addr() == other.0.addr()
 //     }
 // }
 
-pub trait Data {
-    fn addr(&self) -> usize;
-    fn get_size(&self) -> usize;
-    fn get_last_accessed(&self) -> Option<Instant>;
-    fn free(&self);
+// impl Eq for DynData {}
+
+impl Hash for CachedDyn {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.addr().hash(state);
+    }
 }
 
-impl<T> Data for Cached<T>
+impl PartialEq for CachedDyn {
+    fn eq(&self, other: &Self) -> bool {
+        // let hi = self.0.as_ref();
+        // let hi = hi as *const dyn CachedData;
+        // let hi = hi.to_raw_parts();
+        // std::ptr::
+        // self.0.as_ref().vtable_and_ptr()
+        // Any::
+        self.0.addr() == other.0.addr()
+    }
+}
+
+impl Eq for CachedDyn {}
+
+impl<T> Cached<T>
+where
+    T: Data + Clone + Send + Sync + 'static,
+{
+    pub fn clone_dyn(&self) -> CachedDyn {
+        CachedDyn(Arc::clone(&self.0) as Arc<dyn CachedData + Send + Sync + 'static>)
+    }
+
+    pub fn enroll(&self) {
+        MEMORY_MANAGER.enroll(self.clone_dyn());
+    }
+}
+
+pub trait Data: Send + Sync + 'static {
+    fn get_size(&self) -> usize;
+    fn get_ref_count(&self) -> usize {
+        1
+    }
+}
+
+pub trait CachedData: Any {
+    fn free(&self);
+    fn addr(&self) -> usize;
+    fn get_size(&self) -> usize;
+    fn get_ref_count(&self) -> usize;
+    fn get_last_accessed(&self) -> Option<Instant>;
+    // fn get_data(&self) -> Option<&dyn Data>;
+}
+
+impl<T: Data> CachedData for CachedInner<T>
 where
     T: Clone + Send + Sync + 'static,
-    T: GetSize + Eq,
 {
+    fn free(&self) {
+        self.clear();
+    }
+
     fn addr(&self) -> usize {
-        self as *const _ as usize
+        self as *const CachedInner<T> as usize
     }
 
     fn get_size(&self) -> usize {
@@ -72,12 +105,44 @@ where
         }
     }
 
-    fn get_last_accessed(&self) -> Option<Instant> {
-        self.get_last_accessed()
+    fn get_ref_count(&self) -> usize {
+        match self.try_get_sync() {
+            Some(Ok(x)) => x.get_ref_count(),
+            _ => 0,
+        }
     }
 
-    fn free(&self) {
-        let _ = self.clear();
+    fn get_last_accessed(&self) -> Option<Instant> {
+        CachedInner::get_last_accessed(self)
+    }
+}
+
+// impl<T: GetSize + Send + Sync + 'static> Data for T {
+//     fn get_size(&self) -> usize {
+//         GetSize::get_size(self)
+//     }
+// }
+
+impl<T: GetSize + Send + Sync + 'static> Data for Arc<T> {
+    fn get_size(&self) -> usize {
+        GetSize::get_size(self)
+    }
+
+    fn get_ref_count(&self) -> usize {
+        Arc::strong_count(self)
+    }
+}
+
+impl<T> Data for Cached<T>
+where
+    T: Clone + Send + Sync + 'static,
+    T: GetSize + Eq,
+{
+    fn get_size(&self) -> usize {
+        match self.try_get_sync() {
+            Some(Ok(x)) => x.get_size(),
+            _ => 0,
+        }
     }
 }
 
@@ -92,9 +157,8 @@ impl MemoryManager {
         todo!()
     }
 
-    pub fn enroll<T: Data + Send + Sync + 'static>(&self, data: Arc<T>) {
-        self.data
-            .insert(DynData(data as Arc<dyn Data + Send + Sync + 'static>));
+    pub fn enroll(&self, data: CachedDyn) {
+        self.data.insert(data);
     }
 }
 
@@ -104,6 +168,3 @@ impl Default for MemoryManager {
     }
 }
 
-pub fn enroll<T: Data + Send + Sync + 'static>(data: Arc<T>) {
-    MEMORY_MANAGER.enroll(data);
-}
