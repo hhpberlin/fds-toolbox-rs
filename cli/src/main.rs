@@ -4,7 +4,6 @@ use std::{path::PathBuf, sync::Arc};
 
 use clap::{arg, Parser};
 use color_eyre::eyre;
-use fds_toolbox_core::file::{FileSystem, Simulation};
 
 use fds_toolbox_lazy_data::{cached::Cached, memman::MEMORY_MANAGER};
 use tokio::join;
@@ -75,18 +74,12 @@ async fn main() -> color_eyre::Result<()> {
     let f_fast = cached
         .get_cached(|| Box::pin(async move { Ok::<_, eyre::Error>(Arc::new("fast second")) }));
 
-        MEMORY_MANAGER.print_stats();
-    dbg!(join!(f_slow, f_fast));
+    MEMORY_MANAGER.print_stats();
+
+    let (slow, fast) = join!(f_slow, f_fast);
+    dbg!(slow.unwrap(), fast.unwrap());
 
     MEMORY_MANAGER.print_stats();
 
-    Ok(())
-}
-
-async fn devc<Fs: FileSystem>(sim: &Simulation<Fs>) -> color_eyre::Result<()> {
-    let devc = sim.csv_devc().await?;
-    devc.devices.iter().for_each(|_d| {
-        // println!("{}", d.name, d.values.stats);
-    });
     Ok(())
 }

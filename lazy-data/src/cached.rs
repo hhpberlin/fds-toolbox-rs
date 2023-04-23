@@ -1,12 +1,10 @@
-use std::{fmt::Debug, hash::Hash, pin::Pin, sync::Arc, sync::Weak, time::Duration};
+use std::{fmt::Debug, pin::Pin, sync::Arc, sync::Weak, time::Duration};
 
 use futures::Future;
 use parking_lot::Mutex;
 
 use tokio::{sync::broadcast, time::Instant};
 use tracing::debug;
-
-use crate::memman::MEMORY_MANAGER;
 
 pub type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + 'a>>;
 
@@ -174,8 +172,6 @@ where
             .map_err(|_| CachedError::new("in-flight request died"))?
     }
 }
-
-
 
 impl<T> CachedInner<T>
 where

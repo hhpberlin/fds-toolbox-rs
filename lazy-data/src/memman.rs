@@ -1,6 +1,5 @@
-use std::any::Any;
 use std::hash::Hash;
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use dashmap::DashSet;
 use get_size::GetSize;
@@ -173,4 +172,3 @@ impl Default for MemoryManager {
         Self::new()
     }
 }
-
