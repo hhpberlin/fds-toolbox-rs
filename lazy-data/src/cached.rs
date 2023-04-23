@@ -47,11 +47,10 @@ where
     }
 }
 
-impl<T: Send + Sync + 'static> Cached<Arc<T>> {
+impl<T: get_size::GetSize + Send + Sync + 'static> Cached<Arc<T>> {
     pub fn empty_enrolled(refresh_interval: Option<Duration>) -> Self {
         let cached = Self::empty(refresh_interval);
-        // MEMORY_MANAGER.enroll(cached.inner);
-        todo!();
+        cached.enroll();
         cached
     }
 }

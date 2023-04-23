@@ -1,14 +1,12 @@
 // use fds_toolbox_core::file::ParsedFile;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use clap::{arg, Parser};
 use color_eyre::eyre;
-use fds_toolbox_core::{
-    file::{FileSystem, Simulation},
-};
+use fds_toolbox_core::file::{FileSystem, Simulation};
 
-use fds_toolbox_lazy_data::cached::Cached;
+use fds_toolbox_lazy_data::{cached::Cached, memman::MEMORY_MANAGER};
 use tokio::join;
 
 #[derive(Parser)]
@@ -64,18 +62,23 @@ async fn main() -> color_eyre::Result<()> {
 
     // dbg!(moka.get_devc(path.clone(), DevcIdx(2)).await?);
 
-    let cached = Cached::empty(None);
+    let cached = Cached::empty_enrolled(None);
+    MEMORY_MANAGER.print_stats();
 
     let f_slow = cached.get_cached(|| {
         Box::pin(async move {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            Ok::<_, eyre::Error>("slow first")
+            Ok::<_, eyre::Error>(Arc::new("slow first"))
         })
     });
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    let f_fast = cached.get_cached(|| Box::pin(async move { Ok::<_, eyre::Error>("fast second") }));
+    let f_fast = cached
+        .get_cached(|| Box::pin(async move { Ok::<_, eyre::Error>(Arc::new("fast second")) }));
 
-    // dbg!(join!(f_slow, f_fast));
+        MEMORY_MANAGER.print_stats();
+    dbg!(join!(f_slow, f_fast));
+
+    MEMORY_MANAGER.print_stats();
 
     Ok(())
 }

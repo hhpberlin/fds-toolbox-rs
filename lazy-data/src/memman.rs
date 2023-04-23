@@ -77,7 +77,7 @@ pub trait Data: Send + Sync + 'static {
     }
 }
 
-pub trait CachedData: Any {
+pub trait CachedData {
     fn free(&self);
     fn addr(&self) -> usize;
     fn get_size(&self) -> usize;
@@ -155,6 +155,12 @@ impl MemoryManager {
 
     pub fn evict_oldest(&self) {
         todo!()
+    }
+
+    pub fn print_stats(&self) {
+        for x in self.data.iter() {
+            println!("{:?}", x.0.get_size());
+        }
     }
 
     pub fn enroll(&self, data: CachedDyn) {
