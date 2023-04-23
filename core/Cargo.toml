@@ -28,11 +28,11 @@ uom = { version = "0.34", features = ["use_serde"] }
 csv = "1.1"
 ndarray = { version = "0.15", features = ["serde"] }
 byteorder = "1.4"
-futures = "0.3.27"
 once_cell = "1.17.1"
 # strum = "0.24.1"
 # strum_macros = "0.24.3"
 
+futures = "0.3.27"
 get-size = { version = "^0.1", features = ["derive"] }
 parking_lot = "0.12.1"
 

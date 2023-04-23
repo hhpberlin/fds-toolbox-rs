@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use clap::{arg, Parser};
 use color_eyre::eyre;
 use fds_toolbox_core::{
-    cached::Cached,
     file::{FileSystem, Simulation},
 };
 
+use fds_toolbox_lazy_data::cached::Cached;
 use tokio::join;
 
 #[derive(Parser)]
@@ -64,7 +64,7 @@ async fn main() -> color_eyre::Result<()> {
 
     // dbg!(moka.get_devc(path.clone(), DevcIdx(2)).await?);
 
-    let cached = Cached::empty();
+    let cached = Cached::empty(None);
 
     let f_slow = cached.get_cached(|| {
         Box::pin(async move {
@@ -75,7 +75,7 @@ async fn main() -> color_eyre::Result<()> {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     let f_fast = cached.get_cached(|| Box::pin(async move { Ok::<_, eyre::Error>("fast second") }));
 
-    dbg!(join!(f_slow, f_fast));
+    // dbg!(join!(f_slow, f_fast));
 
     Ok(())
 }
