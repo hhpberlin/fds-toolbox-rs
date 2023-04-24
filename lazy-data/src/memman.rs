@@ -159,7 +159,6 @@ impl MemoryManager {
     pub fn flush_all(&self) {
         for x in self.data.iter() {
             x.0.free();
-            self.data.remove(x.key());
         }
     }
 

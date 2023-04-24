@@ -43,6 +43,7 @@ async fn main() -> color_eyre::Result<()> {
 
     MEMORY_MANAGER.print_stats();
     MEMORY_MANAGER.flush_all();
+    println!("Flushed all");
     MEMORY_MANAGER.print_stats();
 
     Ok(())
