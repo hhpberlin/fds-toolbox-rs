@@ -5,3 +5,4 @@ pub mod moka;
 // pub mod serialization;
 pub mod cached;
 pub mod memman;
+pub mod sim;

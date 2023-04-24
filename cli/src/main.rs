@@ -5,7 +5,8 @@ use std::{path::PathBuf, sync::Arc};
 use clap::{arg, Parser};
 use color_eyre::eyre;
 
-use fds_toolbox_lazy_data::{cached::Cached, memman::MEMORY_MANAGER};
+use fds_toolbox_core::file::{Simulation, OsFs};
+use fds_toolbox_lazy_data::{cached::Cached, memman::MEMORY_MANAGER, sim::CachedSimulation};
 use tokio::join;
 
 #[derive(Parser)]
@@ -24,61 +25,24 @@ async fn main() -> color_eyre::Result<()> {
 
     dbg!(&args.smv);
 
-    // let sim = Simulation::parse_smv(
-    //     OsFs,
-    //     args.smv
-    //         .parent()
-    //         .ok_or(eyre::eyre!("Missing Directory"))?
-    //         .to_path_buf(),
-    //     &args.smv,
-    // )
-    // .await?;
-    // .map_err(eyre!("Parsing bruh moment"))?;
+    let sim = Simulation::parse_smv(
+        OsFs,
+        args.smv
+            .parent()
+            .ok_or(eyre::eyre!("Missing Directory"))?
+            .to_path_buf(),
+        &args.smv,
+    )
+    .await?;
 
-    // let moka = MokaStore::new(10_000);
-
-    // assert!(args.smv.extension().unwrap() == "smv");
-
-    // let path = SimulationPath::new(
-    //     OsFs,
-    //     args.smv
-    //         .parent()
-    //         .ok_or(eyre::eyre!("Missing Directory"))?
-    //         .to_path_buf(),
-    //     args.smv.file_stem().unwrap().to_str().unwrap().to_string(),
-    // );
-    // let path = path.map(Fs::LocalFs, |p| p.to_string_lossy().to_string());
-
-    // let sim = moka.get_sim(path.clone()).await?;
-
-    // dbg!(&sim.path);
-
-    // dbg!(sim.csv_cpu().await?);
-    // dbg!(sim.csv_devc().await?.time_in_seconds.stats);
-    // dbg!(sim.csv_hrr().await?.len());
-
-    // devc(&sim).await?;
-
-    // dbg!(moka.get_devc(path.clone(), DevcIdx(2)).await?);
-
-    let cached = Cached::empty_enrolled(None);
-    MEMORY_MANAGER.print_stats();
-
-    let f_slow = cached.get_cached(|| {
-        Box::pin(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            Ok::<_, eyre::Error>(Arc::new("slow first"))
-        })
-    });
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    let f_fast = cached
-        .get_cached(|| Box::pin(async move { Ok::<_, eyre::Error>(Arc::new("fast second")) }));
+    let sim = CachedSimulation::new(Arc::new(sim), None);
 
     MEMORY_MANAGER.print_stats();
 
-    let (slow, fast) = join!(f_slow, f_fast);
-    dbg!(slow.unwrap(), fast.unwrap());
+    dbg!(sim.get_cpu().await);
 
+    MEMORY_MANAGER.print_stats();
+    MEMORY_MANAGER.flush_all();
     MEMORY_MANAGER.print_stats();
 
     Ok(())

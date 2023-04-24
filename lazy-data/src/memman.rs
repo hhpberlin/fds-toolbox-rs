@@ -156,6 +156,13 @@ impl MemoryManager {
         todo!()
     }
 
+    pub fn flush_all(&self) {
+        for x in self.data.iter() {
+            x.0.free();
+            self.data.remove(x.key());
+        }
+    }
+
     pub fn print_stats(&self) {
         for x in self.data.iter() {
             println!("{:?}", x.0.get_size());

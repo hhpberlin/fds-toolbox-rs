@@ -4,7 +4,7 @@ use futures::Future;
 use parking_lot::Mutex;
 
 use tokio::{sync::broadcast, time::Instant};
-use tracing::debug;
+use tracing::{debug, error};
 
 pub type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + 'a>>;
 
@@ -110,7 +110,7 @@ where
     pub async fn get_cached<F, E>(&self, f: F) -> Result<T, CachedError>
     where
         F: FnOnce() -> BoxFut<'static, Result<T, E>>,
-        E: std::fmt::Display + 'static,
+        E: std::fmt::Display + Debug + 'static,
     {
         let mut rx = {
             let mut inner = self.mutex.lock();
@@ -154,6 +154,7 @@ where
                                 let _ = tx.send(Ok(value));
                             }
                             Err(e) => {
+                                error!(error = ?e, "Error fetching data");
                                 let _ = tx.send(Err(CachedError {
                                     inner: e.to_string(),
                                 }));

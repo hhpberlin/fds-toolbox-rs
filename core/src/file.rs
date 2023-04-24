@@ -289,6 +289,21 @@ impl<Fs: FileSystem> Simulation<Fs> {
         self.slice_index.get(&(mesh_index, bounds)).copied()
     }
 
+    // pub async fn smoke3d(&self, idx: usize) -> Result<Smoke3D, ParseError<Fs::Error, s3d::Error>> {
+    //     let s3d = &self.smv.smoke3d[idx];
+    //     let file = self.read(&s3d.file_name).await.map_err(ParseError::Fs)?;
+    //     Smoke3D::from_reader(file).map_err(ParseError::Parse)
+    // }
+
+    // pub async fn plot3d(
+    //     &self,
+    //     idx: usize,
+    // ) -> Result<Plot3D, ParseError<Fs::Error, plot3d::Error>> {
+    //     let plot3d = &self.smv.plot3d[idx];
+    //     let file = self.read(&plot3d.file_name).await.map_err(ParseError::Fs)?;
+    //     Plot3D::from_reader(file).map_err(ParseError::Parse)
+    // }
+
     // async fn s3d(&self, idx: usize) {
     //     let s3d = &self.smv.smoke3d[idx];
     //     let file = self.file(&s3d.file_name).await.map_err(ParseError::Fs)?;
