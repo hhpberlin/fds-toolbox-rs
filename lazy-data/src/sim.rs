@@ -1,9 +1,18 @@
-use std::{time::Duration, sync::Arc};
+use std::{sync::Arc, time::Duration};
 
-use fds_toolbox_core::{formats::{csv::{devc::DeviceList, cpu::CpuData, hrr::HrrStep}, smoke::dim2::slice::Slice}, file::{FileSystem, Simulation}, common::series::TimeSeries3};
+use fds_toolbox_core::{
+    common::series::TimeSeries3,
+    file::{FileSystem, Simulation},
+    formats::{
+        csv::{cpu::CpuData, devc::DeviceList, hrr::HrrStep},
+        smoke::dim2::slice::Slice,
+    },
+};
+use get_size::GetSize;
 
-use crate::cached::{Cached, CachedError};
+use crate::{cached::{Cached, CachedError}, memman::CachedData};
 
+#[derive(Debug)]
 pub struct CachedSimulation<Fs: FileSystem> {
     sim: Arc<Simulation<Fs>>,
     devc: Cached<Arc<DeviceList>>,
@@ -13,6 +22,22 @@ pub struct CachedSimulation<Fs: FileSystem> {
     smoke3d: Vec<Cached<Arc<TimeSeries3>>>,
     plot3d: Vec<Cached<Arc<TimeSeries3>>>,
     refresh_interval: Option<Duration>,
+}
+
+impl<Fs: FileSystem> GetSize for CachedSimulation<Fs>
+where
+    Fs: FileSystem + GetSize,
+    Fs::Path: GetSize,
+{
+    fn get_size(&self) -> usize {
+        self.sim.get_size()
+            + self.devc.get_size()
+            + self.cpu.get_size()
+            + self.hrr.get_size()
+            + self.slice.get_size()
+            + self.smoke3d.get_size()
+            + self.plot3d.get_size()
+    }
 }
 
 impl<Fs: FileSystem + 'static> CachedSimulation<Fs> {
@@ -35,30 +60,30 @@ impl<Fs: FileSystem + 'static> CachedSimulation<Fs> {
 
     pub async fn get_devc(&self) -> Result<Arc<DeviceList>, CachedError> {
         let sim = self.sim.clone();
-        self.devc.get_cached(move || Box::pin(async move {
-            sim.csv_devc().await.map(Arc::new)
-        })).await
+        self.devc
+            .get_cached(move || Box::pin(async move { sim.csv_devc().await.map(Arc::new) }))
+            .await
     }
 
     pub async fn get_cpu(&self) -> Result<Arc<Option<CpuData>>, CachedError> {
         let sim = self.sim.clone();
-        self.cpu.get_cached(move || Box::pin(async move {
-            sim.csv_cpu().await.map(Arc::new)
-        })).await
+        self.cpu
+            .get_cached(move || Box::pin(async move { sim.csv_cpu().await.map(Arc::new) }))
+            .await
     }
 
     pub async fn get_hrr(&self) -> Result<Arc<Vec<HrrStep>>, CachedError> {
         let sim = self.sim.clone();
-        self.hrr.get_cached(move || Box::pin(async move {
-            sim.csv_hrr().await.map(Arc::new)
-        })).await
+        self.hrr
+            .get_cached(move || Box::pin(async move { sim.csv_hrr().await.map(Arc::new) }))
+            .await
     }
 
     pub async fn get_slice(&self, idx: usize) -> Result<Arc<Slice>, CachedError> {
         let sim = self.sim.clone();
-        self.slice[idx].get_cached(move || Box::pin(async move {
-            sim.slice(idx).await.map(Arc::new)
-        })).await
+        self.slice[idx]
+            .get_cached(move || Box::pin(async move { sim.slice(idx).await.map(Arc::new) }))
+            .await
     }
 
     // pub async fn get_smoke3d(&self, idx: usize) -> Result<Arc<TimeSeries3>, CachedError> {

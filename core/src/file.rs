@@ -19,9 +19,9 @@ use crate::{
 };
 
 #[async_trait]
-pub trait FileSystem: Send + Sync {
-    type Path: Borrow<Self::PathRef> + Send + Sync + Debug;
-    type PathRef: ?Sized + Send + Sync + Debug;
+pub trait FileSystem: Send + Sync + 'static {
+    type Path: Borrow<Self::PathRef> + Send + Sync + Debug + Eq + Hash;
+    type PathRef: ?Sized + Send + Sync + Debug + Eq + Hash;
     type Error: Error + Send + Sync + 'static;
     type File: Read;
 
