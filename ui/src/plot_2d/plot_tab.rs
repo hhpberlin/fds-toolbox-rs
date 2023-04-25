@@ -4,7 +4,7 @@ use std::{
     iter::Copied,
 };
 
-use fds_toolbox_core::formats::{simulation::TimeSeriesIdx, simulations::SimulationIdx};
+use fds_toolbox_lazy_data::{fs::AnyFs, sims::Simulations};
 use iced::{
     widget::{canvas::Cache, checkbox, container, horizontal_space, row, scrollable, Column},
     Command, Element, Length,
@@ -18,7 +18,6 @@ use crate::{
         lines::LinePlot,
     },
     tabs::Tab,
-    Simulations,
 };
 
 #[derive(Debug)]
@@ -118,7 +117,7 @@ impl PlotTab {
     }
 }
 
-impl Tab<Simulations> for PlotTab {
+impl Tab<Simulations<AnyFs>> for PlotTab {
     type Message = Message;
 
     fn title(&self) -> String {
@@ -130,7 +129,7 @@ impl Tab<Simulations> for PlotTab {
 
     fn update(
         &mut self,
-        _model: &mut Simulations,
+        _model: &mut Simulations<AnyFs>,
         message: Self::Message,
     ) -> Command<Self::Message> {
         // self.chart.invalidate();
@@ -147,7 +146,7 @@ impl Tab<Simulations> for PlotTab {
         }
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Self::Message> {
         let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
         row![

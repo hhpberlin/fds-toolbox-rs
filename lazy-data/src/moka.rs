@@ -3,7 +3,7 @@ use std::{error::Error, hash::Hash, io::Read, path::Path, sync::Arc};
 use async_trait::async_trait;
 use fds_toolbox_core::{
     common::series::TimeSeries3,
-    file::{self, FileSystem, OsFs, ParseError, Simulation, SimulationPath},
+    file::{self, ParseError, Simulation, SimulationPath},
     formats::{
         csv::{self, cpu::CpuData, devc::DeviceList, hrr::HrrStep},
         smoke::dim2::slice::{self, Slice},
@@ -13,61 +13,14 @@ use get_size::GetSize;
 use moka::future::Cache;
 use thiserror::Error;
 
+use crate::fs::{self, AnyFs, FsErr};
+
 // TODO: Remove dead_code. Here for a dark cockpit.
 #[allow(dead_code)]
 // TODO: Hand impl Debug
 pub struct MokaStore {
     cache: Cache<SimulationsDataIdx, SimulationData>,
     // simulations: HashMap<SimulationPath<Fs>, Simulation<Fs>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Fs {
-    LocalFs(OsFs),
-    // TODO: Add sftp, rescale, etc.
-}
-
-#[derive(Debug, Error)]
-#[error(transparent)]
-pub enum FsErr {
-    Io(std::io::Error),
-}
-
-#[async_trait]
-impl FileSystem for Fs {
-    // RIP non-utf8 paths.
-    // Probably will never be a problem, but fixing it would be nice.
-    // TODO: Fix
-    type Path = String;
-    type PathRef = str;
-    // TODO: Make an enum of all the possible types instead of dyn.
-    type Error = FsErr;
-    // TODO: Make an enum of all the possible types instead of dyn.
-    type File = Box<dyn Read>;
-
-    async fn read(&self, path: &Self::PathRef) -> Result<Self::File, Self::Error> {
-        match self {
-            Fs::LocalFs(fs) => match fs.read(Path::new(path)).await {
-                Ok(file) => Ok(Box::new(file)),
-                Err(err) => Err(FsErr::Io(err)),
-            },
-        }
-    }
-    async fn exists(&self, path: &Self::PathRef) -> Result<bool, Self::Error> {
-        match self {
-            Fs::LocalFs(fs) => fs.exists(Path::new(path)).await.map_err(FsErr::Io),
-        }
-    }
-
-    fn file_path(&self, directory: &Self::PathRef, file_name: &str) -> Self::Path {
-        match self {
-            Fs::LocalFs(fs) => fs
-                .file_path(Path::new(directory), file_name)
-                .to_str()
-                .expect("Non-UTF8 paths are currently not supported.")
-                .to_string(),
-        }
-    }
 }
 
 /*
@@ -100,7 +53,7 @@ pub struct P3dIdx(usize);
 
 /// Indexes into the simulation data of any simulation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SimulationsDataIdx(pub SimulationPath<Fs>, pub SimulationDataIdx);
+pub struct SimulationsDataIdx(pub SimulationPath<AnyFs>, pub SimulationDataIdx);
 
 /// Indexes into the simulation data of a single simulation (one .smv and associated files).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -118,7 +71,7 @@ pub enum SimulationDataIdx {
 #[derive(Debug, Clone)]
 pub enum SimulationData {
     // TODO: This technically creates multiple sources of truths since the path is also stored in the Simulation.
-    Simulation(Arc<Simulation<Fs>>),
+    Simulation(Arc<Simulation<AnyFs>>),
     Devc(Arc<DeviceList>),
     Cpu(Arc<Option<CpuData>>),
     Hrr(Arc<Vec<HrrStep>>),
@@ -185,7 +138,7 @@ macro_rules! get_thing {
     (fn $name:ident < $t:tt > ( $idx_ty:ty ) -> $data_ty:ty $({ $f:expr })?) => {
         pub async fn $name(
             &self,
-            path: SimulationPath<Fs>,
+            path: SimulationPath<AnyFs>,
             idx: $idx_ty,
         ) -> Result<Arc<$data_ty>, Arc<SimulationDataError>> {
             match self.get(SimulationsDataIdx(path, SimulationDataIdx::$t(idx))).await {
@@ -222,8 +175,8 @@ impl MokaStore {
 
     async fn get_sim(
         &self,
-        path: SimulationPath<Fs>,
-    ) -> Result<Arc<Simulation<Fs>>, Arc<SimulationDataError>> {
+        path: SimulationPath<AnyFs>,
+    ) -> Result<Arc<Simulation<AnyFs>>, Arc<SimulationDataError>> {
         let sim = self
             .cache
             .try_get_with(

@@ -3,10 +3,7 @@ use std::{
     iter::{once, Once},
 };
 
-use fds_toolbox_core::formats::{
-    simulation::SliceSeriesIdx,
-    simulations::{SimulationIdx, Simulations},
-};
+use fds_toolbox_lazy_data::{fs::AnyFs, sims::Simulations};
 use iced::{widget::row, Command, Element};
 
 use crate::{
@@ -98,14 +95,14 @@ impl SliceTab {
     // }
 }
 
-impl Tab<Simulations> for SliceTab {
+impl Tab<Simulations<AnyFs>> for SliceTab {
     type Message = Message;
 
     fn title(&self) -> String {
         "Slice Plot".to_string()
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Message> {
+    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
             cartesian(Heatmap::new(model, self, self.frame), &self.plot_state).map(Message::Plot),
@@ -115,7 +112,7 @@ impl Tab<Simulations> for SliceTab {
 
     fn update(
         &mut self,
-        _model: &mut Simulations,
+        _model: &mut Simulations<AnyFs>,
         message: Self::Message,
     ) -> Command<Self::Message> {
         match message {

@@ -26,10 +26,10 @@ use std::fmt::Debug;
 
 use fds_toolbox_core::formats::csv::devc::DeviceList;
 
-use fds_toolbox_core::formats::simulation::{Simulation, SliceSeriesIdx, TimeSeriesIdx};
-use fds_toolbox_core::formats::simulations::{SimulationIdx, Simulations};
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
-use fds_toolbox_lazy_data::moka::MokaStore;
+use fds_toolbox_lazy_data::fs::AnyFs;
+use fds_toolbox_lazy_data::moka::{MokaStore};
+use fds_toolbox_lazy_data::sims::Simulations;
 use iced::event::Status;
 
 use iced::widget::{Column, Container, Text};
@@ -38,8 +38,6 @@ use iced::{
     Subscription, Theme,
 };
 use iced_aw::{TabBar, TabLabel};
-use plot_2d::plot_tab::PlotTab;
-use slice::slice_tab::SliceTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
 
 pub mod plot_2d;
@@ -65,11 +63,11 @@ pub fn main() -> iced::Result {
 struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
-    simulations: Simulations,
     keyboard_info: KeyboardInfo,
+    simulations: Simulations<AnyFs>,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
-    moka_store: MokaStore,
+    // moka_store: MokaStore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -192,26 +190,27 @@ impl Application for FdsToolbox {
     type Theme = Theme;
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let simulations = Simulations::new(vec![Simulation {
-            // TODO: Prompt for files, this is all for testing
-            devc: DeviceList::from_reader(
-                include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
-            )
-            .unwrap(),
-            slcf: vec![Slice::from_reader(
-                include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
-            )
-            .unwrap()],
-        }]);
+        // let simulations = Simulations::new(vec![Simulation {
+        //     // TODO: Prompt for files, this is all for testing
+        //     devc: DeviceList::from_reader(
+        //         include_bytes!("../../demo-house/DemoHaus2_devc.csv").as_ref(),
+        //     )
+        //     .unwrap(),
+        //     slcf: vec![Slice::from_reader(
+        //         include_bytes!("../../demo-house/DemoHaus2_0001_21.sf").as_ref(),
+        //     )
+        //     .unwrap()],
+        // }]);
 
-        let moka_store = MokaStore::new(10_000); // TODO: Read this capacity from a config file?
+        // let moka_store = MokaStore::new(10_000); // TODO: Read this capacity from a config file?
 
         let mut this = FdsToolbox {
             active_tab: 0,
             tabs: vec![],
-            simulations,
-            moka_store,
+            // simulations,
+            // moka_store,
             keyboard_info: KeyboardInfo::default(),
+            simulations: Default::default(),
         };
         Self::open_some_tabs(&mut this);
         (this, Command::none())

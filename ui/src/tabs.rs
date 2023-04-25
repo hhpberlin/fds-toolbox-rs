@@ -1,3 +1,4 @@
+use fds_toolbox_lazy_data::fs::AnyFs;
 use iced::{Command, Element};
 
 use crate::{plot_2d::plot_tab::PlotTab, slice::slice_tab::SliceTab, Simulations};
@@ -23,23 +24,23 @@ pub enum FdsToolboxTab {
 
 #[derive(Debug, Clone, Copy)]
 pub enum FdsToolboxTabMessage {
-    Plot(<PlotTab as Tab<Simulations>>::Message),
-    Slice(<SliceTab as Tab<Simulations>>::Message),
+    Plot(<PlotTab as Tab<Simulations<AnyFs>>>::Message),
+    Slice(<SliceTab as Tab<Simulations<AnyFs>>>::Message),
 }
 
-impl Tab<Simulations> for FdsToolboxTab {
+impl Tab<Simulations<AnyFs>> for FdsToolboxTab {
     type Message = FdsToolboxTabMessage;
 
     fn title(&self) -> String {
         match self {
-            FdsToolboxTab::Plot(tab) => tab.title(),
-            FdsToolboxTab::Slice(tab) => tab.title(),
+            FdsToolboxTab::Plot(tab) => Tab::title(tab),
+            FdsToolboxTab::Slice(tab) => Tab::title(tab),
         }
     }
 
     fn update(
         &mut self,
-        model: &mut Simulations,
+        model: &mut Simulations<AnyFs>,
         message: Self::Message,
     ) -> Command<Self::Message> {
         match (self, message) {
@@ -60,7 +61,7 @@ impl Tab<Simulations> for FdsToolboxTab {
         }
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Self::Message> {
         match self {
             FdsToolboxTab::Plot(tab) => tab.view(model).map(FdsToolboxTabMessage::Plot),
             FdsToolboxTab::Slice(tab) => tab.view(model).map(FdsToolboxTabMessage::Slice),
