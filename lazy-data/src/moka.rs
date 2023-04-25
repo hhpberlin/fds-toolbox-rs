@@ -1,6 +1,5 @@
-use std::{error::Error, hash::Hash, io::Read, path::Path, sync::Arc};
+use std::{error::Error, hash::Hash, sync::Arc};
 
-use async_trait::async_trait;
 use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{self, ParseError, Simulation, SimulationPath},
@@ -13,7 +12,7 @@ use get_size::GetSize;
 use moka::future::Cache;
 use thiserror::Error;
 
-use crate::fs::{self, AnyFs, FsErr};
+use crate::fs::{AnyFs, FsErr};
 
 // TODO: Remove dead_code. Here for a dark cockpit.
 #[allow(dead_code)]

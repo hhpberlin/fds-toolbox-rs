@@ -5,9 +5,8 @@ use std::{path::PathBuf, sync::Arc};
 use clap::{arg, Parser};
 use color_eyre::eyre;
 
-use fds_toolbox_core::file::{Simulation, OsFs};
-use fds_toolbox_lazy_data::{cached::Cached, memman::MEMORY_MANAGER, sim::CachedSimulation};
-use tokio::join;
+use fds_toolbox_core::file::{OsFs, Simulation};
+use fds_toolbox_lazy_data::{memman::MEMORY_MANAGER, sim::CachedSimulation};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

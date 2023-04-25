@@ -1,10 +1,16 @@
-use std::{sync::{atomic::{AtomicUsize, Ordering}, Arc}, hash::Hash};
+use std::{
+    hash::Hash,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 use dashmap::DashMap;
-use fds_toolbox_core::file::{FileSystem, SimulationPath, Simulation, ParseError};
+use fds_toolbox_core::file::{FileSystem, ParseError, SimulationPath};
 use get_size::GetSize;
 
-use crate::{sim::CachedSimulation, cached::Cached};
+use crate::{cached::Cached, sim::CachedSimulation};
 
 pub struct Simulations<Fs: FileSystem + Eq + Hash> {
     simulations: DashMap<SimulationIdx, Cached<Arc<CachedSimulation<Fs>>>>,
@@ -20,7 +26,8 @@ pub struct SimulationIdx(usize);
 impl<Fs: FileSystem + Eq + Hash> Simulations<Fs>
 where
     Fs: FileSystem + GetSize,
-    Fs::Path: GetSize, {
+    Fs::Path: GetSize,
+{
     pub fn new() -> Self {
         Self {
             simulations: DashMap::new(),
@@ -41,10 +48,13 @@ where
     }
 
     pub fn add_by_path(&self, path: SimulationPath<Fs>) -> SimulationIdx {
-        self.add(Cached::from_fut_enrolled::<ParseError<_, _>>(Box::pin(async move {
-            let sim = path.parse().await?;
-            Ok(Arc::new(CachedSimulation::new(Arc::new(sim), None)))
-        }), None))
+        self.add(Cached::from_fut_enrolled::<ParseError<_, _>>(
+            Box::pin(async move {
+                let sim = path.parse().await?;
+                Ok(Arc::new(CachedSimulation::new(Arc::new(sim), None)))
+            }),
+            None,
+        ))
     }
 }
 

@@ -10,7 +10,10 @@ use fds_toolbox_core::{
 };
 use get_size::GetSize;
 
-use crate::{cached::{Cached, CachedError}, memman::CachedData};
+use crate::{
+    cached::{Cached, CachedError},
+    memman::CachedData,
+};
 
 #[derive(Debug)]
 pub struct CachedSimulation<Fs: FileSystem> {
