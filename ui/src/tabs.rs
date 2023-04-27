@@ -24,11 +24,11 @@ pub enum FdsToolboxTab {
 
 #[derive(Debug, Clone, Copy)]
 pub enum FdsToolboxTabMessage {
-    Plot(<PlotTab as Tab<Simulations<AnyFs>>>::Message),
-    Slice(<SliceTab as Tab<Simulations<AnyFs>>>::Message),
+    Plot(<PlotTab as Tab<Simulations>>::Message),
+    Slice(<SliceTab as Tab<Simulations>>::Message),
 }
 
-impl Tab<Simulations<AnyFs>> for FdsToolboxTab {
+impl Tab<Simulations> for FdsToolboxTab {
     type Message = FdsToolboxTabMessage;
 
     fn title(&self) -> String {
@@ -40,7 +40,7 @@ impl Tab<Simulations<AnyFs>> for FdsToolboxTab {
 
     fn update(
         &mut self,
-        model: &mut Simulations<AnyFs>,
+        model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
         match (self, message) {
@@ -61,7 +61,7 @@ impl Tab<Simulations<AnyFs>> for FdsToolboxTab {
         }
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
         match self {
             FdsToolboxTab::Plot(tab) => tab.view(model).map(FdsToolboxTabMessage::Plot),
             FdsToolboxTab::Slice(tab) => tab.view(model).map(FdsToolboxTabMessage::Slice),

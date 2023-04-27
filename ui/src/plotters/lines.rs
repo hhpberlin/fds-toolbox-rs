@@ -11,6 +11,8 @@ use plotters::{
     style::{Color, Palette, Palette99, ShapeStyle, RED},
 };
 
+use crate::plot_2d::series_select::{SeriesSource, LabeledSeries};
+
 use super::{
     cartesian::{self, Cartesian2df32, CartesianDrawer},
     ids::IdSource,
@@ -20,23 +22,23 @@ type PosF = (f32, f32);
 type PosI = (i32, i32);
 
 #[derive(Debug)]
-pub struct LinePlot<Id, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> {
-    data_source: DataSrc,
-    id_source: IdSrc,
+pub struct LinePlot {
+    data_source: Box<dyn SeriesSource>,
 }
 
-impl<Id, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> LinePlot<Id, DataSrc, IdSrc> {
-    pub fn new(data_source: DataSrc, id_source: IdSrc) -> Self {
-        Self {
-            data_source,
-            id_source,
-        }
+impl LinePlot {
+    pub fn new(data_source: Box<dyn SeriesSource>) -> Self {
+        Self { data_source }
     }
+
+    // pub fn new(data_source: impl SeriesSource) -> Self {
+    //     Self {
+    //         data_source: Box::new(data_source),
+    //     }
+    // }
 }
 
-impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> CartesianDrawer
-    for LinePlot<Id, DataSrc, IdSrc>
-{
+impl CartesianDrawer for LinePlot {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
         chart: &mut ChartContext<DB, Cartesian2df32>,
@@ -49,12 +51,9 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id>, IdSrc: IdSource<Id = Id>> Cart
         let mut closest: Option<ClosestPoint<Id>> = None;
 
         // TODO: Avoid alloc by reusing iterator?
-        let data = self
-            .id_source
-            .iter_ids()
-            .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)).ok());
+        let data = self.data_source.iter_series();
 
-        for (id, data) in data {
+        for LabeledSeries { name, data } in data {
             // TODO: This could be better, but it works for now
             // This is used for assigning unique colors to each series
             let hash = {

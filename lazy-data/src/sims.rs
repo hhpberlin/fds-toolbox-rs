@@ -12,7 +12,7 @@ use get_size::GetSize;
 
 use crate::{cached::Cached, sim::CachedSimulation};
 
-pub struct Simulations<Fs: FileSystem + Eq + Hash> {
+pub struct Simulations<Fs: FileSystem + Eq + Hash = crate::fs::AnyFs> {
     simulations: DashMap<SimulationIdx, Cached<Arc<CachedSimulation<Fs>>>>,
     /// Maps a simulation path to a simulation index.
     /// Used to avoid having to compare full paths when indexing into `simulations`.
@@ -22,6 +22,9 @@ pub struct Simulations<Fs: FileSystem + Eq + Hash> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SimulationIdx(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BySimulation<T>(pub SimulationIdx, pub T);
 
 impl<Fs: FileSystem + Eq + Hash> Simulations<Fs>
 where

@@ -64,7 +64,7 @@ struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     keyboard_info: KeyboardInfo,
-    simulations: Simulations<AnyFs>,
+    simulations: Simulations,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
     // moka_store: MokaStore,

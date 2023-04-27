@@ -27,6 +27,9 @@ pub struct CachedSimulation<Fs: FileSystem> {
     refresh_interval: Option<Duration>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SliceIdx(usize);
+
 impl<Fs: FileSystem> GetSize for CachedSimulation<Fs>
 where
     Fs: FileSystem + GetSize,

@@ -3,7 +3,7 @@ use std::{
     iter::{once, Once},
 };
 
-use fds_toolbox_lazy_data::{fs::AnyFs, sims::Simulations};
+use fds_toolbox_lazy_data::{fs::AnyFs, sims::{Simulations, BySimulation}, sim::SliceIdx};
 use iced::{widget::row, Command, Element};
 
 use crate::{
@@ -17,13 +17,13 @@ use crate::{
 
 #[derive(Debug)]
 pub struct SliceTab {
-    slice: SimulationIdx<SliceSeriesIdx>,
+    slice: BySimulation<SliceIdx>,
     frame: usize,
     plot_state: RefCell<cartesian::State>,
 }
 
 impl IdSource for SliceTab {
-    type Id = SimulationIdx<SliceSeriesIdx>;
+    type Id = BySimulation<SliceIdx>;
     type Iter<'a> = Once<Self::Id>
     where
         Self: 'a;
@@ -40,7 +40,7 @@ pub enum Message {
 }
 
 impl SliceTab {
-    pub fn new(slice: SimulationIdx<SliceSeriesIdx>) -> Self {
+    pub fn new(slice: BySimulation<SliceIdx>) -> Self {
         Self {
             slice,
             frame: 200, // TODO
@@ -95,14 +95,14 @@ impl SliceTab {
     // }
 }
 
-impl Tab<Simulations<AnyFs>> for SliceTab {
+impl Tab<Simulations> for SliceTab {
     type Message = Message;
 
     fn title(&self) -> String {
         "Slice Plot".to_string()
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Message> {
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
             cartesian(Heatmap::new(model, self, self.frame), &self.plot_state).map(Message::Plot),
@@ -112,7 +112,7 @@ impl Tab<Simulations<AnyFs>> for SliceTab {
 
     fn update(
         &mut self,
-        _model: &mut Simulations<AnyFs>,
+        _model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
         match message {

@@ -24,32 +24,32 @@ use crate::{
 pub struct PlotTab {
     // chart: CartesianPlot<LinePlot<GlobalTimeSeriesIdx, Simulations, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>>,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
-    series: RefCell<HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
+    // series: RefCell<HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
     plot_state: RefCell<cartesian::State>,
 }
 
-#[derive(Debug)]
-pub struct PlotTabSeries {
-    idx: SimulationIdx<TimeSeriesIdx>,
-    selected: bool,
-    array_stats_vis_cache: Cache,
-}
+// #[derive(Debug)]
+// pub struct PlotTabSeries {
+//     idx: SimulationIdx<TimeSeriesIdx>,
+//     selected: bool,
+//     array_stats_vis_cache: Cache,
+// }
 
-impl PlotTabSeries {
-    pub fn new(idx: SimulationIdx<TimeSeriesIdx>) -> Self {
-        Self {
-            idx,
-            selected: false,
-            array_stats_vis_cache: Cache::new(),
-        }
-    }
-}
+// impl PlotTabSeries {
+//     pub fn new(idx: SimulationIdx<TimeSeriesIdx>) -> Self {
+//         Self {
+//             idx,
+//             selected: false,
+//             array_stats_vis_cache: Cache::new(),
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
     Plot(cartesian::Message),
-    Add(SimulationIdx<TimeSeriesIdx>),
-    Remove(SimulationIdx<TimeSeriesIdx>),
+    // Add(SimulationIdx<TimeSeriesIdx>),
+    // Remove(SimulationIdx<TimeSeriesIdx>),
 }
 
 impl PlotTab {
@@ -117,7 +117,7 @@ impl PlotTab {
     }
 }
 
-impl Tab<Simulations<AnyFs>> for PlotTab {
+impl Tab<Simulations> for PlotTab {
     type Message = Message;
 
     fn title(&self) -> String {
@@ -129,7 +129,7 @@ impl Tab<Simulations<AnyFs>> for PlotTab {
 
     fn update(
         &mut self,
-        _model: &mut Simulations<AnyFs>,
+        _model: &mut Simulations,
         message: Self::Message,
     ) -> Command<Self::Message> {
         // self.chart.invalidate();
@@ -146,7 +146,7 @@ impl Tab<Simulations<AnyFs>> for PlotTab {
         }
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations<AnyFs>) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
         let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
         row![
