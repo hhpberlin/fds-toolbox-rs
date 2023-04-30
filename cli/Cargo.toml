@@ -15,3 +15,4 @@ tokio = { version = "1.27", features = ["full"] }
 clap = { version = "4.2", features = ["cargo", "derive"] }
 color-eyre = "0.6.2"
 miette = { version = "5.7.0", features = ["fancy"] }
+futures = "0.3.28"

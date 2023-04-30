@@ -7,7 +7,7 @@ use tokio::time::Instant;
 
 use lazy_static::lazy_static;
 
-use crate::cached::{Cached, CachedInner};
+use crate::cached::{CacheResult, Cached, CachedInner};
 
 pub struct MemoryManager {
     data: DashSet<CachedDyn>,
@@ -98,15 +98,15 @@ where
     }
 
     fn get_size(&self) -> usize {
-        match self.try_get_sync() {
-            Some(Ok(x)) => x.get_size(),
+        match self.get().and_then(CacheResult::into_val) {
+            Some(x) => x.get_size(),
             _ => 0,
         }
     }
 
     fn get_ref_count(&self) -> usize {
-        match self.try_get_sync() {
-            Some(Ok(x)) => x.get_ref_count(),
+        match self.get().and_then(CacheResult::into_val) {
+            Some(x) => x.get_ref_count(),
             _ => 0,
         }
     }
@@ -138,8 +138,8 @@ where
     T: GetSize + Eq,
 {
     fn get_size(&self) -> usize {
-        match self.try_get_sync() {
-            Some(Ok(x)) => x.get_size(),
+        match self.get().and_then(CacheResult::into_val) {
+            Some(x) => x.get_size(),
             _ => 0,
         }
     }

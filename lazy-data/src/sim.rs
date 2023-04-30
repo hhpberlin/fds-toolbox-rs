@@ -64,31 +64,39 @@ impl<Fs: FileSystem + 'static> CachedSimulation<Fs> {
         }
     }
 
+    pub fn get_sim(&self) -> Arc<Simulation<Fs>> {
+        self.sim.clone()
+    }
+
     pub async fn get_devc(&self) -> Result<Arc<DeviceList>, CachedError> {
         let sim = self.sim.clone();
         self.devc
-            .get_cached(move || Box::pin(async move { sim.csv_devc().await.map(Arc::new) }))
+            .get_with(move || Box::pin(async move { sim.csv_devc().await.map(Arc::new) }))
+            .get()
             .await
     }
 
     pub async fn get_cpu(&self) -> Result<Arc<Option<CpuData>>, CachedError> {
         let sim = self.sim.clone();
         self.cpu
-            .get_cached(move || Box::pin(async move { sim.csv_cpu().await.map(Arc::new) }))
+            .get_with(move || Box::pin(async move { sim.csv_cpu().await.map(Arc::new) }))
+            .get()
             .await
     }
 
     pub async fn get_hrr(&self) -> Result<Arc<Vec<HrrStep>>, CachedError> {
         let sim = self.sim.clone();
         self.hrr
-            .get_cached(move || Box::pin(async move { sim.csv_hrr().await.map(Arc::new) }))
+            .get_with(move || Box::pin(async move { sim.csv_hrr().await.map(Arc::new) }))
+            .get()
             .await
     }
 
     pub async fn get_slice(&self, idx: usize) -> Result<Arc<Slice>, CachedError> {
         let sim = self.sim.clone();
         self.slice[idx]
-            .get_cached(move || Box::pin(async move { sim.slice(idx).await.map(Arc::new) }))
+            .get_with(move || Box::pin(async move { sim.slice(idx).await.map(Arc::new) }))
+            .get()
             .await
     }
 

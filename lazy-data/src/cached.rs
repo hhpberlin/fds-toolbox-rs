@@ -155,45 +155,65 @@ where
     }
 }
 
+pub enum CacheResult<T> {
+    Cached(T),
+    InFlight(broadcast::Receiver<Result<T, CachedError>>),
+}
+
+impl<T> CacheResult<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    pub fn into_val(self) -> Option<T> {
+        match self {
+            CacheResult::Cached(v) => Some(v),
+            CacheResult::InFlight(_) => None,
+        }
+    }
+
+    pub fn try_get(&self) -> Option<Result<T, CachedError>> {
+        match self {
+            CacheResult::Cached(v) => Some(Ok(v.clone())),
+            CacheResult::InFlight(_) => None,
+        }
+    }
+
+    pub async fn into_fut(self) -> Result<T, CachedError> {
+        match self {
+            CacheResult::Cached(v) => Ok(v),
+            CacheResult::InFlight(mut rx) => rx
+                .recv()
+                .await
+                .map_err(|_| CachedError::new("in-flight request died"))
+                .and_then(|r| r),
+        }
+    }
+
+    pub async fn get(&mut self) -> Result<T, CachedError> {
+        match self {
+            CacheResult::Cached(v) => Ok(v.clone()),
+            CacheResult::InFlight(rx) => rx
+                .recv()
+                .await
+                .map_err(|_| CachedError::new("in-flight request died"))
+                .and_then(|r| r),
+        }
+    }
+}
+
 impl<T> Cached<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    pub async fn get_cached<F, E>(&self, f: F) -> Result<T, CachedError>
+    pub fn get_with<F, E>(&self, f: F) -> CacheResult<T>
     where
         F: FnOnce() -> BoxFut<'static, Result<T, E>>,
         E: std::fmt::Display + Debug + 'static,
     {
-        let mut rx = {
-            let mut inner = self.mutex.lock();
-            inner.last_accessed = Some(Instant::now());
+        let mut inner = self.mutex.lock();
 
-            if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
-                let Some(refresh_interval) = self.refresh_interval else {
-                    return Ok(value.clone());
-                };
-
-                let elapsed = fetched_at.elapsed();
-
-                if elapsed < refresh_interval {
-                    return Ok(value.clone());
-                } else {
-                    debug!(elapsed = ?elapsed, refresh_interval = ?refresh_interval, "Cache is stale, let's refresh");
-                }
-            }
-
-            if let Some(inflight) = inner.inflight.as_ref().and_then(Weak::upgrade) {
-                inflight.subscribe()
-            } else {
-                self.attach_future_inner(&mut inner, f())
-            }
-        };
-
-        // if we reached here, we're waiting for an in-flight request (we weren't
-        // able to serve from cache)
-        rx.recv()
-            .await
-            .map_err(|_| CachedError::new("in-flight request died"))?
+        self.get_core(&mut inner)
+            .unwrap_or_else(|| CacheResult::InFlight(self.attach_future_inner(&mut inner, f())))
     }
 
     pub fn attach_future<E>(
@@ -249,65 +269,44 @@ impl<T> CachedInner<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    pub fn try_get_sync(&self) -> Option<Result<T, CachedError>> {
+    pub fn get(&self) -> Option<CacheResult<T>> {
         let mut inner = self.mutex.lock();
+
+        self.get_core(&mut inner)
+    }
+
+    fn get_core(
+        &self,
+        inner: &mut parking_lot::lock_api::MutexGuard<parking_lot::RawMutex, CachedValue<T>>,
+    ) -> Option<CacheResult<T>> {
+        // let mut inner = self.mutex.lock();
         inner.last_accessed = Some(Instant::now());
 
-        let Some((fetched_at, value)) = inner.last_fetched.as_ref() else {
-            return None;
-        };
+        if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
+            let Some(refresh_interval) = self.refresh_interval else {
+                    return Some(CacheResult::Cached(value.clone()));
+                };
 
-        let Some(refresh_interval) = self.refresh_interval else {
-                return Some(Ok(value.clone()));
-            };
+            let elapsed = fetched_at.elapsed();
 
-        let elapsed = fetched_at.elapsed();
-
-        if elapsed < refresh_interval {
-            Some(Ok(value.clone()))
-        } else {
-            debug!(elapsed = ?elapsed, refresh_interval = ?refresh_interval, "Cache is stale, ignoring value");
-            None
+            if elapsed < refresh_interval {
+                return Some(CacheResult::Cached(value.clone()));
+            } else {
+                inner.last_accessed = None;
+                debug!(elapsed = ?elapsed, refresh_interval = ?refresh_interval, "Cache is stale, ignoring value");
+            }
         }
+
+        inner
+            .inflight
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .map(|inflight| CacheResult::InFlight(inflight.subscribe()))
     }
 
     pub fn get_last_accessed(&self) -> Option<Instant> {
         let inner = self.mutex.lock();
         inner.last_accessed
-    }
-
-    pub async fn try_get(&self) -> Option<Result<T, CachedError>> {
-        let mut rx = {
-            let mut inner = self.mutex.lock();
-            inner.last_accessed = Some(Instant::now());
-
-            if let Some((fetched_at, value)) = inner.last_fetched.as_ref() {
-                let Some(refresh_interval) = self.refresh_interval else {
-                    return Some(Ok(value.clone()));
-                };
-
-                let elapsed = fetched_at.elapsed();
-
-                if elapsed < refresh_interval {
-                    return Some(Ok(value.clone()));
-                } else {
-                    debug!(elapsed = ?elapsed, refresh_interval = ?refresh_interval, "Cache is stale, ignoring value");
-                }
-            }
-
-            if let Some(inflight) = inner.inflight.as_ref().and_then(Weak::upgrade) {
-                inflight.subscribe()
-            } else {
-                return None;
-            }
-        };
-
-        Some(
-            rx.recv()
-                .await
-                .map_err(|_| CachedError::new("in-flight request died"))
-                .and_then(|x| x),
-        )
     }
 
     pub fn clear(&self) -> Option<T> {
