@@ -29,7 +29,7 @@ use fds_toolbox_core::formats::csv::devc::DeviceList;
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use fds_toolbox_lazy_data::fs::AnyFs;
 use fds_toolbox_lazy_data::moka::{MokaStore};
-use fds_toolbox_lazy_data::sims::Simulations;
+// use fds_toolbox_lazy_data::sims::Simulations;
 use iced::event::Status;
 
 use iced::widget::{Column, Container, Text};
@@ -64,10 +64,10 @@ struct FdsToolbox {
     active_tab: usize,
     tabs: Vec<FdsToolboxTab>,
     keyboard_info: KeyboardInfo,
-    simulations: Simulations,
+    // simulations: Simulations,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
-    // moka_store: MokaStore,
+    moka_store: MokaStore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -105,6 +105,8 @@ impl TabIdx {
         self.to_absolute_core(tbx.active_tab, tbx.tabs.len())
     }
 }
+
+pub type Model = Simulations;
 
 impl FdsToolbox {
     pub fn active_tab(&mut self) -> Option<&mut FdsToolboxTab> {
@@ -210,7 +212,8 @@ impl Application for FdsToolbox {
             // simulations,
             // moka_store,
             keyboard_info: KeyboardInfo::default(),
-            simulations: Default::default(),
+            // simulations: Default::default(),
+            moka_store: MokaStore::new(10_000),
         };
         Self::open_some_tabs(&mut this);
         (this, Command::none())
