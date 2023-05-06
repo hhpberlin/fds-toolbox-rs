@@ -3,9 +3,9 @@ resolver = "2"
 members = [
     "core",
     "lazy-data",
-    # "ui",
+    "ui",
     "cli",
-    "rescale-api"
+    # "rescale-api"
 ]
 
 [profile.release]

@@ -35,6 +35,14 @@ impl DeviceReadings {
     }
 }
 
+impl DeviceList {
+    pub fn iter_device_views(&self) -> impl Iterator<Item = TimeSeries0View<'_>> {
+        self.devices
+            .iter()
+            .map(move |device| device.view(self.time_in_seconds.view()))
+    }
+}
+
 // Errors within a single _devc.csv file
 #[derive(Error, Debug)]
 pub enum ParsingError {
@@ -246,6 +254,14 @@ impl DeviceList {
 
     pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
         self.devices.iter().find(|x| x.name == name)
+    }
+
+    pub fn get_device_by_idx(&self, idx: usize) -> Option<&DeviceReadings> {
+        self.devices.get(idx)
+    }
+
+    pub fn view_device_by_idx(&self, idx: usize) -> Option<TimeSeries0View<'_>> {
+        self.get_device_by_idx(idx).map(|x| x.view(self.time_in_seconds.view()))
     }
 
     // pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {

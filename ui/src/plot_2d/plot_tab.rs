@@ -4,7 +4,7 @@ use std::{
     iter::Copied,
 };
 
-use fds_toolbox_lazy_data::{fs::AnyFs, sims::Simulations};
+use fds_toolbox_lazy_data::{fs::AnyFs};
 use iced::{
     widget::{canvas::Cache, checkbox, container, horizontal_space, row, scrollable, Column},
     Command, Element, Length,
@@ -17,7 +17,7 @@ use crate::{
         ids::IdSource,
         lines::LinePlot,
     },
-    tabs::Tab,
+    tabs::Tab, Model,
 };
 
 #[derive(Debug)]
@@ -76,7 +76,7 @@ impl PlotTab {
 
     fn view_sidebar<'a>(
         // mut series: RefMut<'a, HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
-        model: &'a Simulations,
+        model: &'a Model,
     ) -> Element<'a, Message> {
         let mut sidebar = Column::new();
 
@@ -118,7 +118,7 @@ impl PlotTab {
     }
 }
 
-impl Tab<Simulations> for PlotTab {
+impl Tab for PlotTab {
     type Message = Message;
 
     fn title(&self) -> String {
@@ -130,7 +130,7 @@ impl Tab<Simulations> for PlotTab {
 
     fn update(
         &mut self,
-        _model: &mut Simulations,
+        _model: &mut Model,
         message: Self::Message,
     ) -> Command<Self::Message> {
         // self.chart.invalidate();
@@ -147,48 +147,14 @@ impl Tab<Simulations> for PlotTab {
         }
     }
 
-    fn view<'a>(&'a self, model: &'a Simulations) -> Element<'a, Self::Message> {
+    fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message> {
         // let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
-        let data_source = self
+        let data_source = self;
         row![
             Self::view_sidebar(model),
-            cartesian(LinePlot::new(data_source), &self.plot_state).map(Message::Plot),
+            cartesian(LinePlot::new(todo!()), &self.plot_state).map(Message::Plot),
         ]
         .into()
-    }
-}
-
-impl IdSource for HashSet<SimulationIdx<TimeSeriesIdx>> {
-    type Id = SimulationIdx<TimeSeriesIdx>;
-    // The things I do to avoid a single alloc lmao
-    type Iter<'a> = Copied<std::collections::hash_set::Iter<'a, Self::Id>>;
-
-    fn iter_ids(&self) -> Self::Iter<'_> {
-        self.iter().copied()
-    }
-}
-
-impl IdSource for Vec<SimulationIdx<TimeSeriesIdx>> {
-    type Id = SimulationIdx<TimeSeriesIdx>;
-    type Iter<'a> = Copied<std::slice::Iter<'a, Self::Id>>;
-
-    fn iter_ids(&self) -> Self::Iter<'_> {
-        self.iter().copied()
-    }
-}
-
-impl IdSource for HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries> {
-    type Id = SimulationIdx<TimeSeriesIdx>;
-    // TODO: Find a way to avoid this alloc
-    //       Currently here because filter_map's iterator cannot be named
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Id> + 'a>;
-
-    fn iter_ids(&self) -> Self::Iter<'_> {
-        Box::new(
-            self.iter()
-                .filter_map(|(idx, s)| if s.selected { Some(idx) } else { None })
-                .copied(),
-        )
     }
 }

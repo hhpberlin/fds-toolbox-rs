@@ -12,53 +12,39 @@ use plotters::{
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
-    ids::IdSource,
+    ids::{IdSource, SeriesSource2},
 };
 
-pub struct Heatmap<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>> {
-    data_source: DataSrc,
-    id_source: IdSrc,
-    frame: usize,
+pub struct Heatmap {
+    data_source: Box<SeriesSource2>,
 }
 
-impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>>
-    CartesianDrawer for Heatmap<Id, DataSrc, IdSrc>
+impl CartesianDrawer for Heatmap
 {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
         chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
         _state: &super::cartesian::State,
     ) {
-        let data = self.id_source.iter_ids();
-        // .filter_map(|id| self.data_source.get_time_series(id).map(|x| (id, x)));
+        let data = self.data_source.iter_series();
 
-        for id in data {
-            let data = self.data_source.get_time_series(id);
-            let Ok(data) = data else {
-                // TODO: Visualize progress / display errors
-                continue;
-            };
-
+        for view in data {
             let hash = {
                 let mut hasher = DefaultHasher::new();
-                data.values.stats.hash(&mut hasher);
+                view.values.stats.hash(&mut hasher);
                 hasher.finish()
             };
 
             let _color = Palette99::pick(hash as usize);
 
-            let t = self.frame;
-
-            let Some(frame) = data.view_frame(t) else { continue; };
-
-            let w = frame.values.data.len_of(Axis(0));
-            let h = frame.values.data.len_of(Axis(1));
+            let w = view.values.data.len_of(Axis(0));
+            let h = view.values.data.len_of(Axis(1));
 
             chart
                 .draw_series(
                     iter_2d(0..w, 0..h)
                         .map(|(x, y)| {
-                            let v = frame.values.data[[x, y]];
+                            let v = view.values.data[[x, y]];
                             let x = x as f32;
                             let y = y as f32;
 
@@ -73,7 +59,7 @@ impl<Id: Copy, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id =
                                 .filled(),
                             )
                         })
-                        .collect::<Vec<_>>(),
+                        // .collect::<Vec<_>>(),
                 )
                 // TODO: Fix this unwrap
                 .unwrap();
@@ -89,14 +75,11 @@ fn iter_2d<X: Copy, Y>(
         .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
 }
 
-impl<Id, DataSrc: TimeSeriesViewSource<Id, f32, Ix3>, IdSrc: IdSource<Id = Id>>
-    Heatmap<Id, DataSrc, IdSrc>
+impl Heatmap
 {
-    pub fn new(data_source: DataSrc, id_source: IdSrc, frame: usize) -> Self {
+    pub fn new(data_source: Box<SeriesSource2>) -> Self {
         Self {
             data_source,
-            id_source,
-            frame,
         }
     }
 }

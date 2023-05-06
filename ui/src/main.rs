@@ -28,7 +28,7 @@ use fds_toolbox_core::formats::csv::devc::DeviceList;
 
 use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
 use fds_toolbox_lazy_data::fs::AnyFs;
-use fds_toolbox_lazy_data::moka::{MokaStore};
+use fds_toolbox_lazy_data::moka::{MokaStore, SimulationIdx};
 // use fds_toolbox_lazy_data::sims::Simulations;
 use iced::event::Status;
 
@@ -67,7 +67,7 @@ struct FdsToolbox {
     // simulations: Simulations,
     // TODO: Store using fancy lazy_data structs
     // store: Store,
-    moka_store: MokaStore,
+    simulations: Simulations,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -107,6 +107,17 @@ impl TabIdx {
 }
 
 pub type Model = Simulations;
+
+#[derive(Debug)]
+
+struct Simulations {
+    pub store: MokaStore,
+    pub active_simulations: Vec<SimulationIdx>,
+}
+
+impl Simulations {
+    fn new() -> Self { Self { store: MokaStore::new(1_000_000), active_simulations: Vec::new() } }
+}
 
 impl FdsToolbox {
     pub fn active_tab(&mut self) -> Option<&mut FdsToolboxTab> {
@@ -212,8 +223,8 @@ impl Application for FdsToolbox {
             // simulations,
             // moka_store,
             keyboard_info: KeyboardInfo::default(),
-            // simulations: Default::default(),
-            moka_store: MokaStore::new(10_000),
+            simulations: Simulations::new(),
+            // moka_store: MokaStore::new(10_000),
         };
         Self::open_some_tabs(&mut this);
         (this, Command::none())
@@ -254,7 +265,7 @@ impl Application for FdsToolbox {
                         Message::TabSelected(TabIdx::Absolute(x))
                     }),
                     |tab_bar, tab| {
-                        let tab_label = <FdsToolboxTab as Tab<Simulations>>::title(tab);
+                        let tab_label = <FdsToolboxTab as Tab>::title(tab);
                         tab_bar.push(TabLabel::Text(tab_label))
                     },
                     // Column::new(),

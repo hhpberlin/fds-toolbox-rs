@@ -10,7 +10,10 @@ use dashmap::DashMap;
 use fds_toolbox_core::file::{FileSystem, ParseError, SimulationPath};
 use get_size::GetSize;
 
-use crate::{cached::Cached, sim::CachedSimulation};
+use crate::{
+    cached::{CacheResult, Cached},
+    sim::CachedSimulation,
+};
 
 pub struct Simulations<Fs: FileSystem + Eq + Hash = crate::fs::AnyFs> {
     simulations: DashMap<SimulationIdx, Cached<Arc<CachedSimulation<Fs>>>>,
@@ -46,10 +49,47 @@ impl<Fs: FileSystem + Eq + Hash> Simulations<Fs> {
         idx
     }
 
-    pub fn add_by_path(&self, path: SimulationPath<Fs>) -> SimulationIdx
+    fn get_with(&self, idx: SimulationIdx, path: SimulationPath<Fs>) -> BySimulation<CacheResult<Arc<CachedSimulation<Fs>>>>
     where
-        Fs: FileSystem + GetSize,
-        Fs::Path: GetSize,
+        CachedSimulation<Fs>: GetSize,
+    {
+        match self.simulations.get(&idx) {
+            Some(sim) => BySimulation(idx, sim.value().clone()),
+            None => {
+                self.get_by_path(path)
+            }
+        }
+    }
+
+    pub fn get_by_path(
+        &self,
+        path: SimulationPath<Fs>,
+    ) -> BySimulation<CacheResult<Arc<CachedSimulation<Fs>>>>
+    where
+        CachedSimulation<Fs>: GetSize,
+    {
+        match self.by_path
+        .get(&path) {
+            Some(x) => { let sim =
+            self.simulations.get(x.value()); },
+            None => todo!(),
+        }
+        
+            .map(|entry| {
+                let idx = entry.value();
+                let sim = self.simulations.get(idx).unwrap();
+                BySimulation(*idx, sim.value().clone())
+            })
+            .get_or_insert_with(|| {
+                let idx = self.add_by_path(path);
+                let sim = self.simulations.get(&idx).unwrap();
+                BySimulation(idx, sim.value().clone())
+            })
+    }
+
+    fn add_by_path(&self, path: SimulationPath<Fs>) -> SimulationIdx
+    where
+        CachedSimulation<Fs>: GetSize,
     {
         self.add(Cached::from_fut_enrolled::<ParseError<_, _>>(
             Box::pin(async move {

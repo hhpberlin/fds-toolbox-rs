@@ -1,6 +1,6 @@
 use std::{
     collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
+    hash::{Hash, Hasher}, fmt::{Formatter, Debug},
 };
 
 use fds_toolbox_core::common::series::TimeSeriesViewSource;
@@ -11,23 +11,26 @@ use plotters::{
     style::{Color, Palette, Palette99, ShapeStyle, RED},
 };
 
-use crate::plot_2d::series_select::{SeriesSource, LabeledSeries};
-
 use super::{
     cartesian::{self, Cartesian2df32, CartesianDrawer},
-    ids::IdSource,
+    ids::{IdSource, SeriesSource0},
 };
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);
 
-#[derive(Debug)]
 pub struct LinePlot {
-    data_source: Box<dyn SeriesSource>,
+    data_source: Box<SeriesSource0>,
+}
+
+impl Debug for LinePlot {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinePlot").finish()
+    }
 }
 
 impl LinePlot {
-    pub fn new(data_source: Box<dyn SeriesSource>) -> Self {
+    pub fn new(data_source: Box<SeriesSource0>) -> Self {
         Self { data_source }
     }
 
@@ -48,24 +51,24 @@ impl CartesianDrawer for LinePlot {
             .hovered_point
             .map(|point| (point.x as i32, point.y as i32));
 
-        let mut closest: Option<ClosestPoint<Id>> = None;
+        let mut closest: Option<ClosestPoint> = None;
 
         // TODO: Avoid alloc by reusing iterator?
         let data = self.data_source.iter_series();
 
-        for LabeledSeries { name, data } in data {
+        for view in data {
             // TODO: This could be better, but it works for now
             // This is used for assigning unique colors to each series
             let hash = {
                 let mut hasher = DefaultHasher::new();
-                data.values.stats.hash(&mut hasher);
+                view.values.stats.hash(&mut hasher);
                 hasher.finish()
             };
 
             let color = Palette99::pick(hash as usize);
 
             // TODO: Extrapolate to the edges of the plot
-            let data_iter = data.iter().filter(|(x, y)| {
+            let data_iter = view.iter().filter(|(x, y)| {
                 state.x_range.contains(*x) && state.y_range.contains(*y)
                 // TODO: This would cause a flat line between the surrounding points to be drawn
                 // && self.state.y_range.contains(*y)
@@ -75,7 +78,7 @@ impl CartesianDrawer for LinePlot {
             chart
                 .draw_series(LineSeries::new(data_iter, color.stroke_width(2)))
                 .expect("failed to draw chart data")
-                .label(format!("{} ({})", data.name, data.unit))
+                .label(format!("{} ({})", view.name, view.unit))
                 .legend(move |(x, y)| {
                     PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2))
                 });
@@ -84,8 +87,8 @@ impl CartesianDrawer for LinePlot {
                 closest = closest
                     .into_iter()
                     .chain(
-                        data.iter()
-                            .map(|x| ClosestPoint::new(id, x, hover_screen, chart.as_coord_spec())),
+                        view.iter()
+                            .map(|x| ClosestPoint::new(x, hover_screen, chart.as_coord_spec())),
                     )
                     .fold(None, |a, b| match a {
                         None => Some(b),
@@ -152,21 +155,19 @@ impl CartesianDrawer for LinePlot {
     }
 }
 
-struct ClosestPoint<Id> {
-    id: Id,
+struct ClosestPoint {
     point: PosF,
     point_screen: PosI,
     distance_screen_sq: f32,
 }
 
-impl<Id> ClosestPoint<Id> {
-    fn new(id: Id, point: PosF, hover_screen: PosI, coord_spec: &Cartesian2df32) -> Self {
+impl ClosestPoint {
+    fn new(point: PosF, hover_screen: PosI, coord_spec: &Cartesian2df32) -> Self {
         let point_screen = coord_spec.translate(&point);
         let distance_screen_sq = (point_screen.0 as f32 - hover_screen.0 as f32).powi(2)
             + (point_screen.1 as f32 - hover_screen.1 as f32).powi(2);
 
         Self {
-            id,
             point,
             point_screen,
             distance_screen_sq,
