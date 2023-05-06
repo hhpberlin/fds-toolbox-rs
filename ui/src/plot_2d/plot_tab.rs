@@ -14,12 +14,15 @@ use crate::{
     Model,
 };
 
+use super::series_select::SeriesSelection;
+
 #[derive(Debug)]
 pub struct PlotTab {
     // chart: CartesianPlot<LinePlot<GlobalTimeSeriesIdx, Simulations, HashMap<GlobalTimeSeriesIdx, PlotTabSeries>>>,
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
     // series: RefCell<HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
     plot_state: RefCell<cartesian::State>,
+    series_selection: SeriesSelection,
 }
 
 // #[derive(Debug)]
@@ -44,6 +47,7 @@ pub enum Message {
     Plot(cartesian::Message),
     // Add(SimulationIdx<TimeSeriesIdx>),
     // Remove(SimulationIdx<TimeSeriesIdx>),
+    SeriesSelection(super::series_select::Message),
 }
 
 impl PlotTab {
@@ -65,14 +69,18 @@ impl PlotTab {
                 (0.0..=100.0).into(),
                 (0.0..=100.0).into(),
             )),
+            series_selection: SeriesSelection::new(),
         }
     }
 
+    /*
     fn view_sidebar(
         // mut series: RefMut<'a, HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
         _model: &Model,
     ) -> Element<'_, Message> {
-        let sidebar = Column::new();
+        // let sidebar = Column::new();
+
+        let sidebar =
 
         // for (idx, device) in model
         //     .simulations
@@ -109,7 +117,7 @@ impl PlotTab {
         // }
 
         scrollable(sidebar).into()
-    }
+    } */
 }
 
 impl Tab for PlotTab {
@@ -126,14 +134,18 @@ impl Tab for PlotTab {
         // self.chart.invalidate();
         match message {
             Message::Plot(_) => Command::none(), //self.chart.update(msg).map(Message::Plot),
-                                                 // Message::Add(idx) => {
-                                                 //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
-                                                 //     Command::none()
-                                                 // }
-                                                 // Message::Remove(idx) => {
-                                                 //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
-                                                 //     Command::none()
-                                                 // }
+            // Message::Add(idx) => {
+            //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
+            //     Command::none()
+            // }
+            // Message::Remove(idx) => {
+            //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
+            //     Command::none()
+            // }
+            Message::SeriesSelection(msg) => self
+                .series_selection
+                .update(msg)
+                .map(Message::SeriesSelection),
         }
     }
 
@@ -142,8 +154,15 @@ impl Tab for PlotTab {
 
         let _data_source = self;
         row![
-            Self::view_sidebar(model),
-            cartesian(LinePlot::new(todo!()), &self.plot_state).map(Message::Plot),
+            // Self::view_sidebar(model),
+            self.series_selection
+                .view(model)
+                .map(Message::SeriesSelection),
+            cartesian(
+                LinePlot::new(Box::new((&self.series_selection, model))),
+                &self.plot_state
+            )
+            .map(Message::Plot),
         ]
         .into()
     }

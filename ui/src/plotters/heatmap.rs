@@ -14,19 +14,24 @@ use super::{
     ids::SeriesSource2,
 };
 
-pub struct Heatmap {
-    data_source: Box<SeriesSource2>,
+pub struct Heatmap<'a> {
+    data_source: Box<SeriesSource2<'a>>,
 }
 
-impl CartesianDrawer for Heatmap {
+impl CartesianDrawer for Heatmap<'_> {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
         chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
         _state: &super::cartesian::State,
     ) {
-        let data = self.data_source.iter_series();
+        // let data = self.data_source.iter_series();
 
-        for view in data {
+        // for data in data {
+        self.data_source.for_each_series(&mut |view| {
+            // let view = data.view();
+
+            // TODO: This could be better, but it works for now
+            // This is used for assigning unique colors to each series
             let hash = {
                 let mut hasher = DefaultHasher::new();
                 view.values.stats.hash(&mut hasher);
@@ -59,7 +64,7 @@ impl CartesianDrawer for Heatmap {
                 )
                 // TODO: Fix this unwrap
                 .unwrap();
-        }
+        });
     }
 }
 
@@ -71,8 +76,8 @@ fn iter_2d<X: Copy, Y>(
         .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
 }
 
-impl Heatmap {
-    pub fn new(data_source: Box<SeriesSource2>) -> Self {
+impl<'a> Heatmap<'a> {
+    pub fn new(data_source: Box<SeriesSource2<'a>>) -> Self {
         Self { data_source }
     }
 }

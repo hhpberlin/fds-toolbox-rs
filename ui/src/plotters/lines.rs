@@ -12,25 +12,24 @@ use plotters::{
 };
 
 use super::{
-    cartesian::{self, Cartesian2df32, CartesianDrawer},
-    ids::SeriesSource0,
+    cartesian::{self, Cartesian2df32, CartesianDrawer}, ids::SeriesSource1,
 };
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);
 
-pub struct LinePlot {
-    data_source: Box<SeriesSource0>,
+pub struct LinePlot<'a> {
+    data_source: Box<SeriesSource1<'a>>,
 }
 
-impl Debug for LinePlot {
+impl Debug for LinePlot<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LinePlot").finish()
     }
 }
 
-impl LinePlot {
-    pub fn new(data_source: Box<SeriesSource0>) -> Self {
+impl<'a> LinePlot<'a> {
+    pub fn new(data_source: Box<SeriesSource1<'a>>) -> Self {
         Self { data_source }
     }
 
@@ -41,7 +40,7 @@ impl LinePlot {
     // }
 }
 
-impl CartesianDrawer for LinePlot {
+impl CartesianDrawer for LinePlot<'_> {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
         chart: &mut ChartContext<DB, Cartesian2df32>,
@@ -54,9 +53,12 @@ impl CartesianDrawer for LinePlot {
         let mut closest: Option<ClosestPoint> = None;
 
         // TODO: Avoid alloc by reusing iterator?
-        let data = self.data_source.iter_series();
+        // let data = self.data_source.iter_series();
 
-        for view in data {
+        // for data in data {
+        self.data_source.for_each_series(&mut |view| {
+            // let view = data.view();
+
             // TODO: This could be better, but it works for now
             // This is used for assigning unique colors to each series
             let hash = {
@@ -85,6 +87,8 @@ impl CartesianDrawer for LinePlot {
 
             if let Some(hover_screen) = hover_screen {
                 closest = closest
+                    // Take required due to ownership problems relating to being in a closure
+                    .take()
                     .into_iter()
                     .chain(
                         view.iter()
@@ -99,7 +103,7 @@ impl CartesianDrawer for LinePlot {
                         }),
                     });
             }
-        }
+        });
 
         let hover = match hover_screen {
             Some(coord) => chart.as_coord_spec().reverse_translate(coord),
