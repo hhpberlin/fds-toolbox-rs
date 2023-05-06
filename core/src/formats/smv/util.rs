@@ -24,13 +24,13 @@ macro_rules! ws_separated {
                 (
                     $(
                         winnow::sequence::preceded(
-                            winnow::character::space0,
+                            winnow::ascii::space0,
                             $t
                                 // .context(concat!("ws_separated.", stringify!($t)))
                         )
                     ),+
                 ),
-                winnow::character::space0)
+                winnow::ascii::space0)
                 .context(concat!("ws_separated!(", stringify!($($t),+), ")"))
         }
     };

@@ -12,14 +12,15 @@ use plotters::{
 };
 
 use super::{
-    cartesian::{self, Cartesian2df32, CartesianDrawer}, ids::SeriesSource1,
+    cartesian::{self, Cartesian2df32, CartesianDrawer},
+    ids::SeriesSourceLine,
 };
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);
 
 pub struct LinePlot<'a> {
-    data_source: Box<SeriesSource1<'a>>,
+    data_source: Box<SeriesSourceLine<'a>>,
 }
 
 impl Debug for LinePlot<'_> {
@@ -29,7 +30,7 @@ impl Debug for LinePlot<'_> {
 }
 
 impl<'a> LinePlot<'a> {
-    pub fn new(data_source: Box<SeriesSource1<'a>>) -> Self {
+    pub fn new(data_source: Box<SeriesSourceLine<'a>>) -> Self {
         Self { data_source }
     }
 

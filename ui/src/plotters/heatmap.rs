@@ -11,11 +11,17 @@ use plotters::{
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
-    ids::SeriesSource2,
+    ids::SeriesSourceSlice,
 };
 
 pub struct Heatmap<'a> {
-    data_source: Box<SeriesSource2<'a>>,
+    data_source: Box<SeriesSourceSlice<'a>>,
+}
+
+impl<'a> Heatmap<'a> {
+    pub fn new(data_source: Box<SeriesSourceSlice<'a>>) -> Self {
+        Self { data_source }
+    }
 }
 
 impl CartesianDrawer for Heatmap<'_> {
@@ -74,10 +80,4 @@ fn iter_2d<X: Copy, Y>(
 ) -> impl Iterator<Item = (X, Y)> {
     x.into_iter()
         .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
-}
-
-impl<'a> Heatmap<'a> {
-    pub fn new(data_source: Box<SeriesSource2<'a>>) -> Self {
-        Self { data_source }
-    }
 }

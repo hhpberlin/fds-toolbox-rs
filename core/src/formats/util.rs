@@ -4,7 +4,7 @@ use miette::SourceSpan;
 
 use winnow::{
     bytes::take_till1,
-    character::space0,
+    ascii::space0,
     sequence::preceded,
     stream::{AsChar, Stream, StreamIsPartial},
     IResult, Parser,
@@ -191,7 +191,7 @@ where
     <I as Stream>::Slice: AsRef<str>,
 {
     non_ws
-        .map_res(|x: I::Slice| x.as_ref().parse::<T>())
+        .try_map(|x: I::Slice| x.as_ref().parse::<T>())
         .context(context)
         .parse_next(i)
 }

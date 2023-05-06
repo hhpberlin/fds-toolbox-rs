@@ -1,12 +1,15 @@
 use std::cell::RefCell;
 
+use fds_toolbox_core::common::series::{SeriesView, TimeSeries2Frame};
 use fds_toolbox_lazy_data::moka::{SimulationIdx, SliceIdx};
-use iced::{widget::row, Command, Element};
+use iced::{futures::FutureExt, widget::row, Command, Element};
+use ndarray::Ix2;
 
 use crate::{
     plotters::{
         cartesian::{self, cartesian},
         heatmap::Heatmap,
+        ids::SeriesSource,
     },
     tabs::Tab,
     Model,
@@ -14,7 +17,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct SliceTab {
-    slice: (SimulationIdx, SliceIdx),
+    slice: (SimulationIdx, SliceIdx, usize),
     frame: usize,
     plot_state: RefCell<cartesian::State>,
 }
@@ -26,7 +29,7 @@ pub enum Message {
 }
 
 impl SliceTab {
-    pub fn new(slice: (SimulationIdx, SliceIdx)) -> Self {
+    pub fn new(slice: (SimulationIdx, SliceIdx, usize)) -> Self {
         Self {
             slice,
             frame: 200, // TODO
@@ -81,6 +84,25 @@ impl SliceTab {
     // }
 }
 
+impl SeriesSource for (&SliceTab, &Model) {
+    type Item<'a> = TimeSeries2Frame<'a>;
+
+    fn for_each_series(&self, f: &mut dyn for<'a> FnMut(TimeSeries2Frame<'a>))
+    {
+        let (tab, model) = *self;
+        let slice = model
+            .store
+            .get_slice(tab.slice.0, tab.slice.1)
+            .now_or_never();
+
+        let Some(Ok(slice)) = slice else {return;};
+        let Some(series) = slice
+            .data.view().view_frame(tab.slice.2) else { return;};
+
+        f(series);
+    }
+}
+
 impl Tab for SliceTab {
     type Message = Message;
 
@@ -88,10 +110,10 @@ impl Tab for SliceTab {
         "Slice Plot".to_string()
     }
 
-    fn view<'a>(&'a self, _model: &'a Model) -> Element<'a, Message> {
+    fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
-            cartesian(Heatmap::new(todo!()), &self.plot_state).map(Message::Plot),
+            cartesian(Heatmap::new(Box::new((self, model))), &self.plot_state).map(Message::Plot),
         ]
         .into()
     }

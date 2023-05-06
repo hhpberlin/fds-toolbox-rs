@@ -238,7 +238,7 @@ impl SimulationParser<'_> {
                     // The absolute values are the actual id
                     let id = i32
                         .with_recognized()
-                        .map_res(|(x, x_str)| match x.signum() {
+                        .try_map(|(x, x_str)| match x.signum() {
                             -1 => Ok((true, x.unsigned_abs())),
                             1 => Ok((false, x.unsigned_abs())),
                             _ => Err(err::Error::UnexpectedObstIdSign {

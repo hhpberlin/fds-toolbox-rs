@@ -1,25 +1,19 @@
-use std::{collections::HashSet, fmt::Debug, sync::Arc};
+use std::{collections::HashSet, fmt::Debug};
 
-use fds_toolbox_core::{common::series::TimeSeries0View, formats::csv::devc::DeviceList};
-use fds_toolbox_lazy_data::moka::{DeviceIdx, SimulationIdx};
+use fds_toolbox_core::common::series::TimeSeries0View;
+use fds_toolbox_lazy_data::moka::SimulationIdx;
 use iced::{
     futures::FutureExt,
     widget::{button, checkbox, scrollable, text},
     Command, Element,
 };
-use ndarray::{Ix0, Ix1};
+use ndarray::Ix1;
 
 use crate::plotters::ids::SeriesSource;
-use crate::{plotters::ids::Viewable, Model};
-// pub struct LabeledSeries {
-//     name: String,
-//     // color: Box<dyn Into<ShapeStyle>>,
-//     data: Box<dyn Iterator<Item = (f32, f32)>>,
-// }
+use crate::Model;
 
 #[derive(Debug)]
 pub struct SeriesSelection {
-    // series: Vec<LabeledSeries>,
     selected: HashSet<Series>,
 }
 
@@ -41,7 +35,7 @@ pub enum SimSeries {
 }
 
 impl Series {
-    fn view<T>(&self, model: &Model, f: impl FnOnce(TimeSeries0View) -> T) -> Option<T> {
+    fn view<T>(&self, model: &Model, f: impl for<'a> FnOnce(TimeSeries0View<'a>) -> T) -> Option<T> {
         let Series(sim_idx, series) = self;
         match *series {
             SimSeries::Device { idx } => match model.store.get_devc(*sim_idx).now_or_never() {
@@ -52,8 +46,11 @@ impl Series {
     }
 }
 
-impl SeriesSource<Ix1> for (&SeriesSelection, &Model) {
-    fn for_each_series(&self, f: &mut dyn FnMut(TimeSeries0View)) {
+impl SeriesSource for (&SeriesSelection, &Model) {
+    type Item<'a> = TimeSeries0View<'a>;
+    
+    fn for_each_series(&self, f: &mut dyn for<'a> FnMut(TimeSeries0View<'a>))
+    {
         let (selection, model) = *self;
         for series in &selection.selected {
             series.view(model, &mut *f);

@@ -280,6 +280,10 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesFrame<'a, Value, Ix, 
     }
 }
 
+// pub type TimeSeries0Frame<'a, Value = f32, Time = f32> = TimeSeriesFrame<'a, Value, Ix0, Time>;
+// pub type TimeSeries1Frame<'a, Value = f32, Time = f32> = TimeSeriesFrame<'a, Value, Ix1, Time>;
+pub type TimeSeries2Frame<'a, Value = f32, Time = f32> = TimeSeriesFrame<'a, Value, Ix2, Time>;
+
 // impl<'a, Value: Copy, Time: Copy> TimeSeriesView1<'a, Value, Time> {
 //     fn iter(&self) -> Self::IntoIter {
 //         self.into_iter()

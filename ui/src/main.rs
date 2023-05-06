@@ -24,7 +24,7 @@
 
 use std::fmt::Debug;
 
-use fds_toolbox_core::file::{SimulationPath, OsFs};
+use fds_toolbox_core::file::{OsFs, SimulationPath};
 use fds_toolbox_lazy_data::fs::AnyFs;
 use fds_toolbox_lazy_data::moka::{MokaStore, SimulationIdx};
 // use fds_toolbox_lazy_data::sims::Simulations;
@@ -128,7 +128,13 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
-        self.simulations.active_simulations.push(self.simulations.store.get_idx_by_path(&SimulationPath::new(AnyFs::LocalFs(OsFs), "demo-house".to_string(), "DemoHaus2.smv".to_string())));
+        self.simulations
+            .active_simulations
+            .push(self.simulations.store.get_idx_by_path(&SimulationPath::new(
+                AnyFs::LocalFs(OsFs),
+                "demo-house".to_string(),
+                "DemoHaus2.smv".to_string(),
+            )));
         self.tabs.push(FdsToolboxTab::Plot(PlotTab::new()));
         // self.tabs
         //     .push(FdsToolboxTab::Plot(PlotTab::new(vec![SimulationIdx(

@@ -16,10 +16,9 @@ use util::*;
 use winnow::{
     branch::alt,
     bytes::{tag, take_till0, take_till1},
-    character::{line_ending, multispace0, not_line_ending, space0},
+    ascii::{line_ending, multispace0, not_line_ending, space0},
     combinator::opt,
     error::{ContextError, ErrMode, ParseError},
-    multi::count,
     sequence::{delimited, preceded, terminated},
     IResult, Parser,
 };
@@ -293,7 +292,7 @@ fn repeat<'input, O>(
     move |input| {
         // let (input, num) = line(usize).parse_next(input)?;
         let (input, num) = line(usize).parse_next(input)?;
-        let (input, vec) = count(parser.by_ref(), num).parse_next(input)?;
+        let (input, vec) = winnow::combinator::repeat(num, parser.by_ref()).parse_next(input)?;
         Ok((input, vec))
     }
 }

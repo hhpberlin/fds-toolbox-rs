@@ -199,9 +199,9 @@ impl IdxMap {
         self.path_to_idx.get(path).copied()
     }
 
-    fn try_get_by_idx(&self, idx: SimulationIdx) -> Option<&SimulationPath<AnyFs>> {
-        self.idx_to_path.get(&idx)
-    }
+    // fn try_get_by_idx(&self, idx: SimulationIdx) -> Option<&SimulationPath<AnyFs>> {
+    //     self.idx_to_path.get(&idx)
+    // }
 
     fn get_by_path_mut(&mut self, path: &SimulationPath<AnyFs>) -> SimulationIdx {
         match self.try_get_by_path(path) {

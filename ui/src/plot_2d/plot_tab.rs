@@ -1,9 +1,6 @@
 use std::cell::RefCell;
 
-use iced::{
-    widget::{row, scrollable, Column},
-    Command, Element,
-};
+use iced::{widget::row, Command, Element};
 
 use crate::{
     plotters::{
@@ -118,6 +115,12 @@ impl PlotTab {
 
         scrollable(sidebar).into()
     } */
+}
+
+impl Default for PlotTab {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Tab for PlotTab {
