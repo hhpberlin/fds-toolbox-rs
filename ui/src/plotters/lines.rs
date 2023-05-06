@@ -13,7 +13,7 @@ use plotters::{
 
 use super::{
     cartesian::{self, Cartesian2df32, CartesianDrawer},
-    ids::{IdSource, SeriesSource0},
+    ids::{SeriesSource0},
 };
 
 type PosF = (f32, f32);

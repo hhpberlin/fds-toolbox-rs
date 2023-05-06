@@ -14,7 +14,6 @@ use crate::{
     array_stats_vis::array_stats_vis,
     plotters::{
         cartesian::{self, cartesian},
-        ids::IdSource,
         lines::LinePlot,
     },
     tabs::Tab, Model,

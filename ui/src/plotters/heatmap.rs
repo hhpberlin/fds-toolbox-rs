@@ -12,7 +12,7 @@ use plotters::{
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
-    ids::{IdSource, SeriesSource2},
+    ids::{SeriesSource2},
 };
 
 pub struct Heatmap {

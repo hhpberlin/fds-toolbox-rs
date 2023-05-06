@@ -10,7 +10,6 @@ use crate::{
     plotters::{
         cartesian::{self, cartesian},
         heatmap::Heatmap,
-        ids::IdSource,
     },
     tabs::Tab, Model,
 };

@@ -10,20 +10,21 @@ pub type SeriesSource0 = dyn SeriesSource<Ix0>;
 pub type SeriesSource1 = dyn SeriesSource<Ix1>;
 pub type SeriesSource2 = dyn SeriesSource<Ix2>;
 
-pub trait IdSource {
-    type Id;
-    type Iter<'a>: Iterator<Item = Self::Id> + 'a
-    where
-        Self: 'a;
-    fn iter_ids(&self) -> Self::Iter<'_>;
+trait Viewable {
+    type View;
+    fn view(&self) -> Self::View;
 }
 
-impl<IdSrc: IdSource> IdSource for &IdSrc {
-    type Id = IdSrc::Id;
-    type Iter<'a> = IdSrc::Iter<'a>
-    where
-        Self: 'a;
-    fn iter_ids(&self) -> Self::Iter<'_> {
-        (*self).iter_ids()
+// impl<'a, Ix: Dimension> Viewable for TimeSeriesView<'a, f32, Ix, f32> {
+//     type View = Self;
+//     fn view(&self) -> Self::View {
+//         self.clone()
+//     }
+// }
+
+impl<T: Clone> Viewable for T {
+    type View = Self;
+    fn view(&self) -> Self::View {
+        self.clone()
     }
 }
