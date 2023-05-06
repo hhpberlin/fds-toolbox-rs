@@ -261,7 +261,8 @@ impl DeviceList {
     }
 
     pub fn view_device_by_idx(&self, idx: usize) -> Option<TimeSeries0View<'_>> {
-        self.get_device_by_idx(idx).map(|x| x.view(self.time_in_seconds.view()))
+        self.get_device_by_idx(idx)
+            .map(|x| x.view(self.time_in_seconds.view()))
     }
 
     // pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {

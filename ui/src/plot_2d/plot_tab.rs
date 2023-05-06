@@ -1,22 +1,17 @@
-use std::{
-    cell::{RefCell, RefMut},
-    collections::{HashMap, HashSet},
-    iter::Copied,
-};
+use std::cell::RefCell;
 
-use fds_toolbox_lazy_data::{fs::AnyFs};
 use iced::{
-    widget::{canvas::Cache, checkbox, container, horizontal_space, row, scrollable, Column},
-    Command, Element, Length,
+    widget::{row, scrollable, Column},
+    Command, Element,
 };
 
 use crate::{
-    array_stats_vis::array_stats_vis,
     plotters::{
         cartesian::{self, cartesian},
         lines::LinePlot,
     },
-    tabs::Tab, Model,
+    tabs::Tab,
+    Model,
 };
 
 #[derive(Debug)]
@@ -73,11 +68,11 @@ impl PlotTab {
         }
     }
 
-    fn view_sidebar<'a>(
+    fn view_sidebar(
         // mut series: RefMut<'a, HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
-        model: &'a Model,
-    ) -> Element<'a, Message> {
-        let mut sidebar = Column::new();
+        _model: &Model,
+    ) -> Element<'_, Message> {
+        let sidebar = Column::new();
 
         // for (idx, device) in model
         //     .simulations
@@ -127,29 +122,25 @@ impl Tab for PlotTab {
         "Line Plot".to_string()
     }
 
-    fn update(
-        &mut self,
-        _model: &mut Model,
-        message: Self::Message,
-    ) -> Command<Self::Message> {
+    fn update(&mut self, _model: &mut Model, message: Self::Message) -> Command<Self::Message> {
         // self.chart.invalidate();
         match message {
             Message::Plot(_) => Command::none(), //self.chart.update(msg).map(Message::Plot),
-            // Message::Add(idx) => {
-            //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
-            //     Command::none()
-            // }
-            // Message::Remove(idx) => {
-            //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
-            //     Command::none()
-            // }
+                                                 // Message::Add(idx) => {
+                                                 //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
+                                                 //     Command::none()
+                                                 // }
+                                                 // Message::Remove(idx) => {
+                                                 //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
+                                                 //     Command::none()
+                                                 // }
         }
     }
 
     fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message> {
         // let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
-        let data_source = self;
+        let _data_source = self;
         row![
             Self::view_sidebar(model),
             cartesian(LinePlot::new(todo!()), &self.plot_state).map(Message::Plot),

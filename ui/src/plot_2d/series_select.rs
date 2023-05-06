@@ -1,13 +1,7 @@
 use std::collections::HashSet;
 
-use fds_toolbox_core::common::series::TimeSeries0View;
 use fds_toolbox_lazy_data::moka::SimulationIdx;
-use iced::{
-    futures::FutureExt,
-    widget::{checkbox, column, text},
-    Element,
-};
-use plotters::style::{Color, ShapeStyle};
+use iced::Element;
 
 use crate::Model;
 
@@ -48,8 +42,8 @@ enum Series {
 // }
 
 impl SeriesSelect {
-    pub fn view<'a>(&self, model: &'a Model) -> Element<'a, SeriesMessage> {
-        let mut thing = iced::widget::column![];
+    pub fn view<'a>(&self, _model: &'a Model) -> Element<'a, SeriesMessage> {
+        let thing = iced::widget::column![];
         // for BySimulation(id, sim) in model.enumerate_simulations() {
         //     let sim = sim.get().and_then(CacheResult::into_val);
         //     match sim {

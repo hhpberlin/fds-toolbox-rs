@@ -24,10 +24,6 @@
 
 use std::fmt::Debug;
 
-use fds_toolbox_core::formats::csv::devc::DeviceList;
-
-use fds_toolbox_core::formats::smoke::dim2::slice::Slice;
-use fds_toolbox_lazy_data::fs::AnyFs;
 use fds_toolbox_lazy_data::moka::{MokaStore, SimulationIdx};
 // use fds_toolbox_lazy_data::sims::Simulations;
 use iced::event::Status;
@@ -116,7 +112,12 @@ struct Simulations {
 }
 
 impl Simulations {
-    fn new() -> Self { Self { store: MokaStore::new(1_000_000), active_simulations: Vec::new() } }
+    fn new() -> Self {
+        Self {
+            store: MokaStore::new(1_000_000),
+            active_simulations: Vec::new(),
+        }
+    }
 }
 
 impl FdsToolbox {

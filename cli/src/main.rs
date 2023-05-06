@@ -1,6 +1,6 @@
 // use fds_toolbox_core::file::ParsedFile;
 
-use std::{path::PathBuf, sync::Arc, future::Future};
+use std::path::PathBuf;
 
 use clap::{arg, Parser};
 use color_eyre::eyre;
@@ -9,7 +9,6 @@ use fds_toolbox_core::file::{OsFs, Simulation};
 use fds_toolbox_lazy_data::{fs::AnyFs, moka::MokaStore};
 // use fds_toolbox_lazy_data::{memman::MEMORY_MANAGER, sim::CachedSimulation, moka::{MokaStore, DevcIdx}, fs::AnyFs};
 use futures::FutureExt;
-use tokio::pin;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -32,8 +31,10 @@ async fn main() -> color_eyre::Result<()> {
         args.smv
             .parent()
             .ok_or(eyre::eyre!("Missing Directory"))?
-            .to_str().unwrap().to_owned(),
-        &args.smv.to_str().unwrap(),
+            .to_str()
+            .unwrap()
+            .to_owned(),
+        args.smv.to_str().unwrap(),
     )
     .await?;
 

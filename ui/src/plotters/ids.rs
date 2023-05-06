@@ -1,6 +1,5 @@
 use fds_toolbox_core::common::series::TimeSeriesView;
-use ndarray::{Ix, Dimension, Ix0, Ix1, Ix2};
-
+use ndarray::{Dimension, Ix0, Ix1, Ix2};
 
 pub trait SeriesSource<Ix: Dimension> {
     fn iter_series(&self) -> Box<dyn Iterator<Item = TimeSeriesView<f32, Ix, f32>>>;

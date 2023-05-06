@@ -1,11 +1,5 @@
-use std::{
-    collections::HashMap,
-    error::Error,
-    hash::Hash,
-    sync::{atomic::AtomicUsize, Arc},
-};
+use std::{collections::HashMap, error::Error, hash::Hash, sync::Arc};
 
-use dashmap::DashMap;
 use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{self, ParseError, Simulation, SimulationPath},
@@ -210,7 +204,7 @@ impl IdxMap {
     }
 
     fn get_by_path_mut(&mut self, path: &SimulationPath<AnyFs>) -> SimulationIdx {
-        match self.try_get_by_path(&path) {
+        match self.try_get_by_path(path) {
             Some(idx) => idx,
             None => self.insert(path),
         }
@@ -268,7 +262,7 @@ impl MokaStore {
         let sim = self
             .cache
             .try_get_with(
-                SimulationsDataIdx(idx.clone(), SimulationDataIdx::Simulation),
+                SimulationsDataIdx(idx, SimulationDataIdx::Simulation),
                 async {
                     let Some(path) = self.get_path_by_idx(idx) else {
                         return Err(SimulationDataError::InvalidSimulationKey);
@@ -309,7 +303,7 @@ impl MokaStore {
         &self,
         idx: SimulationsDataIdx,
     ) -> Result<SimulationData, Arc<SimulationDataError>> {
-        let simulation = self.get_sim(idx.0.clone()).await?;
+        let simulation = self.get_sim(idx.0).await?;
         // .ok_or(SimulationDataError::InvalidSimulationKey)?;
 
         fn convert<T, E: Into<SimulationDataError>>(

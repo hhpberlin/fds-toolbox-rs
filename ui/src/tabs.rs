@@ -1,4 +1,3 @@
-use fds_toolbox_lazy_data::fs::AnyFs;
 use iced::{Command, Element};
 
 use crate::{plot_2d::plot_tab::PlotTab, slice::slice_tab::SliceTab, Model};
@@ -38,11 +37,7 @@ impl Tab for FdsToolboxTab {
         }
     }
 
-    fn update(
-        &mut self,
-        model: &mut Model,
-        message: Self::Message,
-    ) -> Command<Self::Message> {
+    fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message> {
         match (self, message) {
             (FdsToolboxTab::Plot(tab), FdsToolboxTabMessage::Plot(msg)) => {
                 tab.update(model, msg).map(FdsToolboxTabMessage::Plot)

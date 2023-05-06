@@ -1,9 +1,9 @@
 use std::{
     collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher}, fmt::{Formatter, Debug},
+    fmt::{Debug, Formatter},
+    hash::{Hash, Hasher},
 };
 
-use fds_toolbox_core::common::series::TimeSeriesViewSource;
 use plotters::{
     coord::ReverseCoordTranslate,
     prelude::{ChartContext, Circle, CoordTranslate, EmptyElement, PathElement, Text},
@@ -13,7 +13,7 @@ use plotters::{
 
 use super::{
     cartesian::{self, Cartesian2df32, CartesianDrawer},
-    ids::{SeriesSource0},
+    ids::SeriesSource0,
 };
 
 type PosF = (f32, f32);

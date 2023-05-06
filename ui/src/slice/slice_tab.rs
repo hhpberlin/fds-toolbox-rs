@@ -1,9 +1,6 @@
-use std::{
-    cell::RefCell,
-    iter::{once, Once},
-};
+use std::cell::RefCell;
 
-use fds_toolbox_lazy_data::moka::{SliceIdx, SimulationIdx};
+use fds_toolbox_lazy_data::moka::{SimulationIdx, SliceIdx};
 use iced::{widget::row, Command, Element};
 
 use crate::{
@@ -11,7 +8,8 @@ use crate::{
         cartesian::{self, cartesian},
         heatmap::Heatmap,
     },
-    tabs::Tab, Model,
+    tabs::Tab,
+    Model,
 };
 
 #[derive(Debug)]
@@ -90,7 +88,7 @@ impl Tab for SliceTab {
         "Slice Plot".to_string()
     }
 
-    fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Message> {
+    fn view<'a>(&'a self, _model: &'a Model) -> Element<'a, Message> {
         row![
             // Self::view_sidebar(self.series.borrow_mut(), model),
             cartesian(Heatmap::new(todo!()), &self.plot_state).map(Message::Plot),
@@ -98,11 +96,7 @@ impl Tab for SliceTab {
         .into()
     }
 
-    fn update(
-        &mut self,
-        _model: &mut Model,
-        message: Self::Message,
-    ) -> Command<Self::Message> {
+    fn update(&mut self, _model: &mut Model, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::Plot(_) => {
                 // self.plot_state.borrow_mut().update(msg);

@@ -3,8 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use fds_toolbox_core::common::series::TimeSeriesViewSource;
-use ndarray::{Axis, Ix3};
+use ndarray::Axis;
 use plotters::{
     prelude::Rectangle,
     style::{Color, HSLColor, Palette, Palette99},
@@ -12,15 +11,14 @@ use plotters::{
 
 use super::{
     cartesian::{Cartesian2df32, CartesianDrawer},
-    ids::{SeriesSource2},
+    ids::SeriesSource2,
 };
 
 pub struct Heatmap {
     data_source: Box<SeriesSource2>,
 }
 
-impl CartesianDrawer for Heatmap
-{
+impl CartesianDrawer for Heatmap {
     fn draw<DB: plotters_iced::DrawingBackend>(
         &self,
         chart: &mut plotters::prelude::ChartContext<DB, Cartesian2df32>,
@@ -42,24 +40,22 @@ impl CartesianDrawer for Heatmap
 
             chart
                 .draw_series(
-                    iter_2d(0..w, 0..h)
-                        .map(|(x, y)| {
-                            let v = view.values.data[[x, y]];
-                            let x = x as f32;
-                            let y = y as f32;
+                    iter_2d(0..w, 0..h).map(|(x, y)| {
+                        let v = view.values.data[[x, y]];
+                        let x = x as f32;
+                        let y = y as f32;
 
-                            Rectangle::new(
-                                [(x, y), (x + 1., y + 1.)],
-                                HSLColor(
-                                    // 240.0 / 360.0 - 240.0 / 360.0 * (v as f64 / 20.0),
-                                    v as f64 * 2000.0,
-                                    0.7,
-                                    0.1 + 0.4 * v as f64 / 20.0,
-                                )
-                                .filled(),
+                        Rectangle::new(
+                            [(x, y), (x + 1., y + 1.)],
+                            HSLColor(
+                                // 240.0 / 360.0 - 240.0 / 360.0 * (v as f64 / 20.0),
+                                v as f64 * 2000.0,
+                                0.7,
+                                0.1 + 0.4 * v as f64 / 20.0,
                             )
-                        })
-                        // .collect::<Vec<_>>(),
+                            .filled(),
+                        )
+                    }), // .collect::<Vec<_>>(),
                 )
                 // TODO: Fix this unwrap
                 .unwrap();
@@ -75,11 +71,8 @@ fn iter_2d<X: Copy, Y>(
         .flat_map(move |x| y.clone().into_iter().map(move |y| (x, y)))
 }
 
-impl Heatmap
-{
+impl Heatmap {
     pub fn new(data_source: Box<SeriesSource2>) -> Self {
-        Self {
-            data_source,
-        }
+        Self { data_source }
     }
 }
