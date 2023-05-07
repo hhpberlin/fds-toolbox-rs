@@ -1,5 +1,3 @@
-// use fds_toolbox_core::file::ParsedFile;
-
 use std::path::PathBuf;
 
 use clap::{arg, Parser};
@@ -7,8 +5,6 @@ use color_eyre::eyre;
 
 use fds_toolbox_core::file::{OsFs, Simulation};
 use fds_toolbox_lazy_data::{fs::AnyFs, moka::MokaStore};
-// use fds_toolbox_lazy_data::{memman::MEMORY_MANAGER, sim::CachedSimulation, moka::{MokaStore, DevcIdx}, fs::AnyFs};
-use futures::FutureExt;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -57,8 +53,11 @@ async fn main() -> color_eyre::Result<()> {
 
     let moka = MokaStore::new(10000);
     let sim_idx = moka.get_idx_by_path(&sim.path);
-    dbg!(moka.get_devc(sim_idx).await?);
-    dbg!(moka.get_devc(sim_idx).now_or_never());
+    dbg!(moka.devc().try_get_or_spawn(sim_idx, ()));
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    dbg!(moka.devc().try_get(sim_idx, ()));
+    // dbg!(moka.devc().get(sim_idx, ()).await?);
+    // dbg!(moka.devc().get(sim_idx, ()).now_or_never());
 
     Ok(())
 }

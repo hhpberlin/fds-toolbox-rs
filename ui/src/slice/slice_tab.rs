@@ -87,12 +87,9 @@ impl SliceTab {
 impl<'a> SeriesSourceSlice for (&'a SliceTab, &'a Model) {
     fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries2Frame<'view>)) {
         let (tab, model) = *self;
-        let slice = model
-            .store
-            .get_slice(tab.slice.0, tab.slice.1)
-            .now_or_never();
+        let slice = model.store.slice().try_get(tab.slice.0, tab.slice.1);
 
-        let Some(Ok(slice)) = slice else { return; };
+        let Some(slice) = slice else { return; };
         let view = slice.data.view();
         let Some(series) = view.view_frame(tab.slice.2) else { return; };
 

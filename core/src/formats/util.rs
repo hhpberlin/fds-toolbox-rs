@@ -3,8 +3,8 @@ use std::{fmt::Debug, str::FromStr};
 use miette::SourceSpan;
 
 use winnow::{
-    bytes::take_till1,
     ascii::space0,
+    bytes::take_till1,
     sequence::preceded,
     stream::{AsChar, Stream, StreamIsPartial},
     IResult, Parser,

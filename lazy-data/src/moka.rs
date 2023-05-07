@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, hash::Hash, sync::Arc};
+use std::{collections::HashMap, error::Error, hash::Hash, marker::PhantomData, sync::Arc};
 
 use derive_more::Unwrap;
 use fds_toolbox_core::{
@@ -20,13 +20,13 @@ use crate::fs::{AnyFs, FsErr};
 // TODO: Remove dead_code. Here for a dark cockpit.
 #[allow(dead_code)]
 // TODO: Hand impl Debug
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MokaStore {
     cache: Cache<SimulationsDataIdx, SimulationData>,
     // simulations: DashMap<SimulationPath<AnyFs>, SimulationIdx>,
     // // simulations: DashMap<SimulationIdx, SimulationPath<AnyFs>>,
     // idx_cntr: AtomicUsize,
-    idx_map: RwLock<IdxMap>,
+    idx_map: Arc<RwLock<IdxMap>>,
 }
 
 #[derive(Debug)]
@@ -159,19 +159,6 @@ where
     }
 }
 
-macro_rules! get_thing {
-    (fn $name:ident < $t:tt > ( $($idx_ty:ty)? ) -> $data_ty:ty $({ $f:expr })?) => {
-        pub async fn $name(
-            &self,
-            idx: SimulationIdx,
-            $(inner_idx: $idx_ty)*
-        ) -> Result<Arc<$data_ty>, Arc<SimulationDataError>> {
-            Ok(self.get(SimulationsDataIdx(idx, SimulationDataIdx::$t $((get_thing!(discard $idx_ty keep inner_idx)))*)).await?.unwrap())
-        }
-    };
-    (discard $_d:tt keep $k:tt) => { $k};
-}
-
 impl IdxMap {
     fn new() -> Self {
         Self {
@@ -218,65 +205,136 @@ impl IdxMap {
     }
 }
 
-#[async_trait::async_trait]
-trait HasDataType<Idx, Data> {
-    fn try_into(data: SimulationDataIdx) -> Option<Idx>;
-    fn idx(idx: Idx) -> SimulationDataIdx;
-    fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data>;
-    async fn get(&self, sim: SimulationIdx, idx: Idx) -> Result<Data, Arc<SimulationDataError>>;
-    fn try_get_or_spawn(
+// trait MokaDataType<Idx> {
+//     fn try_into(data: SimulationDataIdx) -> Option<Idx>;
+//     fn idx(idx: Idx) -> SimulationDataIdx;
+// }
+
+// impl MokaDataType<()> for () {
+//     fn try_into(data: SimulationDataIdx) -> Option<()> {
+//         match data {
+//             SimulationDataIdx::Simulation(_) => Some(()),
+//             _ => None,
+//         }
+//     }
+
+//     fn idx(_: ()) -> SimulationDataIdx {
+//         SimulationDataIdx::Simulation
+//     }
+// }
+
+pub struct DataSrc<'a, Idx, Data>
+where
+    Data: DataType<Idx = Idx>,
+{
+    store: &'a MokaStore,
+    _idx: PhantomData<Idx>,
+    _data: PhantomData<Data>,
+}
+
+pub trait DataType
+where
+    Self: Sized,
+{
+    type Idx;
+    fn make_idx(idx: Self::Idx) -> SimulationDataIdx;
+    fn unwrap_data(data: SimulationData) -> Option<Self>;
+}
+
+macro_rules! data_type_impl {
+    ($ty:ty, $idx:ty, $idx_ident:ident, $idx_variant:expr, $data_variant:tt) => {
+        impl DataType for $ty {
+            type Idx = $idx;
+
+            fn make_idx($idx_ident: Self::Idx) -> SimulationDataIdx {
+                // SimulationDataIdx::$variant(idx)
+                $idx_variant
+            }
+
+            fn unwrap_data(data: SimulationData) -> Option<Self> {
+                match data {
+                    SimulationData::$data_variant(x) => Some(x),
+                    _ => None,
+                }
+            }
+        }
+    };
+    ($ty:ty, $variant:tt) => {
+        data_type_impl!($ty, (), _idx, SimulationDataIdx::$variant, $variant);
+    };
+    ($ty:ty, $idx:ty, $variant:tt) => {
+        data_type_impl!($ty, $idx, $variant - -idx);
+    };
+    ($ty:ty, $idx:ty, $variant:tt -- $idx_ident:ident) => {
+        data_type_impl!(
+            $ty,
+            $idx,
+            $idx_ident,
+            SimulationDataIdx::$variant($idx_ident),
+            $variant
+        );
+    };
+}
+
+data_type_impl!(Arc<Simulation<AnyFs>>, Simulation);
+data_type_impl!(Arc<DeviceList>, DevciceList);
+data_type_impl!(Arc<Option<CpuData>>, Cpu);
+data_type_impl!(Arc<Slice>, SliceIdx, Slice);
+data_type_impl!(Arc<Vec<HrrStep>>, HrrIdx, Hrr);
+// data_type_impl!(Arc<TimeSeries3>, P3dIdx, P3d);
+// data_type_impl!(Arc<TimeSeries3>, S3dIdx, S3d);
+
+impl<'a, Idx, Data> DataSrc<'a, Idx, Data>
+where
+    Data: DataType<Idx = Idx>,
+{
+    pub fn new(store: &'a MokaStore) -> Self {
+        Self {
+            store,
+            _idx: PhantomData,
+            _data: PhantomData,
+        }
+    }
+
+    pub async fn get(
         &self,
         sim: SimulationIdx,
         idx: Idx,
-    ) -> Result<Option<Data>, Arc<SimulationDataError>>
-    where
-        Idx: Send + Sync,
-        Data: Send + Sync,
-    {
-        if let Some(data) = self.try_get(sim, idx) {
-            return Ok(Some(data));
-        }
+    ) -> Result<Data, Arc<SimulationDataError>> {
+        let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
+        let data = self.store.get(idx).await?;
+        Data::unwrap_data(data).ok_or_else(|| Arc::new(SimulationDataError::InvalidSimulationKey))
+    }
 
-        tokio::spawn(self.get(sim, idx));
-        Ok(None)
+    pub fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+        let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
+        let data = self.store.try_get(&idx);
+        data.and_then(Data::unwrap_data)
+    }
+
+    pub fn try_get_or_spawn(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+        let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
+        let data = self.store.try_get_or_spawn(idx);
+        data.and_then(Data::unwrap_data)
     }
 }
 
-impl HasDataType<(), Arc<Simulation<AnyFs>>> for MokaStore {
-    fn try_into(data: SimulationDataIdx) -> Option<()> {
-        match data {
-            SimulationDataIdx::Simulation => Some(()),
-            _ => None,
-        }
-    }
+// impl<'a, Data> DataSrc<'a, (), Data>
+// where
+//     Data: DataType<Idx = ()>,
+// {
+//     pub async fn get(&self, sim: SimulationIdx) -> Result<Data, Arc<SimulationDataError>> {
+//         self.get(sim, ())
+//     }
 
-    fn idx(idx: ()) -> SimulationDataIdx {
-        SimulationDataIdx::Simulation
-    }
+//     pub fn try_get(&self, sim: SimulationIdx) -> Option<Data> {
+//         self.try_get(sim, ())
+//     }
 
-    fn try_get(&self, sim: SimulationIdx, idx: ()) -> Option<Arc<Simulation<AnyFs>>> {
-        self.cache.get(SimulationsDataIdx(sim, Self::idx(idx)))
-    }
-
-    fn get<'life0, 'async_trait>(
-        &'life0 self,
-        sim: SimulationIdx,
-        idx: (),
-    ) -> core::pin::Pin<
-        Box<
-            dyn core::future::Future<
-                    Output = Result<Arc<Simulation<AnyFs>>, Arc<SimulationDataError>>,
-                > + core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
-        todo!()
-    }
-}
+//     pub fn try_get_or_spawn(&self, sim: SimulationIdx) -> Option<Data> {
+//         self.try_get_or_spawn(sim, ())
+//     }
+// }
 
 impl MokaStore {
     pub fn new(max_capacity: u64) -> Self {
@@ -299,7 +357,7 @@ impl MokaStore {
             // simulations: HashMap::new(),
             // simulations: DashMap::new(),
             // idx_cntr: AtomicUsize::new(0),
-            idx_map: RwLock::new(IdxMap::new()),
+            idx_map: Arc::new(RwLock::new(IdxMap::new())),
         }
     }
 
@@ -311,7 +369,7 @@ impl MokaStore {
         self.idx_map.read().get_path_by_idx(idx).cloned()
     }
 
-    pub async fn get_sim(
+    async fn get_sim(
         &self,
         idx: SimulationIdx,
     ) -> Result<Arc<Simulation<AnyFs>>, Arc<SimulationDataError>> {
@@ -414,7 +472,50 @@ impl MokaStore {
     //         .unwrap())
     // }
 
-    pub async fn get(
+    pub fn sim(&self) -> DataSrc<(), Arc<Simulation<AnyFs>>> {
+        DataSrc::new(self)
+    }
+    pub fn devc(&self) -> DataSrc<(), Arc<DeviceList>> {
+        DataSrc::new(self)
+    }
+    pub fn cpu(&self) -> DataSrc<(), Arc<Option<CpuData>>> {
+        DataSrc::new(self)
+    }
+    pub fn slice(&self) -> DataSrc<SliceIdx, Arc<Slice>> {
+        DataSrc::new(self)
+    }
+    pub fn hrr(&self) -> DataSrc<HrrIdx, Arc<Vec<HrrStep>>> {
+        DataSrc::new(self)
+    }
+    // pub fn s3d(&self) -> DataSrc<S3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
+    // pub fn p3d(&self) -> DataSrc<P3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
+
+    fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
+        self.cache.get(&idx)
+    }
+
+    async fn get(
+        &self,
+        idx: SimulationsDataIdx,
+    ) -> Result<SimulationData, Arc<SimulationDataError>> {
+        match self.try_get(&idx) {
+            Some(data) => Ok(data),
+            None => self.get_core(idx).await,
+        }
+    }
+
+    fn try_get_or_spawn(&self, idx: SimulationsDataIdx) -> Option<SimulationData> {
+        match self.try_get(&idx) {
+            Some(data) => Some(data),
+            None => {
+                let this = self.clone();
+                tokio::spawn(async move { this.get_core(idx).await });
+                None
+            }
+        }
+    }
+
+    async fn get_core(
         &self,
         idx: SimulationsDataIdx,
     ) -> Result<SimulationData, Arc<SimulationDataError>> {
@@ -428,6 +529,10 @@ impl MokaStore {
             }
         }
 
+        // There is a small chance this will be called twice at once, but it's not a big deal,
+        //  as `get_sim` deduplicates the expensive part internally.
+        // The reason this isn't inside `fut` is because it returns a `Result` with
+        //  its error wrapped in `Arc` but `get_with` would wrap it in another `Arc`.
         let simulation = self.get_sim(idx.0).await?;
         let fut = async {
             match &idx.1 {
@@ -439,10 +544,6 @@ impl MokaStore {
                     convert(simulation.slice(idx.0).await, SimulationData::Slice)
                 }
                 SimulationDataIdx::Cpu => convert(simulation.csv_cpu().await, SimulationData::Cpu),
-                // match simulation.csv_cpu().await {
-                //     Ok(x) => Ok(SimulationData::Cpu(x.map(Arc::new))),
-                //     Err(err) => Err(err.into()),
-                // },
                 SimulationDataIdx::Hrr(_idx) => {
                     convert(simulation.csv_hrr().await, SimulationData::Hrr)
                 }
@@ -452,13 +553,6 @@ impl MokaStore {
         };
 
         self.cache.try_get_with(idx.clone(), fut).await
-    }
-
-    pub fn get_or_spawn(
-        &self,
-        idx: SimulationsDataIdx,
-    ) -> Result<SimulationData, Arc<SimulationDataError>> {
-        self.get
     }
 
     pub fn evict(&self, idx: SimulationIdx) {

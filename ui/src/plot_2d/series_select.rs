@@ -3,13 +3,11 @@ use std::{collections::HashSet, fmt::Debug};
 use fds_toolbox_core::common::series::TimeSeries0View;
 use fds_toolbox_lazy_data::moka::SimulationIdx;
 use iced::{
-    futures::FutureExt,
     widget::{button, checkbox, scrollable, text},
     Command, Element,
 };
-use ndarray::Ix1;
 
-use crate::{Model, plotters::ids::SeriesSourceLine};
+use crate::{plotters::ids::SeriesSourceLine, Model};
 
 #[derive(Debug)]
 pub struct SeriesSelection {
@@ -34,20 +32,23 @@ pub enum SimSeries {
 }
 
 impl Series {
-    fn view<T>(&self, model: &Model, f: impl for<'a> FnOnce(TimeSeries0View<'a>) -> T) -> Option<T> {
+    fn view<T>(
+        &self,
+        model: &Model,
+        f: impl for<'a> FnOnce(TimeSeries0View<'a>) -> T,
+    ) -> Option<T> {
         let Series(sim_idx, series) = self;
         match *series {
-            SimSeries::Device { idx } => match model.store.get_devc(*sim_idx).now_or_never() {
-                Some(Ok(d)) => d.view_device_by_idx(idx).map(f),
-                _ => None,
+            SimSeries::Device { idx } => match model.store.devc().try_get(*sim_idx, ()) {
+                Some(d) => d.view_device_by_idx(idx).map(f),
+                None => None,
             },
         }
     }
 }
 
 impl<'a> SeriesSourceLine for (&'a SeriesSelection, &'a Model) {
-    fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries0View<'view>))
-    {
+    fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries0View<'view>)) {
         let (selection, model) = *self;
         for series in &selection.selected {
             series.view(model, &mut *f);
@@ -96,10 +97,10 @@ impl SeriesSelection {
         // }
 
         for sim_idx in &model.active_simulations {
-            Self::thing(model.store.get_sim(*sim_idx).now_or_never(), |sim| {
+            Self::thing(model.store.sim().try_get(*sim_idx, ()), |sim| {
                 iced::widget::column![
                     button(text(format!("Simulation {}", sim.smv.chid))),
-                    Self::thing(model.store.get_devc(*sim_idx).now_or_never(), |devc| {
+                    Self::thing(model.store.devc().try_get(*sim_idx, ()), |devc| {
                         let mut thing2 = iced::widget::column![];
                         thing2 = thing2.push(button("Devices"));
                         for (idx, devc) in devc.iter_device_views().enumerate() {
@@ -121,16 +122,26 @@ impl SeriesSelection {
         scrollable(thing).into()
     }
 
-    fn thing<'a, T, E: Debug>(
-        s: Option<Result<T, E>>,
+    fn thing<'a, T>(
+        s: Option<T>,
         render: impl FnOnce(T) -> iced::Element<'a, Message>,
     ) -> iced::Element<'a, Message> {
         match s {
-            Some(Ok(s)) => render(s),
-            Some(Err(e)) => button(text(format!("{:?}", e))).into(),
+            Some(s) => render(s),
             None => button("Loading...").into(),
         }
     }
+
+    // fn thing<'a, T, E: Debug>(
+    //     s: Option<Result<T, E>>,
+    //     render: impl FnOnce(T) -> iced::Element<'a, Message>,
+    // ) -> iced::Element<'a, Message> {
+    //     match s {
+    //         Some(Ok(s)) => render(s),
+    //         Some(Err(e)) => button(text(format!("{:?}", e))).into(),
+    //         None => button("Loading...").into(),
+    //     }
+    // }
 
     pub fn update(&mut self, message: Message) -> Command<Message> {
         match message {

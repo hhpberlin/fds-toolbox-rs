@@ -1,4 +1,4 @@
-use fds_toolbox_core::common::series::{TimeSeriesView, TimeSeries0View, TimeSeries2Frame};
+use fds_toolbox_core::common::series::{TimeSeries0View, TimeSeries2Frame, TimeSeriesView};
 use ndarray::{Dimension, Ix1, Ix2, Ix3};
 
 pub trait SeriesSourceLine {

@@ -14,9 +14,9 @@ use tracing::instrument;
 use util::*;
 
 use winnow::{
+    ascii::{line_ending, multispace0, not_line_ending, space0},
     branch::alt,
     bytes::{tag, take_till0, take_till1},
-    ascii::{line_ending, multispace0, not_line_ending, space0},
     combinator::opt,
     error::{ContextError, ErrMode, ParseError},
     sequence::{delimited, preceded, terminated},
