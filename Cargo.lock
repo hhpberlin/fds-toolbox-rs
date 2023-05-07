@@ -1115,6 +1115,7 @@ dependencies = [
  "async-trait",
  "color-eyre",
  "dashmap",
+ "derive_more",
  "enum_dispatch",
  "fds-toolbox-core",
  "futures",

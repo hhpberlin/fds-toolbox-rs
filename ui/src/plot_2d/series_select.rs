@@ -9,8 +9,7 @@ use iced::{
 };
 use ndarray::Ix1;
 
-use crate::plotters::ids::SeriesSource;
-use crate::Model;
+use crate::{Model, plotters::ids::SeriesSourceLine};
 
 #[derive(Debug)]
 pub struct SeriesSelection {
@@ -46,10 +45,8 @@ impl Series {
     }
 }
 
-impl SeriesSource for (&SeriesSelection, &Model) {
-    type Item<'a> = TimeSeries0View<'a>;
-    
-    fn for_each_series(&self, f: &mut dyn for<'a> FnMut(TimeSeries0View<'a>))
+impl<'a> SeriesSourceLine for (&'a SeriesSelection, &'a Model) {
+    fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries0View<'view>))
     {
         let (selection, model) = *self;
         for series in &selection.selected {

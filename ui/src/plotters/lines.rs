@@ -20,7 +20,7 @@ type PosF = (f32, f32);
 type PosI = (i32, i32);
 
 pub struct LinePlot<'a> {
-    data_source: Box<SeriesSourceLine<'a>>,
+    data_source: Box<dyn SeriesSourceLine + 'a>,
 }
 
 impl Debug for LinePlot<'_> {
@@ -30,7 +30,7 @@ impl Debug for LinePlot<'_> {
 }
 
 impl<'a> LinePlot<'a> {
-    pub fn new(data_source: Box<SeriesSourceLine<'a>>) -> Self {
+    pub fn new(data_source: Box<dyn SeriesSourceLine + 'a>) -> Self {
         Self { data_source }
     }
 
@@ -133,7 +133,7 @@ impl CartesianDrawer for LinePlot<'_> {
                     &|(x, y), size, style| {
                         EmptyElement::at((x, y))
                             + Circle::new((0, 0), size, style)
-                            + Text::new(format!("{:?}", (x, y)), (0, 15), ("sans-serif", 15))
+                            + Text::new(format!("{:.3}\n{:.3}", x, y), (15, 10), ("sans-serif", 15))
                     },
                 ))
                 // TODO: Fix this unwrap

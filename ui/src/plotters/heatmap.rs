@@ -15,11 +15,11 @@ use super::{
 };
 
 pub struct Heatmap<'a> {
-    data_source: Box<SeriesSourceSlice<'a>>,
+    data_source: Box<dyn SeriesSourceSlice + 'a>,
 }
 
 impl<'a> Heatmap<'a> {
-    pub fn new(data_source: Box<SeriesSourceSlice<'a>>) -> Self {
+    pub fn new(data_source: Box<dyn SeriesSourceSlice + 'a>) -> Self {
         Self { data_source }
     }
 }

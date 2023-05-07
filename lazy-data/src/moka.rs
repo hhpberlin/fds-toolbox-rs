@@ -1,5 +1,6 @@
 use std::{collections::HashMap, error::Error, hash::Hash, sync::Arc};
 
+use derive_more::Unwrap;
 use fds_toolbox_core::{
     common::series::TimeSeries3,
     file::{self, ParseError, Simulation, SimulationPath},
@@ -92,7 +93,7 @@ pub enum SimulationDataIdx {
     P3d(P3dIdx),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Unwrap)]
 pub enum SimulationData {
     // TODO: This technically creates multiple sources of truths since the path is also stored in the Simulation.
     Simulation(Arc<Simulation<AnyFs>>),
@@ -165,12 +166,7 @@ macro_rules! get_thing {
             idx: SimulationIdx,
             $(inner_idx: $idx_ty)*
         ) -> Result<Arc<$data_ty>, Arc<SimulationDataError>> {
-            match self.get(SimulationsDataIdx(idx, SimulationDataIdx::$t $((get_thing!(discard $idx_ty keep inner_idx)))*)).await {
-                Ok(SimulationData::$t(sim)) => Ok($($f)? (sim)),
-                // TODO: Proper error handling, eviction, etc.
-                Ok(_) => unreachable!("Found wrong data type for given index."),
-                Err(err) => Err(err),
-            }
+            Ok(self.get(SimulationsDataIdx(idx, SimulationDataIdx::$t $((get_thing!(discard $idx_ty keep inner_idx)))*)).await?.unwrap())
         }
     };
     (discard $_d:tt keep $k:tt) => { $k};
@@ -219,6 +215,66 @@ impl IdxMap {
 
     fn get_path_by_idx(&self, idx: SimulationIdx) -> Option<&SimulationPath<AnyFs>> {
         self.idx_to_path.get(&idx)
+    }
+}
+
+#[async_trait::async_trait]
+trait HasDataType<Idx, Data> {
+    fn try_into(data: SimulationDataIdx) -> Option<Idx>;
+    fn idx(idx: Idx) -> SimulationDataIdx;
+    fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data>;
+    async fn get(&self, sim: SimulationIdx, idx: Idx) -> Result<Data, Arc<SimulationDataError>>;
+    fn try_get_or_spawn(
+        &self,
+        sim: SimulationIdx,
+        idx: Idx,
+    ) -> Result<Option<Data>, Arc<SimulationDataError>>
+    where
+        Idx: Send + Sync,
+        Data: Send + Sync,
+    {
+        if let Some(data) = self.try_get(sim, idx) {
+            return Ok(Some(data));
+        }
+
+        tokio::spawn(self.get(sim, idx));
+        Ok(None)
+    }
+}
+
+impl HasDataType<(), Arc<Simulation<AnyFs>>> for MokaStore {
+    fn try_into(data: SimulationDataIdx) -> Option<()> {
+        match data {
+            SimulationDataIdx::Simulation => Some(()),
+            _ => None,
+        }
+    }
+
+    fn idx(idx: ()) -> SimulationDataIdx {
+        SimulationDataIdx::Simulation
+    }
+
+    fn try_get(&self, sim: SimulationIdx, idx: ()) -> Option<Arc<Simulation<AnyFs>>> {
+        self.cache.get(SimulationsDataIdx(sim, Self::idx(idx)))
+    }
+
+    fn get<'life0, 'async_trait>(
+        &'life0 self,
+        sim: SimulationIdx,
+        idx: (),
+    ) -> core::pin::Pin<
+        Box<
+            dyn core::future::Future<
+                    Output = Result<Arc<Simulation<AnyFs>>, Arc<SimulationDataError>>,
+                > + core::marker::Send
+                + 'async_trait,
+        >,
+    >
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        todo!()
     }
 }
 
@@ -276,12 +332,7 @@ impl MokaStore {
             )
             .await;
 
-        match sim {
-            Ok(SimulationData::Simulation(sim)) => Ok(sim),
-            // TODO: Proper error handling, eviction, etc.
-            Ok(_) => unreachable!("Found wrong data type for given index."),
-            Err(err) => Err(err),
-        }
+        Ok(sim?.unwrap_simulation())
     }
 
     // pub async fn get_smv(
@@ -291,21 +342,82 @@ impl MokaStore {
     //     self.get_sim(path).await?.smv
     // }
 
-    get_thing!(fn get_devc<DevciceList>() -> DeviceList);
-    get_thing!(fn get_cpu<Cpu>() -> Option<CpuData>);
+    // pub async fn get_devc(
+    //     &self,
+    //     idx: SimulationIdx,
+    // ) -> Result<Arc<DeviceList>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(idx, SimulationDataIdx::DevciceList))
+    //         .await?
+    //         .unwrap())
+    // }
+    // pub async fn get_cpu(
+    //     &self,
+    //     idx: SimulationIdx,
+    // ) -> Result<Arc<Option<CpuData>>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(idx, SimulationDataIdx::Cpu))
+    //         .await?
+    //         .unwrap())
+    // }
 
-    get_thing!(fn get_slice<Slice>(SliceIdx) -> Slice);
-    get_thing!(fn get_hrr<Hrr>(HrrIdx) -> Vec<HrrStep>);
-    get_thing!(fn get_s3d<S3d>(S3dIdx) -> TimeSeries3);
-    get_thing!(fn get_p3d<P3d>(P3dIdx) -> TimeSeries3);
+    // pub async fn get_slice(
+    //     &self,
+    //     idx: SimulationIdx,
+    //     inner_idx: SliceIdx,
+    // ) -> Result<Arc<Slice>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(
+    //             idx,
+    //             SimulationDataIdx::Slice(get_thing!(discard SliceIdx keep inner_idx)),
+    //         ))
+    //         .await?
+    //         .unwrap())
+    // }
+    // pub async fn get_hrr(
+    //     &self,
+    //     idx: SimulationIdx,
+    //     inner_idx: HrrIdx,
+    // ) -> Result<Arc<Vec<HrrStep>>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(
+    //             idx,
+    //             SimulationDataIdx::Hrr(get_thing!(discard HrrIdx keep inner_idx)),
+    //         ))
+    //         .await?
+    //         .unwrap())
+    // }
+    // pub async fn get_s3d(
+    //     &self,
+    //     idx: SimulationIdx,
+    //     inner_idx: S3dIdx,
+    // ) -> Result<Arc<TimeSeries3>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(
+    //             idx,
+    //             SimulationDataIdx::S3d(get_thing!(discard S3dIdx keep inner_idx)),
+    //         ))
+    //         .await?
+    //         .unwrap())
+    // }
+    // pub async fn get_p3d(
+    //     &self,
+    //     idx: SimulationIdx,
+    //     inner_idx: P3dIdx,
+    // ) -> Result<Arc<TimeSeries3>, Arc<SimulationDataError>> {
+    //     Ok(self
+    //         .get(SimulationsDataIdx(
+    //             idx,
+    //             SimulationDataIdx::P3d(get_thing!(discard P3dIdx keep inner_idx)),
+    //         ))
+    //         .await?
+    //         .unwrap())
+    // }
 
     pub async fn get(
         &self,
         idx: SimulationsDataIdx,
     ) -> Result<SimulationData, Arc<SimulationDataError>> {
-        let simulation = self.get_sim(idx.0).await?;
-        // .ok_or(SimulationDataError::InvalidSimulationKey)?;
-
         fn convert<T, E: Into<SimulationDataError>>(
             res: Result<T, E>,
             f: impl FnOnce(Arc<T>) -> SimulationData,
@@ -316,6 +428,7 @@ impl MokaStore {
             }
         }
 
+        let simulation = self.get_sim(idx.0).await?;
         let fut = async {
             match &idx.1 {
                 SimulationDataIdx::Simulation => Ok(SimulationData::Simulation(simulation)),
@@ -339,6 +452,13 @@ impl MokaStore {
         };
 
         self.cache.try_get_with(idx.clone(), fut).await
+    }
+
+    pub fn get_or_spawn(
+        &self,
+        idx: SimulationsDataIdx,
+    ) -> Result<SimulationData, Arc<SimulationDataError>> {
+        self.get
     }
 
     pub fn evict(&self, idx: SimulationIdx) {

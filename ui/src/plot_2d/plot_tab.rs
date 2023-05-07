@@ -5,6 +5,7 @@ use iced::{widget::row, Command, Element};
 use crate::{
     plotters::{
         cartesian::{self, cartesian},
+        ids::SeriesSourceLine,
         lines::LinePlot,
     },
     tabs::Tab,
@@ -155,17 +156,13 @@ impl Tab for PlotTab {
     fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message> {
         // let ids: Vec<_> = self.series.borrow().iter_ids().collect();
 
-        let _data_source = self;
+        let src: Box<dyn SeriesSourceLine> = Box::new((&self.series_selection, model));
         row![
             // Self::view_sidebar(model),
             self.series_selection
                 .view(model)
                 .map(Message::SeriesSelection),
-            cartesian(
-                LinePlot::new(Box::new((&self.series_selection, model))),
-                &self.plot_state
-            )
-            .map(Message::Plot),
+            cartesian(LinePlot::new(src), &self.plot_state).map(Message::Plot),
         ]
         .into()
     }

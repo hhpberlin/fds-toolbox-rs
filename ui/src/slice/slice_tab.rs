@@ -9,7 +9,7 @@ use crate::{
     plotters::{
         cartesian::{self, cartesian},
         heatmap::Heatmap,
-        ids::SeriesSource,
+        ids::SeriesSourceSlice,
     },
     tabs::Tab,
     Model,
@@ -84,20 +84,17 @@ impl SliceTab {
     // }
 }
 
-impl SeriesSource for (&SliceTab, &Model) {
-    type Item<'a> = TimeSeries2Frame<'a>;
-
-    fn for_each_series(&self, f: &mut dyn for<'a> FnMut(TimeSeries2Frame<'a>))
-    {
+impl<'a> SeriesSourceSlice for (&'a SliceTab, &'a Model) {
+    fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries2Frame<'view>)) {
         let (tab, model) = *self;
         let slice = model
             .store
             .get_slice(tab.slice.0, tab.slice.1)
             .now_or_never();
 
-        let Some(Ok(slice)) = slice else {return;};
-        let Some(series) = slice
-            .data.view().view_frame(tab.slice.2) else { return;};
+        let Some(Ok(slice)) = slice else { return; };
+        let view = slice.data.view();
+        let Some(series) = view.view_frame(tab.slice.2) else { return; };
 
         f(series);
     }
