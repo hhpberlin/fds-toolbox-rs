@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 
-use fds_toolbox_core::common::series::{SeriesView, TimeSeries2Frame};
+use fds_toolbox_core::common::series::TimeSeries2Frame;
 use fds_toolbox_lazy_data::moka::{SimulationIdx, SliceIdx};
-use iced::{futures::FutureExt, widget::row, Command, Element};
-use ndarray::Ix2;
+use iced::{widget::row, Command, Element};
 
 use crate::{
     plotters::{

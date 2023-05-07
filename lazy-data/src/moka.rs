@@ -306,13 +306,13 @@ where
         Data::unwrap_data(data).ok_or_else(|| Arc::new(SimulationDataError::InvalidSimulationKey))
     }
 
-    pub fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+    pub fn try_get_no_load(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
         let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
         let data = self.store.try_get(&idx);
         data.and_then(Data::unwrap_data)
     }
 
-    pub fn try_get_or_spawn(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+    pub fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
         let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
         let data = self.store.try_get_or_spawn(idx);
         data.and_then(Data::unwrap_data)
@@ -491,7 +491,7 @@ impl MokaStore {
     // pub fn p3d(&self) -> DataSrc<P3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
 
     fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
-        self.cache.get(&idx)
+        self.cache.get(idx)
     }
 
     async fn get(

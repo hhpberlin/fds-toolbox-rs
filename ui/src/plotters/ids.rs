@@ -1,5 +1,4 @@
-use fds_toolbox_core::common::series::{TimeSeries0View, TimeSeries2Frame, TimeSeriesView};
-use ndarray::{Dimension, Ix1, Ix2, Ix3};
+use fds_toolbox_core::common::series::{TimeSeries0View, TimeSeries2Frame};
 
 pub trait SeriesSourceLine {
     fn for_each_series(&self, f: &mut dyn for<'view> FnMut(TimeSeries0View<'view>));
