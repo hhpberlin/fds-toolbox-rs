@@ -306,6 +306,11 @@ where
         Data::unwrap_data(data).ok_or_else(|| Arc::new(SimulationDataError::InvalidSimulationKey))
     }
 
+    pub async fn load(&self, sim: SimulationIdx, idx: Idx) -> Result<(), Arc<SimulationDataError>> {
+        self.get(sim, idx).await?;
+        Ok(())
+    }
+
     pub fn try_get_no_load(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
         let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
         let data = self.store.try_get(&idx);

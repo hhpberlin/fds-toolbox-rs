@@ -12,7 +12,7 @@ use crate::{
     Model,
 };
 
-use super::series_select::SeriesSelection;
+use super::series_select::{self, SeriesSelection};
 
 #[derive(Debug)]
 pub struct PlotTab {
@@ -40,7 +40,7 @@ pub struct PlotTab {
 //     }
 // }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Plot(cartesian::Message),
     // Add(SimulationIdx<TimeSeriesIdx>),
@@ -134,10 +134,10 @@ impl Tab for PlotTab {
         "Line Plot".to_string()
     }
 
-    fn update(&mut self, _model: &mut Model, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message> {
         // self.chart.invalidate();
         match message {
-            Message::Plot(_) => Command::none(), //self.chart.update(msg).map(Message::Plot),
+            Message::Plot(_) => (), //self.chart.update(msg).map(Message::Plot),
             // Message::Add(idx) => {
             //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = true;
             //     Command::none()
@@ -146,11 +146,19 @@ impl Tab for PlotTab {
             //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
             //     Command::none()
             // }
-            Message::SeriesSelection(msg) => self
-                .series_selection
-                .update(msg)
-                .map(Message::SeriesSelection),
+            Message::SeriesSelection(series_select::Message::Loaded(_, _)) => {
+                self.plot_state
+                    .borrow_mut()
+                    .update(cartesian::Message::Invalidate);
+            }
+            Message::SeriesSelection(message) => {
+                return self
+                    .series_selection
+                    .update(message, model)
+                    .map(Message::SeriesSelection);
+            }
         }
+        Command::none()
     }
 
     fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message> {
@@ -166,4 +174,8 @@ impl Tab for PlotTab {
         ]
         .into()
     }
+
+    // fn invalidate(&mut self) {
+    //     self.plot_state.borrow_mut().invalidate();
+    // }
 }

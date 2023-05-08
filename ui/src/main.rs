@@ -23,10 +23,11 @@
 #![allow(dead_code)]
 
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use fds_toolbox_core::file::{OsFs, SimulationPath};
 use fds_toolbox_lazy_data::fs::AnyFs;
-use fds_toolbox_lazy_data::moka::{MokaStore, SimulationIdx};
+use fds_toolbox_lazy_data::moka::{MokaStore, SimulationDataError, SimulationIdx};
 // use fds_toolbox_lazy_data::sims::Simulations;
 use iced::event::Status;
 
@@ -38,6 +39,8 @@ use iced::{
 use iced_aw::{TabBar, TabLabel};
 use plot_2d::plot_tab::PlotTab;
 use tabs::{FdsToolboxTab, FdsToolboxTabMessage, Tab};
+use tracing::error;
+// use tracing_subscriber;
 
 pub mod plot_2d;
 pub mod plotters;
@@ -52,6 +55,8 @@ mod select_list;
 ///
 /// Errors if UI fails to start
 pub fn main() -> iced::Result {
+    tracing_subscriber::fmt::init();
+
     FdsToolbox::run(Settings {
         antialiasing: true,
         ..Settings::default()
@@ -77,11 +82,12 @@ struct KeyboardInfo {
 // There will be future messages not relating to tabs, so this is only temporary
 // TODO: Add those messages and remove this
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
     TabSelected(TabIdx),
     TabClosed(TabIdx),
     TabMessage(FdsToolboxTabMessage),
+    LoadedSims(Option<Arc<SimulationDataError>>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -128,12 +134,13 @@ impl FdsToolbox {
     }
 
     fn open_some_tabs(&mut self) {
+        // info!("{:?}", std::fs::read_dir("./demo-house").unwrap().into_iter().collect::<Vec<_>>());
         self.simulations
             .active_simulations
             .push(self.simulations.store.get_idx_by_path(&SimulationPath::new(
                 AnyFs::LocalFs(OsFs),
-                "demo-house".to_string(),
-                "DemoHaus2.smv".to_string(),
+                "./demo-house".to_string(),
+                "DemoHaus2".to_string(),
             )));
         self.tabs.push(FdsToolboxTab::Plot(PlotTab::new()));
         // self.tabs
@@ -205,6 +212,20 @@ impl FdsToolbox {
             _ => None,
         }
     }
+
+    fn load_simulations(&mut self) -> Command<Message> {
+        Command::batch(self.simulations.active_simulations.iter().map(|&x| {
+            let store = self.simulations.store.clone();
+            Command::perform(
+                async move {
+                    // Implicitly loads sim as well
+                    let res = store.devc().get(x, ()).await;
+                    Message::LoadedSims(res.err())
+                },
+                |x| x,
+            )
+        }))
+    }
 }
 
 impl Application for FdsToolbox {
@@ -238,7 +259,8 @@ impl Application for FdsToolbox {
             // moka_store: MokaStore::new(10_000),
         };
         Self::open_some_tabs(&mut this);
-        (this, Command::none())
+        let load_simulations = this.load_simulations();
+        (this, load_simulations)
     }
 
     fn title(&self) -> String {
@@ -260,9 +282,15 @@ impl Application for FdsToolbox {
                 }
                 None => panic!("No active tab"), // TODO: Log error instead of panicking
             },
-            // _ => {},
+            Message::LoadedSims(err) => {
+                if let Some(err) = err {
+                    error!("{:?}", err)
+                }
+            }
         }
-        Command::none()
+        // Command::none()
+
+        self.load_simulations()
     }
 
     fn view(&self) -> Element<'_, Self::Message> {

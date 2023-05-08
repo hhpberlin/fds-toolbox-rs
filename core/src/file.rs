@@ -1,12 +1,13 @@
 use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read};
 
 use async_trait::async_trait;
-use derive_more::Constructor;
+
 use futures::future::join_all;
 use get_size::GetSize;
 use ndarray::Ix3;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::info;
 
 use crate::{
     common::series::{TimeSeries, TimeSeriesSourceAsync},
@@ -29,6 +30,7 @@ pub trait FileSystem: Send + Sync + 'static {
     async fn exists(&self, path: &Self::PathRef) -> Result<bool, Self::Error>;
 
     fn file_path(&self, directory: &Self::PathRef, file_name: &str) -> Self::Path;
+    fn canonicalize(&self, path: &Self::PathRef) -> Result<Self::Path, Self::Error>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -56,6 +58,10 @@ impl FileSystem for OsFs {
 
     fn file_path(&self, directory: &Self::PathRef, file_name: &str) -> Self::Path {
         directory.join(file_name)
+    }
+
+    fn canonicalize(&self, path: &Self::PathRef) -> Result<Self::Path, Self::Error> {
+        path.canonicalize()
     }
 }
 
@@ -110,7 +116,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Constructor)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SimulationPath<Fs: FileSystem> {
     /// The file system used to read the simulation files
     pub fs: Fs,
@@ -121,16 +127,25 @@ pub struct SimulationPath<Fs: FileSystem> {
 }
 
 impl<Fs: FileSystem> SimulationPath<Fs> {
+    pub fn new(fs: Fs, directory: Fs::Path, chid: String) -> Self {
+        let directory = fs
+            .canonicalize(directory.borrow())
+            // TODO: Handle error
+            .expect("Failed to canonicalize simulation directory");
+        info!("Simulation directory: {:?}", directory);
+        Self {
+            fs,
+            directory,
+            chid,
+        }
+    }
+
     pub fn map<NewFs: FileSystem>(
         self,
         f: impl FnOnce(Fs) -> NewFs,
         fd: impl FnOnce(Fs::Path) -> NewFs::Path,
     ) -> SimulationPath<NewFs> {
-        SimulationPath {
-            fs: f(self.fs),
-            directory: fd(self.directory),
-            chid: self.chid,
-        }
+        SimulationPath::new(f(self.fs), fd(self.directory), self.chid)
     }
 }
 
@@ -204,6 +219,7 @@ impl<Fs: FileSystem> Simulation<Fs> {
     ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
         // & doesn't seem to infer the type properly, .borrow() does (PathBuf -> &Path instead &PathBuf)
         let path = fs.file_path(directory.borrow(), &format!("{}.smv", chid));
+        // tracing::error!("Path: {:?}", path.borrow());
 
         Self::parse_core(fs, directory, Some(chid), path.borrow()).await
     }

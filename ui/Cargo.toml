@@ -18,3 +18,4 @@ ndarray = "0.15"
 
 fds-toolbox-core = { path = "../core" }
 fds-toolbox-lazy-data = { path = "../lazy-data" }
+tracing-subscriber = "0.3.17"

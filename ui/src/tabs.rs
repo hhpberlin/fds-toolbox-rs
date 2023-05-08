@@ -9,6 +9,7 @@ pub trait Tab {
 
     fn update(&mut self, model: &mut Model, message: Self::Message) -> Command<Self::Message>;
     fn view<'a>(&'a self, model: &'a Model) -> Element<'a, Self::Message>;
+    // fn invalidate(&mut self);
 }
 
 // TODO: This is very boilerplate-y
@@ -21,7 +22,7 @@ pub enum FdsToolboxTab {
     Slice(SliceTab),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum FdsToolboxTabMessage {
     Plot(<PlotTab as Tab>::Message),
     Slice(<SliceTab as Tab>::Message),
@@ -62,4 +63,11 @@ impl Tab for FdsToolboxTab {
             FdsToolboxTab::Slice(tab) => tab.view(model).map(FdsToolboxTabMessage::Slice),
         }
     }
+
+    // fn invalidate(&mut self) {
+    //     match self {
+    //         FdsToolboxTab::Plot(tab) => tab.invalidate(),
+    //         FdsToolboxTab::Slice(tab) => tab.invalidate(),
+    //     }
+    // }
 }

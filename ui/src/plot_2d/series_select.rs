@@ -1,7 +1,7 @@
-use std::{collections::HashSet, fmt::Debug};
+use std::{collections::HashSet, fmt::Debug, sync::Arc};
 
 use fds_toolbox_core::common::series::TimeSeries0View;
-use fds_toolbox_lazy_data::moka::SimulationIdx;
+use fds_toolbox_lazy_data::moka::{MokaStore, SimulationDataError, SimulationIdx};
 use iced::{
     widget::{button, checkbox, scrollable, text},
     Command, Element,
@@ -14,10 +14,11 @@ pub struct SeriesSelection {
     selected: HashSet<Series>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Select(Series),
     Deselect(Series),
+    Loaded(Series, Option<Arc<SimulationDataError>>),
     SelectAll,
     DeselectAll,
 }
@@ -37,9 +38,9 @@ impl Series {
         model: &Model,
         f: impl for<'a> FnOnce(TimeSeries0View<'a>) -> T,
     ) -> Option<T> {
-        let Series(sim_idx, series) = self;
-        match *series {
-            SimSeries::Device { idx } => match model.store.devc().try_get(*sim_idx, ()) {
+        let Series(sim_idx, series) = *self;
+        match series {
+            SimSeries::Device { idx } => match model.store.devc().try_get_no_load(sim_idx, ()) {
                 Some(d) => d.view_device_by_idx(idx).map(f),
                 None => None,
             },
@@ -65,7 +66,7 @@ impl SeriesSelection {
     }
 
     pub fn view<'a>(&self, model: &'a Model) -> Element<'a, Message> {
-        let thing = iced::widget::column![];
+        let mut thing = iced::widget::column![];
         // for BySimulation(id, sim) in model.enumerate_simulations() {
         //     let sim = sim.get().and_then(CacheResult::into_val);
         //     match sim {
@@ -97,26 +98,35 @@ impl SeriesSelection {
         // }
 
         for sim_idx in &model.active_simulations {
-            Self::thing(model.store.sim().try_get(*sim_idx, ()), |sim| {
-                iced::widget::column![
-                    button(text(format!("Simulation {}", sim.smv.chid))),
-                    Self::thing(model.store.devc().try_get(*sim_idx, ()), |devc| {
-                        let mut thing2 = iced::widget::column![];
-                        thing2 = thing2.push(button("Devices"));
-                        for (idx, devc) in devc.iter_device_views().enumerate() {
-                            thing2 = thing2.push(checkbox(devc.name, false, move |selected| {
-                                if selected {
-                                    Message::Select(Series(*sim_idx, SimSeries::Device { idx }))
-                                } else {
-                                    Message::Deselect(Series(*sim_idx, SimSeries::Device { idx }))
-                                }
-                            }))
-                        }
-                        thing2.into()
-                    }),
-                ]
-                .into()
-            });
+            thing = thing.push(Self::thing(
+                model.store.sim().try_get_no_load(*sim_idx, ()),
+                |sim| {
+                    iced::widget::column![
+                        button(text(format!("Simulation {}", sim.smv.chid))),
+                        Self::thing(model.store.devc().try_get_no_load(*sim_idx, ()), |devc| {
+                            let mut thing2 = iced::widget::column![];
+                            thing2 = thing2.push(button("Devices"));
+                            for (idx, devc) in devc.iter_device_views().enumerate() {
+                                let s = SimSeries::Device { idx };
+                                let s = Series(*sim_idx, s);
+                                thing2 = thing2.push(checkbox(
+                                    devc.name,
+                                    self.selected.contains(&s),
+                                    move |selected| {
+                                        if selected {
+                                            Message::Select(s)
+                                        } else {
+                                            Message::Deselect(s)
+                                        }
+                                    },
+                                ))
+                            }
+                            thing2.into()
+                        }),
+                    ]
+                    .into()
+                },
+            ));
         }
 
         scrollable(thing).into()
@@ -143,14 +153,24 @@ impl SeriesSelection {
     //     }
     // }
 
-    pub fn update(&mut self, message: Message) -> Command<Message> {
+    pub fn update(&mut self, message: Message, model: &Model) -> Command<Message> {
+        async fn load(series: Series, model: MokaStore) -> Message {
+            let Series(sim_idx, sim_series) = series;
+            let result = match sim_series {
+                SimSeries::Device { idx: _ } => model.devc().load(sim_idx, ()).await,
+            };
+            Message::Loaded(series, result.err())
+        }
+
         match message {
             Message::Select(s) => {
                 self.selected.insert(s);
+                return Command::perform(load(s, model.store.clone()), |x| x);
             }
             Message::Deselect(s) => {
                 self.selected.remove(&s);
             }
+            Message::Loaded(_, _) => {}
             Message::SelectAll => todo!(),
             Message::DeselectAll => {
                 self.selected.clear();

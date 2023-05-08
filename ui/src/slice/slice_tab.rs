@@ -119,4 +119,8 @@ impl Tab for SliceTab {
             }
         }
     }
+
+    // fn invalidate(&mut self) {
+
+    // }
 }

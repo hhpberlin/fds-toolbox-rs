@@ -4,6 +4,7 @@ use std::io::Read;
 
 use async_trait::async_trait;
 use fds_toolbox_core::file::FileSystem;
+
 use thiserror::Error;
 
 use std;
@@ -50,11 +51,24 @@ impl FileSystem for AnyFs {
 
     fn file_path(&self, directory: &Self::PathRef, file_name: &str) -> Self::Path {
         match self {
-            AnyFs::LocalFs(fs) => fs
-                .file_path(Path::new(directory), file_name)
-                .to_str()
-                .expect("Non-UTF8 paths are currently not supported.")
-                .to_string(),
+            AnyFs::LocalFs(fs) => path_to_string(&fs.file_path(Path::new(directory), file_name)),
         }
     }
+
+    fn canonicalize(&self, path: &Self::PathRef) -> Result<Self::Path, Self::Error> {
+        match self {
+            AnyFs::LocalFs(fs) => fs
+                .canonicalize(Path::new(path))
+                .map(|x| path_to_string(&x))
+                .map_err(FsErr::Io),
+        }
+    }
+}
+
+fn path_to_string(path: &std::path::Path) -> String {
+    // TODO: Fix non-utf8 paths.
+    // TODO: Better error handling.
+    path.to_str()
+        .expect("Non-UTF8 paths are currently not supported.")
+        .to_string()
 }
