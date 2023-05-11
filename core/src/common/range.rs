@@ -6,6 +6,7 @@ use std::{
 use get_size::GetSize;
 use serde::{Deserialize, Serialize};
 
+// TODO: I don't know why I made this type, why not use RangeInclusive from std?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, GetSize)]
 pub struct RangeIncl<N> {
     pub min: N,

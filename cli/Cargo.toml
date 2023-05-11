@@ -9,10 +9,12 @@ edition = "2021"
 fds-toolbox-core = { path = "../core" }
 fds-toolbox-lazy-data = { path = "../lazy-data" }
 
-moka = { version = "0.10", features = ["future"] }
+moka = { version = "0.11", features = ["future"] }
 tokio = { version = "1.27", features = ["full"] }
 
 clap = { version = "4.2", features = ["cargo", "derive"] }
 color-eyre = "0.6.2"
 miette = { version = "5.7.0", features = ["fancy"] }
 futures = "0.3.28"
+
+plotters = { version = "0.3", features = ["image", "bitmap_backend"] }

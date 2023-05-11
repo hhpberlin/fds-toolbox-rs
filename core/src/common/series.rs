@@ -190,6 +190,27 @@ pub type TimeSeries0View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value
 pub type TimeSeries2View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix3, Time>;
 pub type TimeSeries3View<'a, Value = f32, Time = f32> = TimeSeriesView<'a, Value, Ix4, Time>;
 
+impl<'a, Value: Copy, Time: Copy> TimeSeriesView<'a, Value, Ix1, Time> {
+    pub fn iter(&self) -> impl Iterator<Item = (Time, Value)> + '_ {
+        self.time_in_seconds
+            .iter()
+            .zip(self.values.iter())
+            .map(|(t, v)| (t, v))
+    }
+
+    pub fn iter_windows<E>(
+        &self,
+        window_size: usize,
+    ) -> impl Iterator<Item = (ArrayView<Time, Ix1>, ArrayView<Value, Ix1>)> + '_ {
+        self.time_in_seconds
+            .data
+            .windows(window_size)
+            .into_iter()
+            .zip(self.values.data.windows(window_size).into_iter())
+            .map(|(t, v)| (t, v))
+    }
+}
+
 impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, Time> {
     pub fn new(
         time_in_seconds: Series1View<'a, Time>,
@@ -204,13 +225,6 @@ impl<'a, Value: Copy, Ix: Dimension, Time: Copy> TimeSeriesView<'a, Value, Ix, T
             unit,
             name,
         }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (Time, Value)> + '_ {
-        self.time_in_seconds
-            .iter()
-            .zip(self.values.iter())
-            .map(|(t, v)| (t, v))
     }
 
     pub fn view_frame(

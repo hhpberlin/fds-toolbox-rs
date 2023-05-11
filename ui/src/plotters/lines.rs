@@ -70,14 +70,9 @@ impl CartesianDrawer for LinePlot<'_> {
 
             let color = Palette99::pick(hash as usize);
 
-            // TODO: Extrapolate to the edges of the plot
-            let data_iter = view.iter().filter(|(x, y)| {
-                state.x_range.contains(*x) && state.y_range.contains(*y)
-                // TODO: This would cause a flat line between the surrounding points to be drawn
-                // && self.state.y_range.contains(*y)
-            });
+            // TODO: smart indexing instead of O(n)
+            let data_iter = view.iter();
 
-            // TODO: This allocs like crazy, one alloc for each point
             chart
                 .draw_series(LineSeries::new(data_iter, color.stroke_width(2)))
                 .expect("failed to draw chart data")

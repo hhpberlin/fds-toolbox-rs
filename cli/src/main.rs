@@ -5,6 +5,7 @@ use color_eyre::eyre;
 
 use fds_toolbox_core::file::{OsFs, Simulation};
 use fds_toolbox_lazy_data::{fs::AnyFs, moka::MokaStore};
+use plotters::prelude::*;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -58,6 +59,22 @@ async fn main() -> color_eyre::Result<()> {
     dbg!(moka.devc().try_get_no_load(sim_idx, ()));
     // dbg!(moka.devc().get(sim_idx, ()).await?);
     // dbg!(moka.devc().get(sim_idx, ()).now_or_never());
+
+    let b = BitMapBackend::new("test.png", (1024, 768));
+    let a = b.into_drawing_area();
+    a.fill(&WHITE)?;
+    let mut chart = ChartBuilder::on(&a)
+        .caption("Test", ("sans-serif", 50))
+        .margin(5)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(50f32..100f32, 0f32..80f32)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+        (0..100).map(|x| (x as f32, x as f32)),
+        &RED,
+    ))?;
+    a.present()?;
 
     Ok(())
 }
