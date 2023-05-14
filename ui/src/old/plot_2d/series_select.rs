@@ -7,7 +7,7 @@ use iced::{
     Command, Element,
 };
 
-use crate::{plotters::ids::SeriesSourceLine, Model};
+use crate::old::{plotters::ids::SeriesSourceLine, Model};
 
 #[derive(Debug)]
 pub struct SeriesSelection {

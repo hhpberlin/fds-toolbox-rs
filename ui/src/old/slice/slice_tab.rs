@@ -4,7 +4,7 @@ use fds_toolbox_core::common::series::TimeSeries2Frame;
 use fds_toolbox_lazy_data::moka::{SimulationIdx, SliceIdx};
 use iced::{widget::row, Command, Element};
 
-use crate::{
+use crate::old::{
     plotters::{
         cartesian::{self, cartesian},
         heatmap::Heatmap,

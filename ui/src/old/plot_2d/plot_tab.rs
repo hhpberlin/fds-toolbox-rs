@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use iced::{widget::row, Command, Element};
 
-use crate::{
+use crate::old::{
     plotters::{
         cartesian::{self, cartesian},
         ids::SeriesSourceLine,

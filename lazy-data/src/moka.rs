@@ -322,6 +322,14 @@ where
         let data = self.store.try_get_or_spawn(idx);
         data.and_then(Data::unwrap_data)
     }
+
+    pub fn make_idx(&self, sim: SimulationIdx, idx: Idx) -> SimulationsDataIdx {
+        SimulationsDataIdx(sim, Data::make_idx(idx))
+    }
+
+    pub fn unwrap_data(&self, data: SimulationData) -> Option<Data> {
+        Data::unwrap_data(data)
+    }
 }
 
 // impl<'a, Data> DataSrc<'a, (), Data>
@@ -370,7 +378,7 @@ impl MokaStore {
         IdxMap::get_by_path_rw_lock(&self.idx_map, path)
     }
 
-    fn get_path_by_idx(&self, idx: SimulationIdx) -> Option<SimulationPath<AnyFs>> {
+    pub fn get_path_by_idx(&self, idx: SimulationIdx) -> Option<SimulationPath<AnyFs>> {
         self.idx_map.read().get_path_by_idx(idx).cloned()
     }
 
@@ -495,11 +503,11 @@ impl MokaStore {
     // pub fn s3d(&self) -> DataSrc<S3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
     // pub fn p3d(&self) -> DataSrc<P3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
 
-    fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
+    pub fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
         self.cache.get(idx)
     }
 
-    async fn get(
+    pub async fn get(
         &self,
         idx: SimulationsDataIdx,
     ) -> Result<SimulationData, Arc<SimulationDataError>> {
@@ -509,7 +517,7 @@ impl MokaStore {
         }
     }
 
-    fn try_get_or_spawn(&self, idx: SimulationsDataIdx) -> Option<SimulationData> {
+    pub fn try_get_or_spawn(&self, idx: SimulationsDataIdx) -> Option<SimulationData> {
         match self.try_get(&idx) {
             Some(data) => Some(data),
             None => {
