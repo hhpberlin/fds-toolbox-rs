@@ -19,6 +19,9 @@ pub struct DeviceList {
     // devices_by_name: HashMap<String, DeviceIdx>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DeviceIdx(usize);
+
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 // pub struct DeviceIdx(usize);
 
@@ -40,6 +43,37 @@ impl DeviceList {
         self.devices
             .iter()
             .map(move |device| device.view(self.time_in_seconds.view()))
+    }
+
+    pub fn enumerate_device_views(&self) -> impl Iterator<Item = (DeviceIdx, TimeSeries0View<'_>)> {
+        self.devices
+            .iter()
+            .enumerate()
+            .map(move |(idx, device)| (DeviceIdx(idx), device.view(self.time_in_seconds.view())))
+    }
+
+    pub fn iter_idx(&self) -> impl Iterator<Item = DeviceIdx> {
+        (0..self.devices.len()).map(DeviceIdx)
+    }
+
+    pub fn enumerate_device_readings(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
+        self.devices
+            .iter()
+            .enumerate()
+            .map(|(idx, device)| (DeviceIdx(idx), device))
+    }
+
+    pub fn get_device_by_idx(&self, idx: DeviceIdx) -> Option<&DeviceReadings> {
+        self.devices.get(idx.0)
+    }
+
+    pub fn view_device_by_idx(&self, idx: DeviceIdx) -> Option<TimeSeries0View<'_>> {
+        self.get_device_by_idx(idx)
+            .map(|device| device.view(self.time_in_seconds.view()))
+    }
+
+    pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
+        self.devices.iter().find(|x| x.name == name)
     }
 }
 
@@ -251,56 +285,7 @@ impl DeviceList {
             // devices_by_name,
         })
     }
-
-    pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
-        self.devices.iter().find(|x| x.name == name)
-    }
-
-    pub fn get_device_by_idx(&self, idx: usize) -> Option<&DeviceReadings> {
-        self.devices.get(idx)
-    }
-
-    pub fn view_device_by_idx(&self, idx: usize) -> Option<TimeSeries0View<'_>> {
-        self.get_device_by_idx(idx)
-            .map(|x| x.view(self.time_in_seconds.view()))
-    }
-
-    // pub fn get_device_by_name(&self, name: &str) -> Option<&DeviceReadings> {
-    //     let idx = self.get_device_idx_by_name(name)?;
-    //     self.get_device_by_idx(idx)
-    // }
-
-    // pub fn get_device_by_idx(&self, name: DeviceIdx) -> Option<&DeviceReadings> {
-    //     self.devices.get(name.0)
-    // }
-
-    // pub fn get_device_idx_by_name(&self, name: &str) -> Option<DeviceIdx> {
-    //     self.devices_by_name.get(name).copied()
-    // }
-
-    // pub fn iter_device_named_ids(&self) -> impl Iterator<Item = (&str, DeviceIdx)> {
-    //     self.devices_by_name.iter().map(|(k, v)| (k.as_str(), *v))
-    // }
-
-    // pub fn iter_devices(&self) -> impl Iterator<Item = &DeviceReadings> {
-    //     self.devices.iter()
-    // }
-
-    // pub fn enumerate_devices(&self) -> impl Iterator<Item = (DeviceIdx, &DeviceReadings)> {
-    //     self.devices
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(i, x)| (DeviceIdx(i), x))
-    // }
 }
-
-// impl TimeSeriesViewSource<DeviceIdx, f32, Ix1> for Devices {
-//     fn get_time_series(&self, id: DeviceIdx) -> PotentialResult<TimeSeries0View> {
-//         self.get_device_by_idx(id)
-//             .map(|x| x.view(self.time_in_seconds.view()))
-//             .ok_or(Missing::InvalidKey)
-//     }
-// }
 
 #[cfg(test)]
 mod tests {

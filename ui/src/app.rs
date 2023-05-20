@@ -1,10 +1,15 @@
 use std::sync::Arc;
 
-use fds_toolbox_lazy_data::moka::{
-    MokaStore, SimulationDataError, SimulationIdx, SimulationsDataIdx, SimulationData,
+use fds_toolbox_core::file::{OsFs, SimulationPath};
+use fds_toolbox_lazy_data::{
+    fs::AnyFs,
+    moka::{MokaStore, SimulationData, SimulationDataError, SimulationIdx, SimulationsDataIdx},
 };
-use iced::{executor, Application, Command, Element, Theme, Renderer};
+use iced::{executor, Application, Command, Element, Renderer, Theme};
+use iced_aw::Grid;
 use tracing::{debug, error, info};
+
+use crate::sidebar::{self, Dummy};
 
 #[derive(Debug)]
 pub struct FdsToolbox {
@@ -12,8 +17,10 @@ pub struct FdsToolbox {
     pub store: MokaStore,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
+    Unload(SimulationsDataIdx),
+    Unloaded(SimulationsDataIdx),
     Load(SimulationsDataIdx),
     Loaded(Result<SimulationData, Arc<SimulationDataError>>),
 }
@@ -25,11 +32,34 @@ impl Application for FdsToolbox {
     type Flags = ();
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let this = Self {
+        let mut this = Self {
             active_simulations: vec![],
             store: MokaStore::new(100_000),
         };
-        (this, Command::none())
+        let path = SimulationPath::new(
+            AnyFs::LocalFs(OsFs),
+            "demo-house".to_string(),
+            "DemoHaus2".to_string(),
+        );
+        let idx = this.store.get_idx_by_path(&path);
+        this.active_simulations.push(idx);
+        let store = this.store.clone();
+        (
+            this,
+            Command::perform(
+                async move {
+                    Message::Loaded(
+                        store
+                            .get(SimulationsDataIdx(
+                                idx,
+                                fds_toolbox_lazy_data::moka::SimulationDataIdx::DevciceList,
+                            ))
+                            .await,
+                    )
+                },
+                |x| x,
+            ),
+        )
     }
 
     fn title(&self) -> String {
@@ -45,6 +75,17 @@ impl Application for FdsToolbox {
                     |x| x,
                 );
             }
+            Message::Unload(idx) => {
+                let store = self.store.clone();
+                return Command::perform(
+                    async move {
+                        store.unload(idx.clone()).await;
+                        Message::Unloaded(idx)
+                    },
+                    |x| x,
+                );
+            }
+            Message::Unloaded(idx) => debug!("Unloaded simulation data {:?}", idx),
             Message::Loaded(Ok(data)) => debug!("Loaded simulation data {:?}", data),
             Message::Loaded(Err(err)) => error!("Error loading simulation data: {:?}", err),
         }
@@ -52,6 +93,14 @@ impl Application for FdsToolbox {
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        
+        // let grid = Grid::with_columns(2);
+
+        dbg!(sidebar::simulation(
+            &self.store,
+            Dummy,
+            *self.active_simulations.first().unwrap()
+        ));
+
+        todo!()
     }
 }

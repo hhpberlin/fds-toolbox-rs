@@ -22,10 +22,11 @@
 // TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
 
+use app::FdsToolbox;
 use iced::{Application, Settings};
-use old::FdsToolbox;
+// use old::FdsToolbox;
 
-pub mod old;
+// pub mod old;
 mod app;
 mod sidebar;
 

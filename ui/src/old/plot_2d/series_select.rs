@@ -40,7 +40,7 @@ impl Series {
     ) -> Option<T> {
         let Series(sim_idx, series) = *self;
         match series {
-            SimSeries::Device { idx } => match model.store.devc().try_get_no_load(sim_idx, ()) {
+            SimSeries::Device { idx } => match model.store.devc().try_get(sim_idx, ()) {
                 Some(d) => d.view_device_by_idx(idx).map(f),
                 None => None,
             },
@@ -99,11 +99,11 @@ impl SeriesSelection {
 
         for sim_idx in &model.active_simulations {
             thing = thing.push(Self::thing(
-                model.store.sim().try_get_no_load(*sim_idx, ()),
+                model.store.sim().try_get(*sim_idx, ()),
                 |sim| {
                     iced::widget::column![
                         button(text(format!("Simulation {}", sim.smv.chid))),
-                        Self::thing(model.store.devc().try_get_no_load(*sim_idx, ()), |devc| {
+                        Self::thing(model.store.devc().try_get(*sim_idx, ()), |devc| {
                             let mut thing2 = iced::widget::column![];
                             thing2 = thing2.push(button("Devices"));
                             for (idx, devc) in devc.iter_device_views().enumerate() {

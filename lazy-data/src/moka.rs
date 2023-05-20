@@ -59,9 +59,6 @@ struct IdxMap {
 // They might be different on different runs.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DeviceIdx(usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SliceIdx(usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CpuIdx(usize);
@@ -74,7 +71,7 @@ pub struct S3dIdx(usize);
 pub struct P3dIdx(usize);
 
 /// Indexes into the simulation data of any simulation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SimulationsDataIdx(pub SimulationIdx, pub SimulationDataIdx);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -311,13 +308,13 @@ where
         Ok(())
     }
 
-    pub fn try_get_no_load(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+    pub fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
         let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
         let data = self.store.try_get(&idx);
         data.and_then(Data::unwrap_data)
     }
 
-    pub fn try_get(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
+    pub fn try_get_or_spawn(&self, sim: SimulationIdx, idx: Idx) -> Option<Data> {
         let idx = SimulationsDataIdx(sim, Data::make_idx(idx));
         let data = self.store.try_get_or_spawn(idx);
         data.and_then(Data::unwrap_data)
@@ -502,6 +499,10 @@ impl MokaStore {
     }
     // pub fn s3d(&self) -> DataSrc<S3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
     // pub fn p3d(&self) -> DataSrc<P3dIdx, Arc<TimeSeries3>> { DataSrc::new(self) }
+
+    pub async fn unload(&self, idx: SimulationsDataIdx) {
+        self.cache.invalidate(&idx).await;
+    }
 
     pub fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
         self.cache.get(idx)
