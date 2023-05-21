@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 iced = { version = "0.9", features = ["canvas", "tokio"] }
 # Track git until they bump the version number
-iced_aw = { version = "0.5", default-features = false, features = ["tabs", "tab_bar", "grid"] }
+iced_aw = { version = "0.5", default-features = false, features = ["tabs", "tab_bar", "grid", "icons"] }
 
 plotters = "0.3"
 plotters-iced = "0.8"

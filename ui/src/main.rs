@@ -28,7 +28,7 @@ use iced::{Application, Settings};
 
 // pub mod old;
 mod app;
-mod sidebar;
+// mod sidebar;
 
 /// # Errors
 ///

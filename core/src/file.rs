@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read};
+use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read, path::Path};
 
 use async_trait::async_trait;
 
@@ -118,35 +118,43 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SimulationPath<Fs: FileSystem> {
-    /// The file system used to read the simulation files
+    /// The file system used to read the simulation files.
     pub fs: Fs,
-    /// The directory containing the simulation files
+    /// The path to the simulation directory. Should be canonicalized.
     pub directory: Fs::Path,
-    /// The simulation id
-    pub chid: String,
+    /// The path to the .smv file. Should be within `directory` and canonicalized.
+    pub smv: Fs::Path,
 }
 
 impl<Fs: FileSystem> SimulationPath<Fs> {
-    pub fn new(fs: Fs, directory: Fs::Path, chid: String) -> Self {
+    pub fn new_full(fs: Fs, directory: Fs::Path, smv: Fs::Path) -> Self {
         let directory = fs
             .canonicalize(directory.borrow())
             // TODO: Handle error
             .expect("Failed to canonicalize simulation directory");
+        let smv = fs
+            .canonicalize(smv.borrow())
+            .expect("Failed to canonicalize .smv file");
         info!("Simulation directory: {:?}", directory);
         Self {
             fs,
             directory,
-            chid,
+            smv,
         }
     }
 
-    pub fn map<NewFs: FileSystem>(
-        self,
-        f: impl FnOnce(Fs) -> NewFs,
-        fd: impl FnOnce(Fs::Path) -> NewFs::Path,
-    ) -> SimulationPath<NewFs> {
-        SimulationPath::new(f(self.fs), fd(self.directory), self.chid)
+    pub fn new(fs: Fs, directory: Fs::Path, smv_name: &str) -> Self {
+        let smv = fs.file_path(directory.borrow(), smv_name);
+        Self::new_full(fs, directory, smv)
     }
+
+    // pub fn map<NewFs: FileSystem>(
+    //     self,
+    //     f: impl FnOnce(Fs) -> NewFs,
+    //     fd: impl FnOnce(Fs::Path) -> NewFs::Path,
+    // ) -> SimulationPath<NewFs> {
+    //     SimulationPath::new(f(self.fs), fd(self.directory), self.chid)
+    // }
 }
 
 impl<Fs> GetSize for SimulationPath<Fs>
@@ -155,7 +163,7 @@ where
     Fs::Path: GetSize,
 {
     fn get_heap_size(&self) -> usize {
-        self.chid.get_heap_size() + self.directory.get_heap_size() + self.fs.get_heap_size()
+        self.smv.get_heap_size() + self.fs.get_heap_size()
     }
 }
 
@@ -207,38 +215,15 @@ pub enum SmvErr {
 
 impl<Fs: FileSystem> SimulationPath<Fs> {
     pub async fn parse(self) -> Result<Simulation<Fs>, ParseError<Fs::Error, SmvErr>> {
-        Simulation::parse(self.fs, self.directory, self.chid).await
+        Simulation::parse_smv(self).await
     }
 }
 
 impl<Fs: FileSystem> Simulation<Fs> {
-    pub async fn parse(
-        fs: Fs,
-        directory: Fs::Path,
-        chid: String,
-    ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
-        // & doesn't seem to infer the type properly, .borrow() does (PathBuf -> &Path instead &PathBuf)
-        let path = fs.file_path(directory.borrow(), &format!("{}.smv", chid));
-        // tracing::error!("Path: {:?}", path.borrow());
-
-        Self::parse_core(fs, directory, Some(chid), path.borrow()).await
-    }
-
     pub async fn parse_smv(
-        fs: Fs,
-        directory: Fs::Path,
-        smv: &Fs::PathRef,
+        path: SimulationPath<Fs>,
     ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
-        Self::parse_core(fs, directory, None, smv).await
-    }
-
-    async fn parse_core(
-        fs: Fs,
-        directory: Fs::Path,
-        chid: Option<String>,
-        smv: &Fs::PathRef,
-    ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
-        let mut file = fs.read(smv).await.map_err(ParseError::Fs)?;
+        let mut file = path.fs.read(path.smv.borrow()).await.map_err(ParseError::Fs)?;
 
         // TODO: Use actual file size to pre-allocate string
         // let size = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -256,23 +241,12 @@ impl<Fs: FileSystem> Simulation<Fs> {
         })?;
         // .map_err(|e| ParseError::Parse(SmvErr::FancyMiette(e.add_src(string))))?;
 
-        let chid = match chid {
-            Some(chid) => {
-                // TODO: Add proper error handling
-                debug_assert_eq!(smv.chid, chid);
-                chid
-            }
-            None => smv.chid.clone(),
-        };
-
         let slice_index = smv
             .slices
             .iter()
             .enumerate()
             .map(|(i, slice)| ((slice.mesh_index, slice.bounds), i))
             .collect();
-
-        let path = SimulationPath::new(fs, directory, chid);
 
         Ok(Self {
             smv,
@@ -292,7 +266,7 @@ impl<Fs: FileSystem> Simulation<Fs> {
     fn path(&self, file_name: &str) -> <Fs as FileSystem>::Path {
         self.path
             .fs
-            .file_path(self.path.directory.borrow(), file_name)
+            .file_path(self.path.smv.borrow(), file_name)
     }
 
     pub async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {
@@ -347,7 +321,7 @@ impl<Fs: FileSystem> Simulation<Fs> {
     }
 
     pub async fn csv_cpu(&self) -> Result<Option<CpuData>, ParseError<Fs::Error, csv::cpu::Error>> {
-        let file_name = format!("{}_cpu.csv", self.path.chid);
+        let file_name = format!("{}_cpu.csv", self.smv.chid);
         if !self.exists(&file_name).await.map_err(ParseError::Fs)? {
             return Ok(None);
         }
@@ -397,7 +371,7 @@ pub struct HrrIdx;
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use super::{OsFs, Simulation};
+    use super::{OsFs, Simulation, SimulationPath};
 
     fn root_path() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -407,7 +381,7 @@ mod tests {
     }
 
     async fn sim() -> Simulation<OsFs> {
-        Simulation::parse(OsFs, root_path(), "DemoHaus2".to_string())
+        Simulation::parse_smv(SimulationPath::new(OsFs, root_path(), "DemoHaus2.smv"))
             .await
             .unwrap()
     }

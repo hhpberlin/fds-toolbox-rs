@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{arg, Parser};
 use color_eyre::eyre;
 
-use fds_toolbox_core::file::{OsFs, Simulation};
+use fds_toolbox_core::file::{OsFs, Simulation, SimulationPath};
 use fds_toolbox_lazy_data::{fs::AnyFs, moka::MokaStore};
 use plotters::prelude::*;
 
@@ -23,7 +23,7 @@ async fn main() -> color_eyre::Result<()> {
 
     dbg!(&args.smv);
 
-    let sim = Simulation::parse_smv(
+    let sim = Simulation::parse_smv(SimulationPath::new(
         AnyFs::LocalFs(OsFs),
         args.smv
             .parent()
@@ -32,7 +32,7 @@ async fn main() -> color_eyre::Result<()> {
             .unwrap()
             .to_owned(),
         args.smv.to_str().unwrap(),
-    )
+    ))
     .await?;
 
     // let sim = CachedSimulation::new(Arc::new(sim), None);
