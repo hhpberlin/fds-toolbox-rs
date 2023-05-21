@@ -5,7 +5,7 @@ use color_eyre::eyre;
 
 use fds_toolbox_core::file::{OsFs, Simulation, SimulationPath};
 use fds_toolbox_lazy_data::{fs::AnyFs, moka::MokaStore};
-use plotters::prelude::*;
+// use plotters::prelude::*;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
