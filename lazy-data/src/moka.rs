@@ -77,6 +77,12 @@ pub struct SimulationsDataIdx(pub SimulationIdx, pub SimulationDataIdx);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SimulationIdx(usize);
 
+impl From<SimulationIdx> for usize {
+    fn from(idx: SimulationIdx) -> Self {
+        idx.0
+    }
+}
+
 /// Indexes into the simulation data of a single simulation (one .smv and associated files).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimulationDataIdx {

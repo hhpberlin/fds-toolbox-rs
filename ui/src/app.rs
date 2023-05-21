@@ -16,7 +16,7 @@ use iced::{
     widget::{button, column, container, pick_list, row, scrollable, text},
     Alignment, Application, Command, Element, Renderer, Theme,
 };
-use iced_aw::Grid;
+use iced_aw::{Grid, TabBar, Tabs};
 use tracing::{debug, error, info};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
@@ -193,7 +193,66 @@ impl Application for FdsToolbox {
         //     )
         //     .view(),
         // )
-        let core: Element<_> = match self.tabs[self.active_tab] {
+        let mut tab_bar = TabBar::new(self.active_tab, Message::TabChanged);
+        for tab in &self.tabs {
+            tab_bar = tab_bar.push(match tab {
+                Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
+                Tab::Overview(idx) => iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx)),
+            });
+        }
+
+        let core = self.view_tab();
+
+        column!(
+            tab_bar,
+            core,
+            text(format!("Sims: {:?}", self.active_simulations))
+        )
+        .into()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct KeyedStr<Key>(Key, String);
+impl<Key> ToString for KeyedStr<Key> {
+    fn to_string(&self) -> String {
+        self.1.clone()
+    }
+}
+impl<Key: Eq> Eq for KeyedStr<Key> {}
+impl<Key: PartialEq> PartialEq for KeyedStr<Key> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl FdsToolbox {
+    fn try_get_name(&self, idx: SimulationIdx) -> Option<String> {
+        match self.store.sim().try_get(idx, ()) {
+            Some(x) => Some(x.smv.chid.to_owned()),
+            None => match self.store.get_path_by_idx(idx) {
+                Some(x) => Some(x.smv),
+                None => None,
+            },
+        }
+    }
+
+    fn try_get_name_infallible(&self, idx: SimulationIdx) -> String {
+        self.try_get_name(idx).unwrap_or_else(|| {
+            error!("Could not get name for simulation {:?}", idx);
+            format!(
+                "Unloaded simulation [{}] (error)",
+                std::convert::Into::<usize>::into(idx)
+            )
+        })
+    }
+
+    fn tab_msg(&self, msg: TabMessage) -> Message {
+        Message::TabMessage(self.active_tab, msg)
+    }
+
+    fn view_tab(&self) -> Element<Message> {
+        match self.tabs[self.active_tab] {
             Tab::HomeTab => {
                 debug!("{:?}", self.active_simulations);
                 let sim: Element<_> = match self.active_simulations.is_empty() {
@@ -247,46 +306,7 @@ impl Application for FdsToolbox {
                 .center_y()
                 .into()
             }
-        };
-
-        row!(core, text(format!("Sims: {:?}", self.active_simulations))).into()
-    }
-}
-
-#[derive(Debug, Clone)]
-struct KeyedStr<Key>(Key, String);
-impl<Key> ToString for KeyedStr<Key> {
-    fn to_string(&self) -> String {
-        self.1.clone()
-    }
-}
-impl<Key: Eq> Eq for KeyedStr<Key> {}
-impl<Key: PartialEq> PartialEq for KeyedStr<Key> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl FdsToolbox {
-    fn try_get_name(&self, idx: SimulationIdx) -> Option<String> {
-        match self.store.sim().try_get(idx, ()) {
-            Some(x) => Some(x.smv.chid.to_owned()),
-            None => match self.store.get_path_by_idx(idx) {
-                Some(x) => Some(x.smv),
-                None => None,
-            },
         }
-    }
-
-    fn try_get_name_infallible(&self, idx: SimulationIdx) -> String {
-        self.try_get_name(idx).unwrap_or_else(|| {
-            error!("Could not get name for simulation {:?}", idx);
-            "Unloaded simulation (error)".to_string()
-        })
-    }
-
-    fn tab_msg(&self, msg: TabMessage) -> Message {
-        Message::TabMessage(self.active_tab, msg)
     }
 }
 
