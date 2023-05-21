@@ -1261,6 +1261,7 @@ dependencies = [
  "iced_aw",
  "itertools",
  "ndarray",
+ "phf",
  "plotters",
  "plotters-iced",
  "rfd",

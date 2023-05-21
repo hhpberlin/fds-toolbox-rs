@@ -12,7 +12,11 @@ use fds_toolbox_core::{
 use fds_toolbox_lazy_data::moka::{
     MokaStore, P3dIdx, S3dIdx, SimulationDataIdx, SimulationIdx, SimulationsDataIdx,
 };
-use iced::{widget::checkbox, Element};
+use iced::{
+    widget::{button, checkbox, text, Row, Space},
+    Element, Length,
+};
+use iced_aw::Grid;
 use itertools::Itertools;
 
 use crate::app::Message;
@@ -85,11 +89,11 @@ impl<Message> SelectionMessages<Message> {
         }
     }
 
-    pub fn get(self, selected: bool) -> Message {
+    pub fn get(&self, selected: bool) -> &Message {
         if selected {
-            self.on
+            &self.on
         } else {
-            self.off
+            &self.off
         }
     }
 }
@@ -311,16 +315,14 @@ fn devices<'a, Message: 'static>(
         let by_qty_collected = {
             let by_qty = devc
                 .enumerate_device_readings()
-                .group_by(|x| Quantity::from_str(&x.1.unit));
+                .into_group_map_by(|x| Quantity::from_str(&x.1.unit));
 
             let iter = by_qty
                 .into_iter()
                 // .map(|(qty, grp)| (qty, grp.into_iter().map(|(idx, devc)| devices_qty(store, sel_src, idx, qty, idxs)).collect::<Vec<_>>()))
                 .map(|(qty, grp)| devices_qty(store, sel_src, idx, qty, grp));
 
-            let iter = iter.collect::<Vec<_>>();
-            drop(by_qty);
-            iter
+            iter.collect::<Vec<_>>()
         };
 
         box_iter(
@@ -380,9 +382,6 @@ fn device<'a, 'd, Message: 'static>(
 pub struct SimulationGroup(SimulationIdx, Group);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SimulationGroupQuantity(SimulationGroup, Option<Quantity>);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Group {
     // Overview,
     Series0,
@@ -418,9 +417,20 @@ impl Quantity {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Series0Type {
+    Device,
+    Hrr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Series0 {
     Device(SimulationIdx, DeviceIdx),
     Hrr(SimulationIdx, usize),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Series2Type {
+    Slice,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -432,7 +442,90 @@ pub enum Series2 {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Series3Type {
+    S3D,
+    P3D,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Series3 {
     S3D(SimulationIdx, S3dIdx),
     P3D(SimulationIdx, P3dIdx),
+}
+
+impl<'a, Msg: Clone + 'a> Thing<'a, Msg> {
+    fn view_self(&self) -> Element<'a, Msg> {
+        match self {
+            Thing::Group {
+                name,
+                expanded,
+                loaded,
+                ..
+            } => {
+                if loaded.selected {
+                    // Draw a checkbox to select/deselect the group
+                    match &expanded.msg {
+                        Some(msg) => {
+                            let msg = msg.clone();
+                            checkbox(name, expanded.selected, move |x| msg.get(x).clone()).into()
+                        }
+                        None => text(name).into(),
+                    }
+                } else {
+                    // Draw a loading button
+                    match &loaded.msg {
+                        Some(msg) => button(text(name)).on_press(msg.on.clone()).into(),
+                        None => text(name).into(),
+                    }
+                }
+            }
+            Thing::Element {
+                name,
+                selected,
+                loaded,
+            } => {
+                if loaded.selected {
+                    // Draw a checkbox to select/deselect the element
+                    match &selected.msg {
+                        Some(msg) => {
+                            let msg = msg.clone();
+                            checkbox(name, selected.selected, move |x| msg.get(x).clone()).into()
+                        }
+                        None => text(name).into(),
+                    }
+                } else {
+                    // Draw a loading button
+                    match &loaded.msg {
+                        Some(msg) => button(text(name)).on_press(msg.on.clone()).into(),
+                        None => text(name).into(),
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: Apply theme
+    fn view_all(self, offset: usize, insert: &mut impl FnMut(Element<'a, Msg>)) {
+        insert(Space::new(Length::Fixed(offset as f32 * 10.), Length::Shrink).into());
+        insert(self.view_self().into());
+        if let Thing::Group {
+            data: Some(data), ..
+        } = self
+        {
+            for child in data {
+                child.view_all(offset + 1, insert);
+            }
+        }
+    }
+
+    pub fn view(self) -> Element<'a, Msg>
+    where
+        // TODO: I have no clue why it complains if Msg is just 'a and not 'static
+        Msg: 'static,
+    {
+        let mut grid = Grid::with_columns(2);
+
+        self.view_all(0, &mut |e| grid.insert(e));
+        grid.into()
+    }
 }
