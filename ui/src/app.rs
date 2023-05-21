@@ -1,8 +1,8 @@
-use std::{borrow::Cow, collections::HashSet, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use fds_toolbox_core::{
     file::{OsFs, SimulationPath, SliceSeriesIdx},
-    formats::csv::devc::{DeviceIdx, DeviceReadings},
+    formats::csv::devc::DeviceIdx,
 };
 use fds_toolbox_lazy_data::{
     fs::AnyFs,
@@ -13,11 +13,11 @@ use fds_toolbox_lazy_data::{
 };
 use iced::{
     executor,
-    widget::{button, column, container, pick_list, row, scrollable, text},
-    Alignment, Application, Command, Element, Renderer, Theme,
+    widget::{button, column, container, pick_list, row, text},
+    Application, Command, Element, Theme,
 };
-use iced_aw::{Grid, TabBar, Tabs};
-use tracing::{debug, error, info};
+use iced_aw::{Grid, TabBar};
+use tracing::{debug, error};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
 
@@ -64,7 +64,7 @@ impl Application for FdsToolbox {
     type Theme = Theme;
     type Flags = ();
 
-    fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut this = Self {
             active_simulations: vec![],
             store: MokaStore::new(100_000),

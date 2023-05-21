@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read, path::Path};
+use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read};
 
 use async_trait::async_trait;
 
@@ -136,11 +136,7 @@ impl<Fs: FileSystem> SimulationPath<Fs> {
             .canonicalize(smv.borrow())
             .expect("Failed to canonicalize .smv file");
         info!("Simulation directory: {:?}", directory);
-        Self {
-            fs,
-            directory,
-            smv,
-        }
+        Self { fs, directory, smv }
     }
 
     pub fn new(fs: Fs, directory: Fs::Path, smv_name: &str) -> Self {
@@ -223,7 +219,11 @@ impl<Fs: FileSystem> Simulation<Fs> {
     pub async fn parse_smv(
         path: SimulationPath<Fs>,
     ) -> Result<Self, ParseError<Fs::Error, SmvErr>> {
-        let mut file = path.fs.read(path.smv.borrow()).await.map_err(ParseError::Fs)?;
+        let mut file = path
+            .fs
+            .read(path.smv.borrow())
+            .await
+            .map_err(ParseError::Fs)?;
 
         // TODO: Use actual file size to pre-allocate string
         // let size = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -264,9 +264,7 @@ impl<Fs: FileSystem> Simulation<Fs> {
     }
 
     fn path(&self, file_name: &str) -> <Fs as FileSystem>::Path {
-        self.path
-            .fs
-            .file_path(self.path.smv.borrow(), file_name)
+        self.path.fs.file_path(self.path.smv.borrow(), file_name)
     }
 
     pub async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {

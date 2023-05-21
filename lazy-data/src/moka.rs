@@ -196,7 +196,10 @@ impl IdxMap {
         }
     }
 
-    fn get_by_path_rw_lock(this: &RwLock<Self>, path: &SimulationPath<AnyFs>) -> (SimulationIdx, bool) {
+    fn get_by_path_rw_lock(
+        this: &RwLock<Self>,
+        path: &SimulationPath<AnyFs>,
+    ) -> (SimulationIdx, bool) {
         if let Some(idx) = this.read().try_get_by_path(path) {
             return (idx, true);
         }
@@ -572,7 +575,7 @@ impl MokaStore {
             }
         };
 
-        self.cache.try_get_with(idx.clone(), fut).await
+        self.cache.try_get_with(idx, fut).await
     }
 
     pub fn evict(&self, idx: SimulationIdx) {
