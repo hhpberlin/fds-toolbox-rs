@@ -183,16 +183,16 @@ impl IdxMap {
     //     self.idx_to_path.get(&idx)
     // }
 
-    fn get_by_path_mut(&mut self, path: &SimulationPath<AnyFs>) -> SimulationIdx {
+    fn get_by_path_mut(&mut self, path: &SimulationPath<AnyFs>) -> (SimulationIdx, bool) {
         match self.try_get_by_path(path) {
-            Some(idx) => idx,
-            None => self.insert(path),
+            Some(idx) => (idx, true),
+            None => (self.insert(path), false),
         }
     }
 
-    fn get_by_path_rw_lock(this: &RwLock<Self>, path: &SimulationPath<AnyFs>) -> SimulationIdx {
+    fn get_by_path_rw_lock(this: &RwLock<Self>, path: &SimulationPath<AnyFs>) -> (SimulationIdx, bool) {
         if let Some(idx) = this.read().try_get_by_path(path) {
-            return idx;
+            return (idx, true);
         }
         this.write().get_by_path_mut(path)
     }
@@ -371,7 +371,7 @@ impl MokaStore {
         }
     }
 
-    pub fn get_idx_by_path(&self, path: &SimulationPath<AnyFs>) -> SimulationIdx {
+    pub fn get_idx_by_path(&self, path: &SimulationPath<AnyFs>) -> (SimulationIdx, bool) {
         IdxMap::get_by_path_rw_lock(&self.idx_map, path)
     }
 

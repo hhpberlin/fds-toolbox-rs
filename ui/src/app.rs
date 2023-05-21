@@ -76,7 +76,7 @@ impl Application for FdsToolbox {
             "demo-house".to_string(),
             "DemoHaus2.smv",
         );
-        let idx = this.store.get_idx_by_path(&path);
+        let idx = this.store.get_idx_by_path(&path).0;
         this.active_simulations.push(idx);
         let store = this.store.clone();
         (
@@ -151,8 +151,10 @@ impl Application for FdsToolbox {
                 );
             }
             Message::OpenSimulation(path) => {
-                let idx = self.store.get_idx_by_path(&path);
-                self.active_simulations.push(idx);
+                let (idx, exists) = self.store.get_idx_by_path(&path);
+                if !exists {
+                    self.active_simulations.push(idx);
+                }
                 debug!("Added simulation {:?} with idx {:?}", path, idx);
 
                 // NOTE: This is technically not required, but it's just about always wanted.

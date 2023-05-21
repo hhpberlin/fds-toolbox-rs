@@ -53,7 +53,7 @@ async fn main() -> color_eyre::Result<()> {
     // MEMORY_MANAGER.print_stats();
 
     let moka = MokaStore::new(10000);
-    let sim_idx = moka.get_idx_by_path(&sim.path);
+    let sim_idx = moka.get_idx_by_path(&sim.path).0;
     // dbg!(moka.devc().try_get_or_spawn(sim_idx, ()));
     // tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     // dbg!(moka.devc().try_get(sim_idx, ()));
