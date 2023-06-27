@@ -264,7 +264,7 @@ impl<Fs: FileSystem> Simulation<Fs> {
     }
 
     fn path(&self, file_name: &str) -> <Fs as FileSystem>::Path {
-        self.path.fs.file_path(self.path.smv.borrow(), file_name)
+        self.path.fs.file_path(self.path.directory.borrow(), file_name)
     }
 
     pub async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {

@@ -39,7 +39,7 @@ macro_rules! ws_separated {
 pub struct Smv {
     pub title: String,
     pub fds_version: String,
-    pub end_version: String,
+    pub end_file: String,
     pub input_file: String,
     pub revision: String,
     pub chid: String,
@@ -793,7 +793,7 @@ impl<'a> SimulationParser<'a> {
             .ok_or(err::Error::MissingSection { name: "TITLE" })?
             .to_string();
         let fds_version = fds_version.ok_or(err::Error::MissingSection { name: "FDSVERSION" })?;
-        let end_version = end_file
+        let end_file = end_file
             .ok_or(err::Error::MissingSection { name: "ENDF" })?
             .to_string();
         let input_file = input_file
@@ -834,7 +834,7 @@ impl<'a> SimulationParser<'a> {
         Ok(Smv {
             title,
             fds_version,
-            end_version,
+            end_file,
             input_file,
             revision,
             chid,

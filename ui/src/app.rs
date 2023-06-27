@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, sync::Arc, ops::Rem};
 
 use fds_toolbox_core::{
     file::{OsFs, SimulationPath, SliceSeriesIdx},
@@ -16,7 +16,7 @@ use iced::{
     widget::{button, column, container, pick_list, row, text},
     Application, Command, Element, Theme,
 };
-use iced_aw::{Grid, TabBar};
+use iced_aw::{tabs::TabBarStyles, Grid, TabBar};
 use tracing::{debug, error};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
@@ -45,6 +45,7 @@ pub enum Message {
     // (such as if Command::perform is used with some long-running future).
     TabMessage(usize, TabMessage),
     TabOpen(Tab),
+    TabClose(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +77,7 @@ impl Application for FdsToolbox {
             "demo-house".to_string(),
             "DemoHaus2.smv",
         );
+        debug!("{:?}", &path);
         let idx = this.store.get_idx_by_path(&path).0;
         this.active_simulations.push(idx);
         let store = this.store.clone();
@@ -156,7 +158,6 @@ impl Application for FdsToolbox {
                     self.active_simulations.push(idx);
                 }
                 debug!("Added simulation {:?} with idx {:?}", path, idx);
-
                 // NOTE: This is technically not required, but it's just about always wanted.
                 return Command::perform(
                     async move { Message::Load(SimulationsDataIdx(idx, SimulationDataIdx::Simulation)) },
@@ -173,27 +174,20 @@ impl Application for FdsToolbox {
                 }
             },
             Message::TabOpen(tab) => self.tabs.push(tab),
+            Message::TabClose(idx) => {
+                self.tabs.remove(idx);
+                if self.active_tab >= idx {
+                    self.active_tab -= 1;
+                }
+            }
         }
         Command::none()
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        // let grid = Grid::with_columns(2);
-
-        // dbg!(sidebar::simulation(
-        //     &self.store,
-        //     Dummy,
-        //     *self.active_simulations.first().unwrap()
-        // ));
-        // scrollable(
-        //     sidebar::simulation(
-        //         &self.store,
-        //         Dummy,
-        //         *self.active_simulations.first().unwrap(),
-        //     )
-        //     .view(),
-        // )
-        let mut tab_bar = TabBar::new(self.active_tab, Message::TabChanged);
+        let mut tab_bar = TabBar::new(self.active_tab, Message::TabChanged)
+            .style(TabBarStyles::Blue)
+            .on_close(Message::TabClose);
         for tab in &self.tabs {
             tab_bar = tab_bar.push(match tab {
                 Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
@@ -209,6 +203,10 @@ impl Application for FdsToolbox {
             text(format!("Sims: {:?}", self.active_simulations))
         )
         .into()
+    }
+
+    fn theme(&self) -> Self::Theme {
+        Theme::Dark
     }
 }
 
@@ -269,6 +267,7 @@ impl FdsToolbox {
                     )
                     .into(),
                 };
+
                 container(column!(
                     sim,
                     button("Open simulation").on_press(Message::OpenSimulationFileDialog),
@@ -287,12 +286,25 @@ impl FdsToolbox {
                             .map(|&x| KeyedStr(x, self.try_get_name_infallible(x)))
                             .collect(),
                     ),
-                    Some(KeyedStr(sim_idx, "".to_string())),
+                    Some(KeyedStr(sim_idx, self.try_get_name_infallible(sim_idx))),
                     |x| self.tab_msg(TabMessage::Replace(Tab::Overview(x.0))),
                 );
 
+                let sim = self.store.sim().try_get(sim_idx, ());
+
+                let info: Element<_> = match sim {
+                    Some(sim) => row!(
+                        text(format!("CHID: {}", sim.smv.chid)),
+                        text(format!("FDS Version: {}", sim.smv.fds_version)),
+                    )
+                    .into(),
+                    // TODO: Spinner
+                    None => text("Simulation not loaded.").into(),
+                };
+
                 container(column!(
                     sim_selection,
+                    info,
                     // scrollable(
                     //     sidebar::simulation(
                     //         &self.store,
