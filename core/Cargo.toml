@@ -24,7 +24,7 @@ winnow = { version = "0.4.1", features = [] }
 
 chrono = "0.4"
 derive_more = "*"
-uom = { version = "0.34", features = ["use_serde"] }
+uom = { version = "0.35", features = ["use_serde"] }
 csv = "1.1"
 ndarray = { version = "0.15", features = ["serde"] }
 byteorder = "1.4"

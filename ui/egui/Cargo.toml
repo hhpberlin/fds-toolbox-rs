@@ -1,0 +1,18 @@
+[package]
+name = "egui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eframe = { version = "0.22.0", features = ["serde", "wgpu", "wayland"] }
+egui = "0.22"
+egui_dock = "0.6"
+rfd = { version = "0.11.4", default-features = false, features = ["xdg-portal"] }
+tokio = "1.29.1"
+tracing = "0.1.37"
+
+fds-toolbox-core = { path = "../../core" }
+fds-toolbox-lazy-data = { path = "../../lazy-data" }
+tracing-subscriber = "0.3.17"

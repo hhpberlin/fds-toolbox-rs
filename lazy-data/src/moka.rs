@@ -355,6 +355,13 @@ where
 //     }
 // }
 
+// impl Default for MokaStore {
+//     fn default() -> Self {
+//         // TODO
+//         MokaStore::new(10_000)
+//     }
+// }
+
 impl MokaStore {
     pub fn new(max_capacity: u64) -> Self {
         Self {

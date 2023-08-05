@@ -206,7 +206,7 @@ impl<'a, Value: Copy, Time: Copy> TimeSeriesView<'a, Value, Ix1, Time> {
             .data
             .windows(window_size)
             .into_iter()
-            .zip(self.values.data.windows(window_size).into_iter())
+            .zip(self.values.data.windows(window_size))
             .map(|(t, v)| (t, v))
     }
 }

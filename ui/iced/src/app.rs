@@ -1,4 +1,8 @@
-use std::{borrow::Cow, sync::Arc, ops::Rem};
+use std::{
+    borrow::Cow,
+    ops::Rem,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
 use fds_toolbox_core::{
     file::{OsFs, SimulationPath, SliceSeriesIdx},
@@ -14,9 +18,9 @@ use fds_toolbox_lazy_data::{
 use iced::{
     executor,
     widget::{button, column, container, pick_list, row, text},
-    Application, Command, Element, Theme,
+    Application, Command, Element, Theme, Length,
 };
-use iced_aw::{tabs::TabBarStyles, Grid, TabBar};
+use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
 use tracing::{debug, error};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
@@ -39,13 +43,13 @@ pub enum Message {
     Unloaded(SimulationsDataIdx),
     Load(SimulationsDataIdx),
     Loaded(Result<SimulationData, Arc<SimulationDataError>>),
-    TabChanged(usize),
+    TabSelected(usize),
     // This could omit the usize and just reference active_tab, but that could cause problems
     // if the active_tab is changed before the message is processed
     // (such as if Command::perform is used with some long-running future).
     TabMessage(usize, TabMessage),
     TabOpen(Tab),
-    TabClose(usize),
+    TabClosed(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -165,7 +169,7 @@ impl Application for FdsToolbox {
                 );
             }
             Message::NoOp => {}
-            Message::TabChanged(idx) => {
+            Message::TabSelected(idx) => {
                 self.active_tab = idx;
             }
             Message::TabMessage(idx, msg) => match msg {
@@ -174,7 +178,7 @@ impl Application for FdsToolbox {
                 }
             },
             Message::TabOpen(tab) => self.tabs.push(tab),
-            Message::TabClose(idx) => {
+            Message::TabClosed(idx) => {
                 self.tabs.remove(idx);
                 if self.active_tab >= idx {
                     self.active_tab -= 1;
@@ -185,15 +189,49 @@ impl Application for FdsToolbox {
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        let mut tab_bar = TabBar::new(self.active_tab, Message::TabChanged)
-            .style(TabBarStyles::Blue)
-            .on_close(Message::TabClose);
-        for tab in &self.tabs {
-            tab_bar = tab_bar.push(match tab {
-                Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
-                Tab::Overview(idx) => iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx)),
-            });
-        }
+        // let mut tab_bar = TabBar::new(Message::TabChanged)
+        //     .set_active_tab(&self.active_tab)
+        //     .style(TabBarStyles::Blue)
+        //     .on_close(Message::TabClose);
+
+        // for tab in &self.tabs {
+        //     let id = self.tab_cntr.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        //     tab_bar = tab_bar.push(
+        //         id,
+        //         match tab {
+        //             Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
+        //             Tab::Overview(idx) => {
+        //                 iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
+        //             }
+        //         },
+        //     );
+        // }
+
+let tab_bar =         self
+                              .tabs
+                              .iter()
+                              .fold(
+                                  TabBar::new(Message::TabSelected),
+                                  |tab_bar, tab| {
+                                      // manually create a new index for the new tab
+                                      // starting from 0, when there is no tab created yet
+                                      let idx = tab_bar.size();
+                                      tab_bar.push(idx, 
+                                                match tab {
+                                                    Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
+                                                    Tab::Overview(idx) => {
+                                                        iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
+                                                    }
+                                                },
+                                    )
+                                  },
+                              )
+                              .on_close(Message::TabClosed)
+                              .tab_width(Length::Shrink)
+                              .spacing(5.0)
+                              .padding(5.0)
+                              .text_size(32.0);
+
 
         let core = self.view_tab();
 

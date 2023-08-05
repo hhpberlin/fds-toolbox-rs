@@ -263,7 +263,7 @@ impl DeviceList {
 
         let devices = units
             .into_iter()
-            .zip(devices.into_iter())
+            .zip(devices)
             .map(|((unit, name), values)| DeviceReadings {
                 name: name.to_string(),
                 unit: unit.to_string(),

@@ -5,7 +5,7 @@ use iced::{
 use iced_aw::Icon;
 
 trait TreeNode {
-    type Message: Clone;
+    type Message: Clone + 'static;
     type Children: TreeNode<Message = Self::Message>;
     // TODO: Track https://github.com/rust-lang/rust/issues/91611 to replace this with impl Trait
     type Iter: Iterator<Item = Self::Children>;
@@ -29,7 +29,7 @@ trait TreeNode {
     // None if not selectable/expandable
     fn is_selected(&self) -> Option<bool>;
 
-    fn name(&self) -> &str;
+    fn name(&self) -> String;
 }
 
 fn view_tree<'a, T: TreeNode + 'a>(root: T) -> Element<'a, T::Message> {
@@ -48,7 +48,7 @@ fn view_tree<'a, T: TreeNode + 'a>(root: T) -> Element<'a, T::Message> {
         };
         let icon = text(icon).font(iced_aw::ICON_FONT);
 
-        let button = button(row![icon, node.name()]);
+        let button = button(row![icon, text(node.name())]);
 
         let button = match is_selected {
             Some(is_selected) => button.on_press(if is_selected { expanded } else { collapsed }),
