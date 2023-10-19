@@ -1,6 +1,5 @@
 use std::{borrow::Borrow, ops::Index};
 
-use async_trait::async_trait;
 use get_size::GetSize;
 use ndarray::{Array, ArrayView, Axis, Dimension, Ix1, Ix2, Ix3, Ix4, RemoveAxis};
 use serde::{Deserialize, Serialize};
@@ -351,7 +350,6 @@ pub trait TimeSeriesViewSource<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time:
     // }
 }
 
-#[async_trait]
 pub trait TimeSeriesSourceAsync<Id, Value: Copy = f32, Ix: Dimension = Ix1, Time: Copy = f32> {
     type Error: std::error::Error;
     async fn get_time_series(&self, id: Id) -> Result<TimeSeries<Value, Ix, Time>, Self::Error>;

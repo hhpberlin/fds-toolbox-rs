@@ -79,7 +79,7 @@ impl FdsToolboxApp {
     //     });
     // }
 
-    pub async fn spawn<F>(&self, f: impl FnOnce() -> F + Send + 'static)
+    pub fn spawn<F>(&self, f: impl FnOnce() -> F + Send + 'static)
     where
         F: IntoFuture<Output = Option<Message>> + Send,
         F::IntoFuture: Send + 'static,
@@ -111,7 +111,7 @@ impl FdsToolboxApp {
         match message {
             Message::OpenSimulationPath(sim_path) => {
                 let store = self.store.clone();
-                    self.spawn(move || async move {
+                self.spawn(move || async move {
                     let sim_idx = store.get_idx_by_path(&sim_path).0;
                     Some(Message::OpenSimulationIdx(sim_idx))
                 });

@@ -18,10 +18,12 @@ use fds_toolbox_lazy_data::{
 use iced::{
     executor,
     widget::{button, column, container, pick_list, row, text},
-    Application, Command, Element, Theme, Length,
+    Application, Command, Element, Length, Theme,
 };
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
 use tracing::{debug, error};
+
+use crate::tree;
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
 
@@ -207,31 +209,28 @@ impl Application for FdsToolbox {
         //     );
         // }
 
-let tab_bar =         self
-                              .tabs
-                              .iter()
-                              .fold(
-                                  TabBar::new(Message::TabSelected),
-                                  |tab_bar, tab| {
-                                      // manually create a new index for the new tab
-                                      // starting from 0, when there is no tab created yet
-                                      let idx = tab_bar.size();
-                                      tab_bar.push(idx, 
-                                                match tab {
-                                                    Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
-                                                    Tab::Overview(idx) => {
-                                                        iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
-                                                    }
-                                                },
-                                    )
-                                  },
-                              )
-                              .on_close(Message::TabClosed)
-                              .tab_width(Length::Shrink)
-                              .spacing(5.0)
-                              .padding(5.0)
-                              .text_size(32.0);
-
+        let tab_bar = self
+            .tabs
+            .iter()
+            .fold(TabBar::new(Message::TabSelected), |tab_bar, tab| {
+                // manually create a new index for the new tab
+                // starting from 0, when there is no tab created yet
+                let idx = tab_bar.size();
+                tab_bar.push(
+                    idx,
+                    match tab {
+                        Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
+                        Tab::Overview(idx) => {
+                            iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
+                        }
+                    },
+                )
+            })
+            .on_close(Message::TabClosed)
+            .tab_width(Length::Shrink)
+            .spacing(5.0)
+            .padding(5.0)
+            .text_size(32.0);
 
         let core = self.view_tab();
 
@@ -309,6 +308,7 @@ impl FdsToolbox {
                 container(column!(
                     sim,
                     button("Open simulation").on_press(Message::OpenSimulationFileDialog),
+                    // tree::
                 ))
                 .center_x()
                 .center_y()

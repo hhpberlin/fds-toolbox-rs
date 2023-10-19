@@ -22,6 +22,8 @@
 // TODO: Remove this and remove dead-code once prototyping is done
 #![allow(dead_code)]
 
+// #![feature(async_fn_in_trait)]
+
 use app::FdsToolbox;
 use iced::{Application, Settings};
 // use old::FdsToolbox;

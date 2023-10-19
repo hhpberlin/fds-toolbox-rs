@@ -2,7 +2,6 @@ use std::path::Path;
 
 use std::io::Read;
 
-use async_trait::async_trait;
 use fds_toolbox_core::file::FileSystem;
 
 use thiserror::Error;
@@ -23,7 +22,6 @@ pub enum FsErr {
     Io(std::io::Error),
 }
 
-#[async_trait]
 impl FileSystem for AnyFs {
     // RIP non-utf8 paths.
     // Probably will never be a problem, but fixing it would be nice.

@@ -1,6 +1,5 @@
 use std::{borrow::Borrow, collections::HashMap, error::Error, fmt::Debug, hash::Hash, io::Read};
 
-use async_trait::async_trait;
 
 use futures::future::join_all;
 use get_size::GetSize;
@@ -19,7 +18,6 @@ use crate::{
     geom::Bounds3I,
 };
 
-#[async_trait]
 pub trait FileSystem: Send + Sync + 'static {
     type Path: Borrow<Self::PathRef> + Send + Sync + Debug + Eq + Hash;
     type PathRef: ?Sized + Send + Sync + Debug + Eq + Hash;
@@ -36,7 +34,6 @@ pub trait FileSystem: Send + Sync + 'static {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OsFs;
 
-#[async_trait]
 impl FileSystem for OsFs {
     type Path = std::path::PathBuf;
     type PathRef = std::path::Path;
@@ -264,7 +261,9 @@ impl<Fs: FileSystem> Simulation<Fs> {
     }
 
     fn path(&self, file_name: &str) -> <Fs as FileSystem>::Path {
-        self.path.fs.file_path(self.path.directory.borrow(), file_name)
+        self.path
+            .fs
+            .file_path(self.path.directory.borrow(), file_name)
     }
 
     pub async fn slice(&self, idx: usize) -> Result<Slice, ParseError<Fs::Error, slice::Error>> {
@@ -351,7 +350,6 @@ impl<Fs: FileSystem> Simulation<Fs> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SliceSeriesIdx(pub usize);
 
-#[async_trait]
 impl<Fs: FileSystem> TimeSeriesSourceAsync<SliceSeriesIdx, f32, Ix3> for Simulation<Fs> {
     type Error = ParseError<Fs::Error, slice::Error>;
 
