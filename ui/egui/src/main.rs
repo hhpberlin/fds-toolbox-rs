@@ -58,26 +58,12 @@ enum Message {
 }
 
 impl FdsToolboxApp {
-    // async fn send_message(&self, message: Message) -> Result<(), mpsc::error::SendError<Message>> {
-    //     self.message_channel.0.send(message).await
-    // }
-
     pub fn get_sync(&self) -> AppSync {
         AppSync {
             store: self.store.clone(),
             channel: self.message_channel.0.clone(),
         }
     }
-
-    // pub async fn spawn(&self, f: impl FnOnce() -> Option<Message> + Send + 'static) {
-    //     // let sync = self.get_sync();
-    //     let channel = self.message_channel.0.clone();
-    //     tokio::spawn(async move {
-    //         if let Some(message) = f() {
-    //             channel.send(message).await;
-    //         }
-    //     });
-    // }
 
     pub fn spawn<F>(&self, f: impl FnOnce() -> F + Send + 'static)
     where
@@ -92,20 +78,6 @@ impl FdsToolboxApp {
             }
         });
     }
-
-    // pub async fn spawn<F>(&self, f: F)
-    // where
-    //     F: IntoFuture<Output = Option<Message>> + Send,
-    //     F::IntoFuture: Send + 'static,
-    // {
-    //     // let sync = self.get_sync();
-    //     let channel = self.message_channel.0.clone();
-    //     tokio::spawn(async move {
-    //         if let Some(message) = f.into_future().await {
-    //             channel.send(message).await;
-    //         }
-    //     });
-    // }
 
     fn handle_message(&mut self, message: Message) {
         match message {

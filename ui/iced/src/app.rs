@@ -17,13 +17,13 @@ use fds_toolbox_lazy_data::{
 };
 use iced::{
     executor,
-    widget::{button, column, container, pick_list, row, text},
+    widget::{button, column, combo_box, container, pick_list, row, text},
     Application, Command, Element, Length, Theme,
 };
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
 use tracing::{debug, error};
 
-use crate::tree;
+use crate::tree::{self, SimsSelection};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
 
@@ -33,6 +33,7 @@ pub struct FdsToolbox {
     pub store: MokaStore,
     pub tabs: Vec<Tab>,
     active_tab: usize,
+    sims_selection: tree::SimsSelection,
 }
 
 #[derive(Debug, Clone)]
@@ -46,12 +47,10 @@ pub enum Message {
     Load(SimulationsDataIdx),
     Loaded(Result<SimulationData, Arc<SimulationDataError>>),
     TabSelected(usize),
-    // This could omit the usize and just reference active_tab, but that could cause problems
-    // if the active_tab is changed before the message is processed
-    // (such as if Command::perform is used with some long-running future).
     TabMessage(usize, TabMessage),
     TabOpen(Tab),
     TabClosed(usize),
+    Sidebar(tree::SimsSelectionMessage),
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +76,7 @@ impl Application for FdsToolbox {
             store: MokaStore::new(100_000),
             tabs: vec![Tab::HomeTab],
             active_tab: 0,
+            sims_selection: tree::SimsSelection::default(),
         };
         let path = SimulationPath::new(
             AnyFs::LocalFs(OsFs),
@@ -143,8 +143,8 @@ impl Application for FdsToolbox {
                         };
                         let path = file.path();
                         let Some(dir) = path.parent() else {
-                                error!("Could not get parent directory of file {:?}", path);
-                         return Message::NoOp;
+                            error!("Could not get parent directory of file {:?}", path);
+                            return Message::NoOp;
                         };
                         let Some((path, dir)) = path.to_str().zip(dir.to_str()) else {
                             error!("Could not convert path to string: {:?}", path);
@@ -186,6 +186,7 @@ impl Application for FdsToolbox {
                     self.active_tab -= 1;
                 }
             }
+            Message::Sidebar(msg) => self.sims_selection.update(msg),
         }
         Command::none()
     }
@@ -233,11 +234,20 @@ impl Application for FdsToolbox {
             .text_size(32.0);
 
         let core = self.view_tab();
-
+        let sidebar = self.view_sidebar();
+        // static HI:combo_box::State<i32> = combo_box::State::new(vec![1, 2, 3, 4]);
+        // let mog = combo_box(
+        //     &HI,
+        //     "amog??",
+        //     Some(&1),
+        //     |_| Message::NoOp,
+        // );
         column!(
             tab_bar,
             core,
-            text(format!("Sims: {:?}", self.active_simulations))
+            text(format!("Sims: {:?}", self.active_simulations)),
+            sidebar,
+            // mog,
         )
         .into()
     }
@@ -357,6 +367,18 @@ impl FdsToolbox {
                 .into()
             }
         }
+    }
+
+    fn view_sidebar(&self) -> Element<Message> {
+        let mut wr = tree::TreeWriter::new();
+        tree::root(
+            &mut wr,
+            &self.sims_selection,
+            &self.store,
+            &mut self.active_simulations.iter().copied(),
+            Message::Sidebar,
+        );
+        wr.into_inner().into()
     }
 }
 

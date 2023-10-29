@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 iced = { version = "0.10", features = ["canvas", "tokio"] }
 # Track git until they bump the version number
-iced_aw = { version = "0.6", default-features = false, features = ["tabs", "tab_bar", "grid", "icons"] }
+iced_aw = { version = "0.7", default-features = false, features = ["tabs", "tab_bar", "grid", "icons"] }
 
 plotters = "0.3"
 plotters-iced = "0.9"
@@ -21,7 +21,7 @@ fds-toolbox-core = { path = "../../core" }
 fds-toolbox-lazy-data = { path = "../../lazy-data" }
 enumflags2 = "0.7"
 
-rfd = { version = "0.11", default-features = false, features = ["xdg-portal"] }
+rfd = { version = "0.12", default-features = false, features = ["xdg-portal"] }
 itertools = "0.11"
 derive_more = "0.99.17"
 phf = "0.11.1"

@@ -9,6 +9,7 @@ use fds_toolbox_core::{
         smoke::dim2::slice::{self, Slice},
     },
 };
+use futures::poll;
 use get_size::GetSize;
 use moka::future::Cache;
 use parking_lot::RwLock;
@@ -522,6 +523,10 @@ impl MokaStore {
 
     pub fn try_get(&self, idx: &SimulationsDataIdx) -> Option<SimulationData> {
         self.cache.get(idx)
+        // match poll!(self.cache.poll_get(idx)) {
+        //     std::task::Poll::Ready(x) => Some(x),
+        //     std::task::Poll::Pending => None,
+        // }
     }
 
     pub async fn get(
