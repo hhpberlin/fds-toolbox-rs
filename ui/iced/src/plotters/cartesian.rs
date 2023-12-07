@@ -1,11 +1,12 @@
 use std::{cell::RefCell, fmt::Debug};
 
 use fds_toolbox_core::common::range::RangeIncl;
+use iced::mouse::Cursor;
 use iced::widget::canvas::Event;
 use iced::{
     event::Status,
     mouse,
-    widget::canvas::{Cache, Cursor, Frame, Geometry},
+    widget::canvas::{Cache, Frame, Geometry},
     Element, Length, Point, Size,
 };
 use plotters::{

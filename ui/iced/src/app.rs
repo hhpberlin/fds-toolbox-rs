@@ -62,6 +62,7 @@ pub enum TabMessage {
 pub enum Tab {
     HomeTab,
     Overview(SimulationIdx),
+    Plot(crate::plotters::cartesian::State),
 }
 
 impl Application for FdsToolbox {
@@ -360,6 +361,7 @@ impl FdsToolbox {
                 .center_y()
                 .into()
             }
+            Tab::Plot
         }
     }
 

@@ -2,17 +2,17 @@ use std::cell::RefCell;
 
 use iced::{widget::row, Command, Element};
 
-use crate::old::{
+use crate::{
     plotters::{
         cartesian::{self, cartesian},
         ids::SeriesSourceLine,
         lines::LinePlot,
     },
-    tabs::Tab,
-    Model,
+    // tabs::Tab,
+    // Model,
 };
 
-use super::series_select::{self, SeriesSelection};
+// use super::series_select::{self, SeriesSelection};
 
 #[derive(Debug)]
 pub struct PlotTab {
@@ -20,7 +20,7 @@ pub struct PlotTab {
     // selected: HashSet<GlobalTimeSeriesIdx>, // TODO: Should this use HashMap<_, bool> instead>?
     // series: RefCell<HashMap<SimulationIdx<TimeSeriesIdx>, PlotTabSeries>>,
     plot_state: RefCell<cartesian::State>,
-    series_selection: SeriesSelection,
+    // series_selection: SeriesSelection,
 }
 
 // #[derive(Debug)]
@@ -45,7 +45,7 @@ pub enum Message {
     Plot(cartesian::Message),
     // Add(SimulationIdx<TimeSeriesIdx>),
     // Remove(SimulationIdx<TimeSeriesIdx>),
-    SeriesSelection(super::series_select::Message),
+    // SeriesSelection(super::series_select::Message),
 }
 
 impl PlotTab {
@@ -67,7 +67,7 @@ impl PlotTab {
                 (0.0..=100.0).into(),
                 (0.0..=100.0).into(),
             )),
-            series_selection: SeriesSelection::new(),
+            // series_selection: SeriesSelection::new(),
         }
     }
 
@@ -146,17 +146,17 @@ impl Tab for PlotTab {
             //     self.series.borrow_mut().get_mut(&idx).unwrap().selected = false;
             //     Command::none()
             // }
-            Message::SeriesSelection(series_select::Message::Loaded(_, _)) => {
-                self.plot_state
-                    .borrow_mut()
-                    .update(cartesian::Message::Invalidate);
-            }
-            Message::SeriesSelection(message) => {
-                return self
-                    .series_selection
-                    .update(message, model)
-                    .map(Message::SeriesSelection);
-            }
+            // Message::SeriesSelection(series_select::Message::Loaded(_, _)) => {
+            //     self.plot_state
+            //         .borrow_mut()
+            //         .update(cartesian::Message::Invalidate);
+            // }
+            // Message::SeriesSelection(message) => {
+            //     return self
+            //         .series_selection
+            //         .update(message, model)
+            //         .map(Message::SeriesSelection);
+            // }
         }
         Command::none()
     }
@@ -167,9 +167,9 @@ impl Tab for PlotTab {
         let src: Box<dyn SeriesSourceLine> = Box::new((&self.series_selection, model));
         row![
             // Self::view_sidebar(model),
-            self.series_selection
-                .view(model)
-                .map(Message::SeriesSelection),
+            // self.series_selection
+            //     .view(model)
+            //     .map(Message::SeriesSelection),
             cartesian(LinePlot::new(src), &self.plot_state).map(Message::Plot),
         ]
         .into()
