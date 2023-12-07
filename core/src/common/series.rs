@@ -164,7 +164,7 @@ impl<Value: Copy, Ix: Dimension, Time: Copy> TimeSeries<Value, Ix, Time> {
         self.time_in_seconds
             .iter()
             .zip(self.values.iter())
-            .map(|(t, v)| (t, v))
+            // .map(|(t, v)| (t, v))
     }
 
     pub fn len(&self) -> usize {
@@ -194,7 +194,7 @@ impl<'a, Value: Copy, Time: Copy> TimeSeriesView<'a, Value, Ix1, Time> {
         self.time_in_seconds
             .iter()
             .zip(self.values.iter())
-            .map(|(t, v)| (t, v))
+            // .map(|(t, v)| (t, v))
     }
 
     pub fn iter_windows<E>(
@@ -206,7 +206,7 @@ impl<'a, Value: Copy, Time: Copy> TimeSeriesView<'a, Value, Ix1, Time> {
             .windows(window_size)
             .into_iter()
             .zip(self.values.data.windows(window_size))
-            .map(|(t, v)| (t, v))
+            // .map(|(t, v)| (t, v))
     }
 }
 

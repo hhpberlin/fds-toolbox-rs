@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use fds_toolbox_core::geom::Vec3I;
 
-use crate::moka::{MokaStore, SimulationIdx};
+use crate::moka::MokaStore;
 
 fn get_closest() {}
 

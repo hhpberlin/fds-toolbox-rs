@@ -18,7 +18,7 @@ use fds_toolbox_lazy_data::{
 };
 use iced::{
     executor,
-    widget::{button, column, combo_box, container, pick_list, row, scrollable, text, slider},
+    widget::{button, column, combo_box, container, pick_list, row, scrollable, slider, text},
     Application, Command, Element, Length, Theme,
 };
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
@@ -26,7 +26,8 @@ use tracing::{debug, error};
 
 use crate::{
     plotters::lines::LinePlot,
-    tree::{self, SimsSelection}, tabs::{TabMessage, Tab},
+    tabs::{Tab, TabMessage},
+    tree::{self, SimsSelection},
 };
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
@@ -69,10 +70,14 @@ impl Application for FdsToolbox {
             store: MokaStore::new(100_000),
             tabs: vec![
                 Tab::Home,
-                Tab::Plot(RefCell::new(crate::plotters::cartesian::State::new(
-                    (0.0..=100.0).into(),
-                    (0.0..=100.0).into(),
-                ))),
+                Tab::Plot(crate::plotters::cartesian::State::new(
+                    0.0..=100.0,
+                    0.0..=100.0,
+                )),
+                Tab::Plot(crate::plotters::cartesian::State::new(
+                    0.0..=100.0,
+                    0.0..=100.0,
+                )),
             ],
             active_tab: 0,
             sims_selection: tree::SimsSelection::default(),
@@ -184,7 +189,7 @@ impl Application for FdsToolbox {
                         error!("Tried to send plot message to non-plot tab");
                         return Command::none();
                     };
-                    state.get_mut().update(msg);
+                    // state.update(msg);
                 }
             },
             Message::TabOpen(tab) => self.tabs.push(tab),
@@ -375,8 +380,7 @@ impl FdsToolbox {
                 )
                 .map(|x| Message::Tab(self.active_tab, TabMessage::Plot(x)));
 
-                let control_panel = column![
-                ];
+                let control_panel = column![];
 
                 container(row![cartesian, control_panel])
                     .center_x()
@@ -405,7 +409,7 @@ impl FdsToolbox {
 
     fn invalidate_plot(&mut self) {
         if let Tab::Plot(s) = &mut self.tabs[self.active_tab] {
-            s.get_mut().invalidate();
+            s.invalidate();
         }
     }
 }

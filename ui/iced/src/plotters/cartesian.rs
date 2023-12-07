@@ -46,6 +46,12 @@ pub struct State {
     cache: Cache,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self::new(0.0..=10.0, 0.0..=10.0)
+    }
+}
+
 impl Clone for State {
     fn clone(&self) -> Self {
         Self {
@@ -76,7 +82,8 @@ impl Debug for State {
 #[derive(Debug)]
 pub struct CartesianPlot<'a, Drawer: CartesianDrawer + 'a> {
     drawer: Drawer,
-    state: &'a RefCell<State>,
+    _a: std::marker::PhantomData<&'a ()>,
+    // state: &'a State,
 }
 
 pub struct Crosshair<'a> {
@@ -93,30 +100,33 @@ pub trait CartesianDrawer {
 }
 
 impl<'a, Drawer: CartesianDrawer + 'a> CartesianPlot<'a, Drawer> {
-    pub fn new(drawer: Drawer, state: &'a RefCell<State>) -> Self {
-        Self { drawer, state }
+    pub fn new(drawer: Drawer, state: &'a State) -> Self {
+        Self { drawer, _a: std::marker::PhantomData }
     }
 }
 
 impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Drawer> {
     // TODO: See if I can make use of this
     //       Currently not used because this persists between tabs
-    type State = ();
+    type State = State;
 
     #[inline]
-    fn draw<R: Renderer, F: Fn(&mut Frame)>(&self, renderer: &R, bounds: Size, draw_fn: F) -> Geometry {
-        // TODO: Borrowing the state may panic
-        renderer.draw_cache(&self.state.borrow().cache, bounds, draw_fn)
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(
+        &self,
+        renderer: &R,
+        bounds: Size,
+        draw_fn: F,
+    ) -> Geometry {
+        // TODO: Cache
+        renderer.draw(bounds, draw_fn)
+        // renderer.draw_cache(&self.state.cache, bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _chart: ChartBuilder<DB>) {}
 
-    fn draw_chart<DB: DrawingBackend>(&self, _state: &Self::State, root: DrawingArea<DB, Shift>) {
+    fn draw_chart<DB: DrawingBackend>(&self, state: &Self::State, root: DrawingArea<DB, Shift>) {
         let mut chart = ChartBuilder::on(&root);
         let chart = chart.x_label_area_size(30).y_label_area_size(30).margin(20);
-
-        // TODO: This might panic
-        let state = self.state.borrow();
 
         let mut chart = chart
             .build_cartesian_2d(state.x_range.into_range(), state.y_range.into_range())
@@ -131,7 +141,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
             .borrow_mut()
             .replace(chart.as_coord_spec().clone());
 
-        self.drawer.draw(&mut chart, &state);
+        self.drawer.draw(&mut chart, state);
 
         chart
             .configure_series_labels()
@@ -143,7 +153,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
 
     fn update(
         &self,
-        _state: &mut Self::State,
+        state: &mut Self::State,
         event: Event,
         bounds: iced::Rectangle,
         cursor: Cursor,
@@ -186,7 +196,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
         };
 
         if let Some(message) = message {
-            self.state.borrow_mut().update(message);
+            state.update(message);
         }
 
         (Status::Captured, message)
@@ -194,10 +204,10 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
 }
 
 impl State {
-    pub fn new(x_range: RangeIncl<f32>, y_range: RangeIncl<f32>) -> Self {
+    pub fn new(x_range: impl Into<RangeIncl<f32>>, y_range: impl Into<RangeIncl<f32>>) -> Self {
         Self {
-            x_range,
-            y_range,
+            x_range: x_range.into(),
+            y_range: y_range.into(),
             hovered_point: None,
             coord_spec: RefCell::new(None),
             mouse_down: false,
@@ -270,11 +280,8 @@ impl State {
     }
 }
 
-pub fn cartesian<'a>(
-    drawer: impl CartesianDrawer + 'a,
-    state: &'a RefCell<State>,
-) -> Element<'a, Message> {
-    ChartWidget::new(CartesianPlot { drawer, state })
+pub fn cartesian<'a>(drawer: impl CartesianDrawer + 'a, state: &'a State) -> Element<'a, Message> {
+    ChartWidget::new(CartesianPlot::new(drawer, state))
         .width(Length::Fill)
         .height(Length::Fill)
         .into()

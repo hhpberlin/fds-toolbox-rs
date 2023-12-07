@@ -14,5 +14,5 @@ pub enum TabMessage {
 pub enum Tab {
     Home,
     Overview(SimulationIdx),
-    Plot(RefCell<crate::plotters::cartesian::State>),
+    Plot(crate::plotters::cartesian::State),
 }
