@@ -23,7 +23,7 @@ use iced::{
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
 use tracing::{debug, error};
 
-use crate::tree::{self, SimsSelection};
+use crate::{tree::{self, SimsSelection}, plotters::lines::LinePlot};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
 
@@ -58,7 +58,7 @@ pub enum TabMessage {
     Replace(Tab),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Tab {
     HomeTab,
     Overview(SimulationIdx),
@@ -226,6 +226,7 @@ impl Application for FdsToolbox {
                         Tab::Overview(idx) => {
                             iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
                         }
+                        Tab::Plot(_) => iced_aw::TabLabel::Text("Plot".to_string()),
                     },
                 )
             })
@@ -361,7 +362,9 @@ impl FdsToolbox {
                 .center_y()
                 .into()
             }
-            Tab::Plot
+            Tab::Plot(state) => {
+                crate::plotters::cartesian::cartesian(LinePlot::new(self.sims_selection.iter_selected_lines(&self.store)), state)
+            }
         }
     }
 
