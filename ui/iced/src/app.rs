@@ -17,7 +17,7 @@ use fds_toolbox_lazy_data::{
 };
 use iced::{
     executor,
-    widget::{button, column, combo_box, container, pick_list, row, text},
+    widget::{button, column, combo_box, container, pick_list, row, scrollable, text},
     Application, Command, Element, Length, Theme,
 };
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
@@ -108,6 +108,7 @@ impl Application for FdsToolbox {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+        // dbg!(&message);
         match message {
             Message::Load(idx) => {
                 let store = self.store.clone();
@@ -235,19 +236,12 @@ impl Application for FdsToolbox {
 
         let core = self.view_tab();
         let sidebar = self.view_sidebar();
-        // static HI:combo_box::State<i32> = combo_box::State::new(vec![1, 2, 3, 4]);
-        // let mog = combo_box(
-        //     &HI,
-        //     "amog??",
-        //     Some(&1),
-        //     |_| Message::NoOp,
-        // );
+
         column!(
             tab_bar,
             core,
             text(format!("Sims: {:?}", self.active_simulations)),
             sidebar,
-            // mog,
         )
         .into()
     }
@@ -378,7 +372,7 @@ impl FdsToolbox {
             &mut self.active_simulations.iter().copied(),
             Message::Sidebar,
         );
-        wr.into_inner().into()
+        scrollable(wr.into_inner()).into()
     }
 }
 

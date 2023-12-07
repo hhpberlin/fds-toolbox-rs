@@ -724,7 +724,7 @@ impl<'a> SimulationParser<'a> {
                             return Err(err::Error::InvalidKey {
                                 key: self.located_parser.span_from_substr(device),
                                 key_type: "DEVICE_ACT",
-                             });
+                            });
                         };
 
                         let (a, b, c) = parse_line(&mut input, ws_separated!(i32, f32, i32))?;

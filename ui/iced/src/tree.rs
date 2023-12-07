@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use fds_toolbox_lazy_data::moka::{MokaStore, SimulationIdx};
 use iced::{
-    widget::{button, column, row, text, Row, Text, Column},
-    Element,
+    widget::{button, checkbox, column, pick_list, row, text, Column, Row, Space, Text},
+    Element, Length,
 };
 use iced_aw::Icon;
 
@@ -57,12 +57,13 @@ impl<'a> TreeWriter<'a, Message> {
         msg: Option<Message>,
     ) {
         let node = row![icon_text(icon), content.into()];
-        self.row = Some(
-            self.row
-                .take()
-                .unwrap()
-                .push(button(node).on_press_maybe(msg)),
-        );
+        // let hi = checkbox(label, is_checked, f);
+        // let hi = pick_list(options, selected, on_selected);
+
+        self.row = Some(self.row.take().unwrap().push(row![
+            Space::new(Length::Fixed(self.current_level as f32 * 10.), 0.0),
+            button(node).on_press_maybe(msg)
+        ]));
     }
 
     fn add_node_and_children(
@@ -141,6 +142,9 @@ pub fn root(
             }),
             Some(msg_map(SimsSelectionMessage::Select(sim_idx, !selected))),
             |tree| {
+                if !selected {
+                    return;
+                }
                 sim(tree, sel, model, sim_idx, |msg| {
                     msg_map(SimsSelectionMessage::Inner(sim_idx, msg))
                 })
@@ -198,6 +202,9 @@ pub fn sim(
         text("Line"),
         Some(msg_map(SimSelectionMessage::Line(!sel.line))),
         |tree| {
+            if !sel.line {
+                return;
+            }
             line(tree, &sel.line_inner, model, sim_idx, |msg| {
                 msg_map(SimSelectionMessage::LineInner(msg))
             })
@@ -248,6 +255,9 @@ pub fn line(
         text("Devc"),
         Some(msg_map(LineSelectionMessage::Devc(!sel.devc))),
         |tree| {
+            if !sel.devc {
+                return;
+            }
             devc(tree, &DevcSelection::default(), model, sim_idx, |msg| {
                 msg_map(LineSelectionMessage::DevcInner(msg))
             })
@@ -268,7 +278,13 @@ pub enum DevcSelectionMessage {
 impl DevcSelection {
     pub fn update(&mut self, msg: DevcSelectionMessage) {
         match msg {
-            DevcSelectionMessage::Select(i, x) => self.selected[i] = x,
+            DevcSelectionMessage::Select(i, x) => {
+                if self.selected.len() <= i {
+                    self.selected
+                        .extend(std::iter::repeat(false).take(i - self.selected.len() + 1))
+                }
+                self.selected[i] = x;
+            }
         }
     }
 }
@@ -283,9 +299,10 @@ pub fn devc(
     let devc = model.devc().try_get(sim_idx, ());
 
     if let Some(devc) = devc {
-        for (i, (device, sel)) in devc.devices.iter().zip(&sel.selected).enumerate() {
+        for (i, device) in devc.devices.iter().enumerate() {
+            let sel = sel.selected.get(i).copied().unwrap_or(false);
             tree.add_node(
-                check(*sel),
+                check(sel),
                 text(format!("{} ({})", device.name, device.unit)),
                 Some(msg_map(DevcSelectionMessage::Select(i, !sel))),
             );
