@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::RefCell,
     ops::Rem,
     sync::{atomic::AtomicUsize, Arc},
 };
@@ -17,13 +18,16 @@ use fds_toolbox_lazy_data::{
 };
 use iced::{
     executor,
-    widget::{button, column, combo_box, container, pick_list, row, scrollable, text},
+    widget::{button, column, combo_box, container, pick_list, row, scrollable, text, slider},
     Application, Command, Element, Length, Theme,
 };
 use iced_aw::{Grid, TabBar, TabBarStyles, TabLabel};
 use tracing::{debug, error};
 
-use crate::{tree::{self, SimsSelection}, plotters::lines::LinePlot};
+use crate::{
+    plotters::lines::LinePlot,
+    tree::{self, SimsSelection}, tabs::{TabMessage, Tab},
+};
 
 // use crate::sidebar::{self, Dummy, Group, Quantity, Series0, Series2, Series3, Series3Type, Series2Type, Series0Type, SelectionSrc};
 
@@ -47,22 +51,10 @@ pub enum Message {
     Load(SimulationsDataIdx),
     Loaded(Result<SimulationData, Arc<SimulationDataError>>),
     TabSelected(usize),
-    TabMessage(usize, TabMessage),
+    Tab(usize, TabMessage),
     TabOpen(Tab),
     TabClosed(usize),
     Sidebar(tree::SimsSelectionMessage),
-}
-
-#[derive(Debug, Clone)]
-pub enum TabMessage {
-    Replace(Tab),
-}
-
-#[derive(Debug)]
-pub enum Tab {
-    HomeTab,
-    Overview(SimulationIdx),
-    Plot(crate::plotters::cartesian::State),
 }
 
 impl Application for FdsToolbox {
@@ -75,7 +67,13 @@ impl Application for FdsToolbox {
         let mut this = Self {
             active_simulations: vec![],
             store: MokaStore::new(100_000),
-            tabs: vec![Tab::HomeTab],
+            tabs: vec![
+                Tab::Home,
+                Tab::Plot(RefCell::new(crate::plotters::cartesian::State::new(
+                    (0.0..=100.0).into(),
+                    (0.0..=100.0).into(),
+                ))),
+            ],
             active_tab: 0,
             sims_selection: tree::SimsSelection::default(),
         };
@@ -130,6 +128,7 @@ impl Application for FdsToolbox {
             }
             Message::Unloaded(idx) => debug!("Unloaded simulation data {:?}", idx),
             Message::Loaded(Ok(data)) => {
+                self.invalidate_plot();
                 debug!("Loaded simulation data {:?}", data);
             }
             Message::Loaded(Err(err)) => error!("Error loading simulation data: {:?}", err),
@@ -176,19 +175,32 @@ impl Application for FdsToolbox {
             Message::TabSelected(idx) => {
                 self.active_tab = idx;
             }
-            Message::TabMessage(idx, msg) => match msg {
+            Message::Tab(idx, msg) => match msg {
                 TabMessage::Replace(tab) => {
                     self.tabs[idx] = tab;
+                }
+                TabMessage::Plot(msg) => {
+                    let Tab::Plot(state) = &mut self.tabs[idx] else {
+                        error!("Tried to send plot message to non-plot tab");
+                        return Command::none();
+                    };
+                    state.get_mut().update(msg);
                 }
             },
             Message::TabOpen(tab) => self.tabs.push(tab),
             Message::TabClosed(idx) => {
                 self.tabs.remove(idx);
+                if self.tabs.is_empty() {
+                    self.tabs.push(Tab::Home);
+                }
                 if self.active_tab >= idx {
                     self.active_tab -= 1;
                 }
             }
-            Message::Sidebar(msg) => self.sims_selection.update(msg),
+            Message::Sidebar(msg) => {
+                self.invalidate_plot();
+                self.sims_selection.update(msg)
+            }
         }
         Command::none()
     }
@@ -222,7 +234,7 @@ impl Application for FdsToolbox {
                 tab_bar.push(
                     idx,
                     match tab {
-                        Tab::HomeTab => iced_aw::TabLabel::Text("Home".to_string()),
+                        Tab::Home => iced_aw::TabLabel::Text("Home".to_string()),
                         Tab::Overview(idx) => {
                             iced_aw::TabLabel::Text(self.try_get_name_infallible(*idx))
                         }
@@ -239,13 +251,7 @@ impl Application for FdsToolbox {
         let core = self.view_tab();
         let sidebar = self.view_sidebar();
 
-        column!(
-            tab_bar,
-            core,
-            text(format!("Sims: {:?}", self.active_simulations)),
-            sidebar,
-        )
-        .into()
+        column![tab_bar, row![sidebar, core]].into()
     }
 
     fn theme(&self) -> Self::Theme {
@@ -289,12 +295,12 @@ impl FdsToolbox {
     }
 
     fn tab_msg(&self, msg: TabMessage) -> Message {
-        Message::TabMessage(self.active_tab, msg)
+        Message::Tab(self.active_tab, msg)
     }
 
     fn view_tab(&self) -> Element<Message> {
-        match self.tabs[self.active_tab] {
-            Tab::HomeTab => {
+        match &self.tabs[self.active_tab] {
+            Tab::Home => {
                 debug!("{:?}", self.active_simulations);
                 let sim: Element<_> = match self.active_simulations.is_empty() {
                     true => text("No simulations loaded.").into(),
@@ -330,11 +336,11 @@ impl FdsToolbox {
                             .map(|&x| KeyedStr(x, self.try_get_name_infallible(x)))
                             .collect(),
                     ),
-                    Some(KeyedStr(sim_idx, self.try_get_name_infallible(sim_idx))),
+                    Some(KeyedStr(*sim_idx, self.try_get_name_infallible(*sim_idx))),
                     |x| self.tab_msg(TabMessage::Replace(Tab::Overview(x.0))),
                 );
 
-                let sim = self.store.sim().try_get(sim_idx, ());
+                let sim = self.store.sim().try_get(*sim_idx, ());
 
                 let info: Element<_> = match sim {
                     Some(sim) => row!(
@@ -363,9 +369,26 @@ impl FdsToolbox {
                 .into()
             }
             Tab::Plot(state) => {
-                crate::plotters::cartesian::cartesian(LinePlot::new(self.sims_selection.iter_selected_lines(&self.store)), state)
+                let cartesian = crate::plotters::cartesian::cartesian(
+                    LinePlot::new(Box::new(self.sel_src()) as _),
+                    state,
+                )
+                .map(|x| Message::Tab(self.active_tab, TabMessage::Plot(x)));
+
+                let control_panel = column![
+                ];
+
+                container(row![cartesian, control_panel])
+                    .center_x()
+                    .center_y()
+                    .into()
             }
         }
+    }
+
+    // Signature subject to change. impls ids.rs traits
+    fn sel_src(&self) -> (&SimsSelection, &MokaStore) {
+        (&self.sims_selection, &self.store)
     }
 
     fn view_sidebar(&self) -> Element<Message> {
@@ -378,6 +401,12 @@ impl FdsToolbox {
             Message::Sidebar,
         );
         scrollable(wr.into_inner()).into()
+    }
+
+    fn invalidate_plot(&mut self) {
+        if let Tab::Plot(s) = &mut self.tabs[self.active_tab] {
+            s.get_mut().invalidate();
+        }
     }
 }
 

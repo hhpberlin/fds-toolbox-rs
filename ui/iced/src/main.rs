@@ -33,6 +33,7 @@ mod app;
 mod tree;
 mod plot_2d;
 mod plotters;
+mod tabs;
 // mod sidebar;
 
 /// # Errors

@@ -13,7 +13,7 @@ use plotters::{
     coord::{types::RangedCoordf32, ReverseCoordTranslate, Shift},
     prelude::*,
 };
-use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
+use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend, Renderer};
 
 type PosF = (f32, f32);
 type PosI = (i32, i32);
@@ -44,6 +44,20 @@ pub struct State {
     pub coord_spec: RefCell<Option<Cartesian2df32>>,
     pub mouse_down: bool,
     cache: Cache,
+}
+
+impl Clone for State {
+    fn clone(&self) -> Self {
+        Self {
+            x_range: self.x_range,
+            y_range: self.y_range,
+            hovered_point: self.hovered_point,
+            coord_spec: self.coord_spec.clone(),
+            mouse_down: self.mouse_down,
+            // Custom impl due to this:
+            cache: Cache::new(),
+        }
+    }
 }
 
 impl Debug for State {
@@ -90,9 +104,9 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
     type State = ();
 
     #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-        // TODO: This might panic
-        self.state.borrow().cache.draw(bounds, draw_fn)
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(&self, renderer: &R, bounds: Size, draw_fn: F) -> Geometry {
+        // TODO: Borrowing the state may panic
+        renderer.draw_cache(&self.state.borrow().cache, bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _chart: ChartBuilder<DB>) {}
@@ -142,7 +156,7 @@ impl<'a, Drawer: CartesianDrawer + 'a> Chart<Message> for CartesianPlot<'a, Draw
             Event::Touch(_) | Event::Keyboard(_) => return (Status::Ignored, None),
         };
 
-        let p = match cursor.position_in(&bounds) {
+        let p = match cursor.position_in(bounds) {
             Some(p) => p,
             None => return (Status::Ignored, None),
         };

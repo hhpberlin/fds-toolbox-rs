@@ -7,7 +7,7 @@ use iced::{
 };
 use iced_aw::Icon;
 
-use crate::app::Message;
+use crate::{app::Message, plotters::ids::SeriesSourceLine};
 
 // enum Selection {
 //     Selectable(bool),
@@ -114,19 +114,44 @@ pub enum SimsSelectionMessage {
 
 impl SimsSelection {
     pub fn update(&mut self, msg: SimsSelectionMessage) {
+        dbg!(&msg);
         match msg {
             SimsSelectionMessage::Select(i, x) => self.by_sim.entry(i).or_default().0 = x,
             SimsSelectionMessage::Inner(i, msg) => self.by_sim.entry(i).or_default().1.update(msg),
         }
     }
 
-    pub fn iter_selected_lines(&self, s: &MokaStore) -> impl Iterator {
-        self.by_sim.iter().flat_map(|(sim, (_, sel))| {
-            let devc = s.devc().try_get(*sim, ());
-            sel.line_inner.devc_inner.selected.iter().enumerate().filter(|(_, sel)| **sel)
-            // TODO: Inform user about unloaded plots somehow
-            .filter_map(|(i, _)| devc.map(|x| x.devices[i].values))
-        })
+    // pub fn iter_selected_lines(&self, s: &MokaStore) -> impl Iterator {
+    //     self.by_sim.iter().flat_map(|(sim, (_, sel))| {
+    //         let devc = s.devc().try_get(*sim, ());
+    //         sel.line_inner.devc_inner.selected.iter().enumerate().filter(|(_, sel)| **sel)
+    //         // TODO: Inform user about unloaded plots somehow
+    //         .filter_map(|(i, _)| devc.map(|x| x.devices[i].values))
+    //     })
+    // }
+}
+
+impl SeriesSourceLine for (&SimsSelection, &MokaStore) {
+    fn for_each_series(
+        &self,
+        f: &mut dyn for<'view> FnMut(fds_toolbox_core::common::series::TimeSeries0View<'view>),
+    ) {
+        self.0.by_sim.iter().for_each(|(sim, (_, sel))| {
+            let devc = self.1.devc().try_get(*sim, ());
+            if let Some(devc) = devc {
+                for (sel, device) in sel
+                    .line_inner
+                    .devc_inner
+                    .selected
+                    .iter()
+                    .zip(devc.iter_device_views())
+                {
+                    if *sel {
+                        f(device);
+                    }
+                }
+            }
+        });
     }
 }
 
